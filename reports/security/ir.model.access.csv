@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+reports.access_report_weeks,access_report_weeks,reports.model_report_weeks,reports.group_reports,1,1,1,0
+reports.access_report_requisition,access_report_requisition,reports.model_report_requisition,reports.group_reports,1,1,1,0
+reports.access_report_requisition_line,access_report_requisition_line,reports.model_report_requisition_line,reports.group_reports,1,1,1,0
+reports.access_report_requisition_data,access_report_requisition_data,reports.model_report_requisition_data,reports.group_reports,1,1,1,1
+reports.access_report_empresas_obras,access_report_empresas_obras,reports.model_report_empresas_obras,reports.group_reports,1,1,1,0

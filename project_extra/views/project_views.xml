@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_licitacion_data_from" model="ir.ui.view">
+        <field name="name">view.licitacion.data.from</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <!--xpath expr="//field[@name='stage_id']" position="attributes">
+                <attribute name="groups">project.group_project_stages,project.group_project_manager</attribute>
+            </xpath-->
+
+            <xpath expr="//notebook[last()]" position="inside">
+                <page string="Localizacion" name="geo_location">
+                    <group string='Ubicación de la Obra'>
+                        <span>Ubicación</span>
+                        <div class="o_address_format">
+                            <field name="country_id" class="o_address_country" placeholder="Country" options="{'no_open':True, 'no_create':True}"/>
+                            <field name="state_id" class="o_address_state" placeholder="State" options="{'no_open':True}" domain="[('country_id','=',country_id)]"/>
+                            <field name="city_id" placeholder="City" class="o_address_city" domain="[('state_id','=',state_id)]"/>
+                            <field name="street" placeholder="Street..." class="o_address_street"/>
+                            <field name="zip" placeholder="ZIP" class="o_address_zip"/>
+                        </div>
+                    </group>
+                    <group>
+                        <field name="centro"/>
+                        <field name="tramo"/>
+                    </group>
+                    <group string="Geolocalizacion">
+                        <label for="date_localization" string="Geolocalizacion"/>
+                        <div>
+                            <span>Lat : <field name="partner_latitude" nolabel="1" class="oe_inline"/></span><br/>
+                            <span>Long: <field name="partner_longitude" nolabel="1" class="oe_inline"/></span><br/>
+                            <span invisible="not date_localization">Updated on:
+                                <field name="date_localization" nolabel="1" readonly="1" class="oe_inline"/><br/>
+                            </span>
+                            <div name="geo_localize_button">
+                                <button invisible="partner_latitude != 0 or partner_longitude != 0" icon="fa-gear" string="Compute based on address" title="Compute Localization" name="geo_localize" type="object" class="btn btn-link p-0"/>
+                                <button invisible="partner_latitude == 0 and partner_longitude == 0" icon="fa-refresh" string="Refresh" title="Refresh Localization" name="geo_localize" type="object" class="btn btn-link p-0"/>
+                            </div>
+                        </div>
+                    </group>
+                </page>
+                <page string="Datos de la obra" name="data_project">
+                    <group>
+                        <group>
+                            <field name="type_id"/>
+                            <field name="licitacion"/>
+                            <field name="authorized_budget"/>
+                        </group>
+                        <group>
+                            <field name="responsable_id"/>
+                            <field name="superficie"/>
+                            <field name="cost_overrun"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="type_id"/>
+                            <field name="licitacion"/>
+                            <field name="num_contrato"/>
+                            <field name="authorized_budget"/>
+                        </group>
+                        <group>
+                            <field name="responsable_id"/>
+                            <field name="superficie"/>
+                            <field name="cost_overrun"/>
+                        </group>
+                    </group>
+                    <group string='Residentes'>
+                        <field name="resident_ids" widget="many2many_tags"/>
+                    </group>
+                </page>
+                <page string="Documentos">
+                    <br/>
+                    <button name="cargar_docs" string="Documentos" icon="fa-archive" class="btn-primary" type="object" invisible="stage_id != 1"/>
+                    <field name="documentos_ids" create="0" delete="0">
+                        <list decoration-success="requerido == True" decoration-bf="filename != False" editable="bottom" create="0" delete="0">
+                            <field name="requerido" readonly="1" />
+                            <field name="docto_id" readonly="1" options="{'no_create':True, 'no_open':True}"/>
+                            <field name="filename" string="Nombre del Documento" column_invisible="True"/>
+                            <field name="archivo" string="Archivo" widget="binary" filename="filename" />
+                        </list>
+                        <form><p>Información no disponible a través de esta vista</p></form>
+                     </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_project_type" model="ir.actions.act_window">
+        <field name="name">Tipo de Obra</field>
+        <field name="res_model">project.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_project_type_list" model="ir.ui.view">
+        <field name="name">view.project.type.list</field>
+        <field name="model">project.type</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Tipo de Obra">
+                <field name="name"/>
+                <field name="normative_clas"/>
+                <field name="technical_cat"/>
+                <field name="uom_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_project_type_from" model="ir.ui.view">
+        <field name="name">view.project.type.from</field>
+        <field name="model">project.type</field>
+        <field name="arch" type="xml">
+            <form string="Tipo de Obra" delete="0" duplicate="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="normative_clas"/>
+                        </group>
+                        <group>
+                            <field name="technical_cat"/>
+                            <field name="uom_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description"/>
+                        <field name="observations"/>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="docto_req_id" widget="many2many_tags"/>
+                        </group>
+                        <group>
+                            <field name="docto_noreq_id" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_project_docsrequeridos" model="ir.actions.act_window">
+        <field name="name">Documentos</field>
+        <field name="res_model">project.docsrequeridos</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_project_docsrequeridos_list" model="ir.ui.view">
+        <field name="name">view.project.type.list</field>
+        <field name="model">project.docsrequeridos</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Documentos">
+                <field name="nombre_archivo"/>
+                <field name="desc_archivo"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_project_docsrequeridos_from" model="ir.ui.view">
+        <field name="name">view.project.docsrequeridos.from</field>
+        <field name="model">project.docsrequeridos</field>
+        <field name="arch" type="xml">
+            <form string="Documentos" delete="0" duplicate="0">
+                <sheet>
+                    <group>
+                        <field name="nombre_archivo"/>
+                        <field name="desc_archivo"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_catalog_project" name="Catálogos" parent="project.menu_main_pm" sequence="200" groups="project.group_project_user,group_project_catalog">
+        <menuitem id="menu_project_type" name="Tipo de Obra" action="action_project_type" sequence="1"/>
+        <menuitem id="menu_project_docsrequeridos" name="Documentos" action="action_project_docsrequeridos" sequence="2"/>
+    </menuitem>
+
+</odoo>

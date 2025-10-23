@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_reports_requisition" model="ir.actions.act_window">
+        <field name="name">Informe de Requisición Semanal</field>
+        <field name="res_model">report.requisition</field>
+        <field name="view_mode">list,kanban,form</field>
+    </record>
+
+    <record id="view_report_requisition_list" model="ir.ui.view">
+        <field name="name">view.reports.requisition.list</field>
+        <field name="model">report.requisition</field>
+        <field name="priority" eval="1"/>
+        <field name="arch" type="xml">
+            <list string="Informe de Requisición Semanal" delete="0">
+                <field name="name"/>
+                <field name="year"/>
+                <field name="week_id"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_reports_requisition_form" model="ir.ui.view">
+        <field name="name">view.reports.requisition.form</field>
+        <field name="model">report.requisition</field>
+        <field name="arch" type="xml">
+            <form string="Informe de Requisición Semanal" delete="0">
+                <sheet>
+                    <header>
+                        <field name="state" widget="statusbar"/>
+                    </header>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="year" readonly="1"/>
+                            <field name="week_id" readonly="1"/>
+                            <field name="act_informacion" invisible="1"/>
+                        </group>
+                    </group>                    
+                    <notebook>
+                        <page string="Información">
+                            <field name="line_ids" widget="one2many_list">
+                                <list create="false" delete="false" edit="false">
+                                    <field name="empresa"/>
+                                    <field name="obra"/>
+                                    <field name="concepto"/>
+                                    <field name="proveedor"/>
+                                    <field name="fuerza"/>
+                                    <field name="metodo_pago"/>
+                                    <field name="importe"/>
+                                    <field name="adeudo"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
+                            </field>
+                        </page>
+                        <page string="Carga">
+                            <group>
+                                <field name="filename" string="Archivo" invisible="1"/>
+                                <field name="file" widget="binary" filename="filename" readonly="line_ids == True"/>
+                            </group>
+                            <group invisible="state in ('duplicado', 'done')">
+                                <div class="oe_button_box" invisible="file == False">                                    
+                                    <button class="oe_stat_button" icon="fa-upload" name="action_cargar_registros" string="Cargar" type="object" invisible="data_ids" confirm="Se agregará el contenido del archivo seleccionado, ¿continuar?"/>
+                                    <button class="oe_stat_button" icon="fa-upload" name="action_genera_req" string="Generar" type="object" invisible="line_ids and not data_ids" confirm="Se generará el contenido del archivo seleccionado, ¿continuar?"/>
+                                    <button class="oe_stat_button" icon="fa-upload" name="action_vincular" string="Vincular Empresa - Obra" type="object" invisible="act_informacion and not data_ids"/>
+                                    <button class="oe_stat_button" confirm="¿Está seguro que desea eliminar los registros cargados?" icon="fa-times" name="action_unlink_details" string="Eliminar Detalle" type="object" invisible="not data_ids and line_ids"/>
+                                </div>
+                            </group>
+                            <field name="data_ids" widget="one2many_list" readonly="line_ids == True">
+                                <list string="Detalles" delete="0" create="0" edit="0">
+                                    <field name="col1"/>
+                                    <field name="col2"/>
+                                    <field name="col3"/>
+                                    <field name="col4"/>
+                                    <field name="col5"/>
+                                    <field name="col6"/>
+                                    <field name="col7"/>
+                                    <field name="col8"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_week" model="ir.actions.act_window">
+        <field name="name">Semanas</field>
+        <field name="res_model">report.weeks</field>
+        <field name="view_mode">list,kanban,form</field>
+    </record>
+
+    <record id="view_report_weeks_list" model="ir.ui.view">
+        <field name="name">view.reports.weeks.list</field>
+        <field name="model">report.weeks</field>
+        <field name="priority" eval="1"/>
+        <field name="arch" type="xml">
+            <list string="Semanas" delete="0" create="0">
+                <field name="no_semana"/>
+                <field name="finicio"/>
+                <field name="ffin"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_reports_weeks_form" model="ir.ui.view">
+        <field name="name">view.reports.weeks.form</field>
+        <field name="model">report.weeks</field>
+        <field name="arch" type="xml">
+            <form string="Semanas" delete="0" edit="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="no_semana"/>
+                            <field name="finicio"/>
+                            <field name="ffin"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_empresas_obras" model="ir.actions.act_window">
+        <field name="name">Empresas - Obras</field>
+        <field name="res_model">report.empresas.obras</field>
+        <field name="view_mode">list,kanban,form</field>
+    </record>
+
+    <record id="view_report_empresas_obras_list" model="ir.ui.view">
+        <field name="name">view.reports.empresas.obras.list</field>
+        <field name="model">report.empresas.obras</field>
+        <field name="priority" eval="1"/>
+        <field name="arch" type="xml">
+            <list string="Empresas - Obras" delete="0" create="0">
+                <field name="empresa"/>
+                <field name="obra"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_reports_empresas_obras_form" model="ir.ui.view">
+        <field name="name">view.reports.empresas.obras.form</field>
+        <field name="model">report.empresas.obras</field>
+        <field name="arch" type="xml">
+            <form string="Empresas - Obras" delete="0" create="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="empresa"/>
+                            <field name="obra"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="reports_menu_root" name="Reportes" sequence="10">
+        <menuitem id="menu_reports" name="Reportes" groups="group_reports" sequence="10">
+            <menuitem id="menu_report_requisition" name="Requisición Semanal" action="action_reports_requisition" sequence="10"/>
+        </menuitem>
+        <menuitem id="menu_reports_config" name="Configuración" groups="group_reports" sequence="20">
+            <menuitem id="menu_report_weeks" name="Semanas" action="action_week" sequence="10"/>
+            <menuitem id="menu_report_obraemp" name="Empresas - Obras" action="action_empresas_obras" sequence="20"/>
+        </menuitem>
+    </menuitem>
+
+</odoo>

@@ -1,0 +1,426 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_company_extra_form" model="ir.ui.view">
+        <field name="name">view.company.extra.form</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook/page[@name='branches']" position="after">
+                <page name="facturacion" string="Facturación">
+                    <group>
+                        <group>
+                            <field name="responsable_id"/>
+                            <field name="taxpayer_id"/>
+                        </group>
+                        <group>
+                            <field name="bank_account_id"/>
+                            <field name="bank_accounts_id"/>
+                            <field name="incorporation_date"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="area_em"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_contacts_curp_form" model="ir.ui.view">
+        <field name="name">view.concacts.curp.form</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base_vat.view_partner_base_vat_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='vat']" position="after">
+                <field name="curp" invisible="is_company"/>
+                <field name="nacionalidad"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_contacts_doctos_form" model="ir.ui.view">
+        <field name="name">view.concacts.doctos.form</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="account.view_partner_property_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='accounting_automation']" position="after">
+                <group name="otros" string="Otros">
+                    <field name="is_customer"/>
+                    <field name="is_supplier"/>
+                    <field name="area"/>
+                    <field name="clasification"/>
+                    <field name="typesupplier_id" invisible="not is_supplier"/>
+                    <field name="soporte_ids" widget="many2many_binary"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_legal_representative" model="ir.actions.act_window">
+        <field name="name">Representante Legal</field>
+        <field name="res_model">company.legal.representative</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_legal_representative_list" model="ir.ui.view">
+        <field name="name">view.legal.representative.list</field>
+        <field name="model">company.legal.representative</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Representante Legal">
+                <field name="company_id"/>
+                <field name="representante_id"/>
+                <field name="vat"/>
+                <field name="curp"/>
+                <field name="cargo"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_legal_representative_from" model="ir.ui.view">
+        <field name="name">view.legal.representative.from</field>
+        <field name="model">company.legal.representative</field>
+        <field name="arch" type="xml">
+            <form string="Representante Legal" delete="0" duplicate="0">
+                <header>
+                    <button string="Sustituir" name="action_sustituir" type="object" class="btn-primary" invisible="state != 'activo'"/>
+                    <button string="Revocar" name="action_revocar" type="object" class="btn-primary" invisible="state != 'activo'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="representante_id"/>
+                            <field name="cargo"/>
+                            <field name="appointment_date"/>
+                        </group>
+                        <group>
+                            <field name="vat"/>
+                            <field name="curp"/>
+                            <field name="term_date"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="soporte_ids" widget="many2many_binary"/>
+                        <field name="legal_powers"/>
+                        <field name="notario"/>
+                        <field name="observaciones"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_company_parents" model="ir.actions.act_window">
+        <field name="name">Socios</field>
+        <field name="res_model">company.partners</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_company_partners_list" model="ir.ui.view">
+        <field name="name">view.company.partners.list</field>
+        <field name="model">company.partners</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Socios">
+                <field name="company_id"/>
+                <field name="partner_id"/>
+                <field name="vat"/>
+                <field name="curp"/>
+                <field name="porcentaje"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_company_partners_from" model="ir.ui.view">
+        <field name="name">view.company_partners.from</field>
+        <field name="model">company.partners</field>
+        <field name="arch" type="xml">
+            <form string="Socios" delete="0" duplicate="0">
+                <header>
+                    <button string="Inactivar" name="action_inactivar" type="object" class="btn-primary" invisible="state != 'activo'"/>
+                    <button string="Retirar" name="action_retirar" type="object" class="btn-primary" invisible="state != 'activo'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="partner_id"/>
+                            <field name="appointment_date"/>
+                            <field name="porcentaje"/>
+                        </group>
+                        <group>
+                            <field name="vat"/>
+                            <field name="curp"/>
+                            <field name="is_company"/>
+                            <field name="nacionalidad"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="soporte_ids" widget="many2many_binary"/>
+                        <field name="observaciones"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_legal_proxy" model="ir.actions.act_window">
+        <field name="name">Apoderado Legal</field>
+        <field name="res_model">company.legal.proxy</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_legal_proxy_list" model="ir.ui.view">
+        <field name="name">view.legal.proxy.list</field>
+        <field name="model">company.legal.proxy</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Apoderado Legal">
+                <field name="company_id"/>
+                <field name="partner_id"/>
+                <field name="vat"/>
+                <field name="curp"/>
+                <field name="power"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_legal_proxy_from" model="ir.ui.view">
+        <field name="name">view.legal.proxy.from</field>
+        <field name="model">company.legal.proxy</field>
+        <field name="arch" type="xml">
+            <form string="Apoderado Legal" delete="0" duplicate="0">
+                <header>
+                    <button string="Inactivar" name="action_inactivar" type="object" class="btn-primary" invisible="state != 'activo'"/>
+                    <button string="Vencido" name="action_vencer" type="object" class="btn-primary" invisible="state != 'activo'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="partner_id"/>
+                            <field name="power"/>
+                            <field name="faculties"/>
+                        </group>
+                        <group>
+                            <field name="vat"/>
+                            <field name="curp"/>
+                            <field name="grant_date"/>
+                            <field name="term_date"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="notario"/>
+                        <field name="soporte_ids" widget="many2many_binary"/>
+                        <field name="observaciones"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_public_record" model="ir.actions.act_window">
+        <field name="name">Registro Público</field>
+        <field name="res_model">company.public.record</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_public_record_list" model="ir.ui.view">
+        <field name="name">view.public.record.list</field>
+        <field name="model">company.public.record</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Registro Público">
+                <field name="company_id"/>
+                <field name="folio"/>
+                <field name="registration_date"/>
+                <field name="type"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_public_record_from" model="ir.ui.view">
+        <field name="name">view.public.record.from</field>
+        <field name="model">company.public.record</field>
+        <field name="arch" type="xml">
+            <form string="Registro Público" delete="0" duplicate="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="folio"/>
+                        </group>
+                        <group>
+                            <field name="registration_date"/>
+                            <field name="type"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="docto_ids" widget="many2many_binary"/>
+                        <field name="observaciones"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_company_assembly" model="ir.actions.act_window">
+        <field name="name">Asambleas</field>
+        <field name="res_model">company.assembly</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_company_assembly_list" model="ir.ui.view">
+        <field name="name">view.company.assembly.list</field>
+        <field name="model">company.assembly</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Asambleas">
+                <field name="company_id"/>
+                <field name="folio"/>
+                <field name="registration_date"/>
+                <field name="type"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_company_assembly_from" model="ir.ui.view">
+        <field name="name">view.company.assembly.from</field>
+        <field name="model">company.assembly</field>
+        <field name="arch" type="xml">
+            <form string="Asambleas" delete="0" duplicate="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="folio"/>
+                        </group>
+                        <group>
+                            <field name="registration_date"/>
+                            <field name="type"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="docto_ids" widget="many2many_binary"/>
+                        <field name="observaciones"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_employer_registration" model="ir.actions.act_window">
+        <field name="name">Registro Patronal</field>
+        <field name="res_model">company.employer.registration</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_employer_registration_list" model="ir.ui.view">
+        <field name="name">view.employer.registration.list</field>
+        <field name="model">company.employer.registration</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Registro Patronal">
+                <field name="company_id"/>
+                <field name="folio"/>
+                <field name="registration_date"/>
+                <field name="type"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_employer_registration_from" model="ir.ui.view">
+        <field name="name">view.employer.registration.from</field>
+        <field name="model">company.employer.registration</field>
+        <field name="arch" type="xml">
+            <form string="Registro Patronal" delete="0" duplicate="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="folio"/>
+                        </group>
+                        <group>
+                            <field name="registration_date"/>
+                            <field name="type"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="docto_ids" widget="many2many_binary"/>
+                        <field name="observaciones"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_company_commissar" model="ir.actions.act_window">
+        <field name="name">Comisario</field>
+        <field name="res_model">company.commissar</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_company_commissar_list" model="ir.ui.view">
+        <field name="name">view.employer.registration.list</field>
+        <field name="model">company.commissar</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Comisario">
+                <field name="company_id"/>
+                <field name="partner_id"/>
+                <field name="vat"/>
+                <field name="curp"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_company_commissar_from" model="ir.ui.view">
+        <field name="name">view.employer.registration.from</field>
+        <field name="model">company.commissar</field>
+        <field name="arch" type="xml">
+            <form string="Comisario" delete="0" duplicate="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group>
+                            <field name="vat"/>
+                            <field name="curp"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="observaciones"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    
+    <menuitem id="menu_empresas" name="Empresas" parent="contacts.menu_contacts" sequence="4" groups="group_company_admin,group_company_read">
+        <menuitem id="menu_legal_representative" action="action_legal_representative" sequence="1"/>
+        <menuitem id="menu_company_parents" action="action_company_parents" sequence="2"/>
+        <menuitem id="menu_legal_proxy" action="action_legal_proxy" sequence="3"/>
+        <menuitem id="menu_public_record" action="action_public_record" sequence="4"/>
+        <menuitem id="menu_company_assembly" action="action_company_assembly" sequence="5"/>
+        <menuitem id="menu_employer_registration" action="action_employer_registration" sequence="6"/>
+        <menuitem id="menu_company_commissar" action="action_company_commissar" sequence="7"/>
+    </menuitem>
+
+</odoo>
