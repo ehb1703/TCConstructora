@@ -16,8 +16,7 @@ class respartnerCurp(models.Model):
     clasification = fields.Selection(selection=[('gob','Gubernamental'),('priv','Privado'),('int','Interno')],
         string='Clasificación', default='gob')
     typesupplier_id = fields.Many2one('partner.type.supplier', string='Tipo de Proveedor', tracking=True)
-    area = fields.Selection(selection=[('norte','Zona Norte'), ('sur','Zona Sur'), ('este','Zona Este'), ('oeste','Zona Oeste')],
-        string='Zona Geográfica', default='norte', tracking=True)
+    area_em = fields.Char(string='Zona Geográfica', tracking=True)
     soporte_ids = fields.Many2many(comodel_name='ir.attachment', inverse_name='res_id', string="Documentos fiscales")
 
     @api.constrains('curp')
