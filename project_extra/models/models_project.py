@@ -11,20 +11,30 @@ class projectType(models.Model):
     _name = 'project.type'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Tipo de Obra'
-    _rec_name = 'name'
+    _rec_name = 'code'
 
+    code = fields.Char(string='Codigo del tipo de obra')
     name = fields.Char(string='Nombre')
     description = fields.Char(string='Descripción')
     normative_clas = fields.Selection(selection=[('na','No Aplica'), ('nom','NOM'), ('sct','SCT'), ('cfe','CFE'), ('conagua','CONAGUA')], 
         string = 'Clasificación Normativa', default = 'na')
-    technical_cat = fields.Selection(
-        selection=[('inf','Infraestructura'), ('ed','Edificación'), ('urb','Urbanización'), ('ins','Instalaciones'), ('esp','Especializada')], 
-        string = 'Categoría Técnica', default = 'inf')
+    technicalcat_id = fields.Many2one('project.technical.category', string = 'Categoría Técnica')
     uom_id = fields.Many2one('uom.uom', string='Unidad de medida principal')
     docto_req_id = fields.Many2many('project.docsrequeridos', 'project_type_docsrequeridos_rel', 'project_req', string='Documentos Requeridos')
     docto_noreq_id = fields.Many2many('project.docsrequeridos', 'project_type_docsnorequeridos_rel', 'projet_noreq', string='Documentos no Requeridos')
     observations = fields.Char(string='Observaciones')
     active = fields.Boolean(string='Activo', default=True, required=True)
+
+
+class projectTechnicalCategory(models.Model):
+    _name = 'project.technical.category'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _description = 'Categoría Técnica'
+    _rec_name = 'name'
+
+    name = fields.Char(string='Nombre')
+    description = fields.Char(string='Descripción')
+    active = fields.Boolean(string='Activo', default=True, required=True)    
 
 
 class documentosRequeridos(models.Model):
@@ -70,9 +80,12 @@ class projectObra(models.Model):
     responsable_id = fields.Many2one('hr.employee', string='Responsable técnico')
     resident_ids = fields.One2many(comodel_name='project.residents', inverse_name='project_id', string='Residentes')
     type_id = fields.Many2one('project.type', string='Tipo de Obra')
-    superficie = fields.Float(string='Superficie de la obra')
+    superficie = fields.Char(string='Superficie de la obra')
     centro = fields.Char(string='Centro de gravedad')
     tramo = fields.Char(string='Tramo')
+    dependencia = fields.Char(string='Dependencia')
+    bloque = fields.Char(string='Bloque')
+    fianzas = fields.Char(string='Fianzas')
 
     @api.model
     def _geo_localize(self, street='', zip='', city='', state='', country=''):

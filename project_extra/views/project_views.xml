@@ -6,20 +6,16 @@
         <field name="model">project.project</field>
         <field name="inherit_id" ref="project.edit_project"/>
         <field name="arch" type="xml">
-            <!--xpath expr="//field[@name='stage_id']" position="attributes">
-                <attribute name="groups">project.group_project_stages,project.group_project_manager</attribute>
-            </xpath-->
-
             <xpath expr="//notebook[last()]" position="inside">
                 <page string="Localizacion" name="geo_location">
                     <group string='Ubicación de la Obra'>
                         <span>Ubicación</span>
                         <div class="o_address_format">
-                            <field name="country_id" class="o_address_country" placeholder="Country" options="{'no_open':True, 'no_create':True}"/>
-                            <field name="state_id" class="o_address_state" placeholder="State" options="{'no_open':True}" domain="[('country_id','=',country_id)]"/>
-                            <field name="city_id" placeholder="City" class="o_address_city" domain="[('state_id','=',state_id)]"/>
-                            <field name="street" placeholder="Street..." class="o_address_street"/>
-                            <field name="zip" placeholder="ZIP" class="o_address_zip"/>
+                            <field name="country_id" class="o_address_country" placeholder="País" options="{'no_open':True, 'no_create':True}"/>
+                            <field name="state_id" class="o_address_state" placeholder="Estado" options="{'no_open':True}" domain="[('country_id','=',country_id)]"/>
+                            <field name="city_id" placeholder="Ciudad" class="o_address_city" domain="[('state_id','=',state_id)]"/>
+                            <field name="street" placeholder="Calle..." class="o_address_street"/>
+                            <field name="zip" placeholder="CP" class="o_address_zip"/>
                         </div>
                     </group>
                     <group>
@@ -44,31 +40,27 @@
                 <page string="Datos de la obra" name="data_project">
                     <group>
                         <group>
-                            <field name="type_id"/>
-                            <field name="licitacion"/>
-                            <field name="authorized_budget"/>
-                        </group>
-                        <group>
-                            <field name="responsable_id"/>
-                            <field name="superficie"/>
-                            <field name="cost_overrun"/>
-                        </group>
-                    </group>
-                    <group>
-                        <group>
-                            <field name="type_id"/>
+                            <field name="dependencia"/>
+                            <field name="bloque"/>
                             <field name="licitacion"/>
                             <field name="num_contrato"/>
-                            <field name="authorized_budget"/>
+                            <field name="fianzas"/>
                         </group>
                         <group>
-                            <field name="responsable_id"/>
-                            <field name="superficie"/>
+                            <field name="authorized_budget"/>
                             <field name="cost_overrun"/>
+                            <field name="superficie"/>
+                            <field name="type_id"/>
+                            <field name="responsable_id"/>
                         </group>
                     </group>
                     <group string='Residentes'>
-                        <field name="resident_ids" widget="many2many_tags"/>
+                        <field name="resident_ids">
+                            <list>
+                                <field name="resident_id"/>
+                                <field name="active"/>
+                            </list>
+                        </field>
                     </group>
                 </page>
                 <page string="Documentos">
@@ -100,9 +92,10 @@
         <field name="priority">1</field>
         <field name="arch" type="xml">
             <list string="Tipo de Obra">
+                <field name="code"/>
                 <field name="name"/>
                 <field name="normative_clas"/>
-                <field name="technical_cat"/>
+                <field name="technicalcat_id"/>
                 <field name="uom_id"/>
             </list>
         </field>
@@ -116,11 +109,12 @@
                 <sheet>
                     <group>
                         <group>
+                            <field name="code"/>
                             <field name="name"/>
                             <field name="normative_clas"/>
                         </group>
                         <group>
-                            <field name="technical_cat"/>
+                            <field name="technicalcat_id"/>
                             <field name="uom_id"/>
                         </group>
                     </group>
@@ -176,9 +170,44 @@
         </field>
     </record>
 
+    <record id="action_project_technical_category" model="ir.actions.act_window">
+        <field name="name">Categoría Técnica</field>
+        <field name="res_model">project.technical.category</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_project_technical_category_list" model="ir.ui.view">
+        <field name="name">view.project.technical.category.list</field>
+        <field name="model">project.technical.category</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Categoría Técnica">
+                <field name="name"/>
+                <field name="description"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_project_technical_category_from" model="ir.ui.view">
+        <field name="name">view.project.technical.category.from</field>
+        <field name="model">project.technical.category</field>
+        <field name="arch" type="xml">
+            <form string="Categoría Técnica" delete="0" duplicate="0">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="description"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
     <menuitem id="menu_catalog_project" name="Catálogos" parent="project.menu_main_pm" sequence="200" groups="project.group_project_user,group_project_catalog">
         <menuitem id="menu_project_type" name="Tipo de Obra" action="action_project_type" sequence="1"/>
         <menuitem id="menu_project_docsrequeridos" name="Documentos" action="action_project_docsrequeridos" sequence="2"/>
+        <menuitem id="menu_project_technical_category" name="Categoría Técnica" action="action_project_technical_category" sequence="3"/>
     </menuitem>
 
 </odoo>

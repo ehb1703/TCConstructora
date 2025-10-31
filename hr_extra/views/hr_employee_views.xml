@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="hr_employee_infonavit_form" model="ir.ui.view">
+        <field name="name">hr.employee.infonavit.form</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr_payroll.payroll_hr_employee_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='hr_payroll']/group/group[@name='payroll_group']" position="replace">
+                <group name="payroll_group" string="Payroll">
+                    <field name="legal_name"/>
+                    <field name="lang" string="Idioma del recibo de nómina"/>
+                    <field name="registration_number"/>
+                    <field name="disabled"/>
+                </group>
+                <group name="otros" string="Otros">
+                    <field name="infonavit"/>
+                    <field name="fonacot"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
