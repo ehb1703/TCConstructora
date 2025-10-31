@@ -69,4 +69,15 @@ class tipoProveedor(models.Model):
     
     name = fields.Char(string='Tipo de Proveedor')
     description = fields.Char(string='Descripción')
+    active = fields.Boolean(String='Activo', default=True, tracking=True)
+
+
+class clasificacionProveedor(models.Model):
+    _name = 'partner.classification.supplier'
+    _description = 'Clasificación del Proveedor'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'name'
+    
+    name = fields.Char(string='Clasificación del Proveedor')
+    description = fields.Char(string='Descripción')
     active = fields.Boolean(String='Activo', default=True, tracking=True)    

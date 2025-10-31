@@ -48,9 +48,10 @@
                 <group name="otros" string="Otros">
                     <field name="is_customer"/>
                     <field name="is_supplier"/>
-                    <field name="area"/>
+                    <field name="area_em"/>
                     <field name="clasification"/>
                     <field name="typesupplier_id" invisible="not is_supplier"/>
+                    <field name="classupplier_id" invisible="not is_supplier"/>
                     <field name="soporte_ids" widget="many2many_binary"/>
                 </group>
             </xpath>

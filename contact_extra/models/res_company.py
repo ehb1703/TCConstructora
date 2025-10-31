@@ -20,7 +20,6 @@ class respartnerCurp(models.Model):
         string='Zona Geográfica', default='norte', tracking=True)
     soporte_ids = fields.Many2many(comodel_name='ir.attachment', inverse_name='res_id', string="Documentos fiscales")
 
-
     @api.constrains('curp')
     def _check_curp(self):
         for record in self:
