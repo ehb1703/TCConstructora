@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Extra Proyectos',
+    'name': 'Equipo',
     'version': '1.0',
-    'summary': 'Extra de proyectos',
+    'summary': 'Vehiculos - Equipo',
     'sequence': 151,
     'description': """
-Extra de Proyectos
+Vehiculos - Equipo
 ====================
 Personalización del modulo:
-    Campos proyecto
+    Catalogos
+    Integración del equipo (patrimonio)
     """,
-    'category': 'Services/Project',
-    'depends': ['base','project','crm'],
+    'category': 'Human Resources/Fleet',
+    'depends': ['base', 'fleet'],
     'data': [
         'security/res_groups.xml',
         'security/ir.model.access.csv',
-        'views/project_views.xml',
-        'views/models_crm_views.xml',
-        'views/crm_views.xml',
+        'views/catalogs_views.xml',
+        'views/fleet_vehicle_views.xml',
     ],        
     'license': 'LGPL-3',
     'installable': True,
