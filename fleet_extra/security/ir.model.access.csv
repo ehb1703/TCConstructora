@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+catalog_fleet_type_equipment,catalog_fleet_type_equipment,model_fleet_type_equipment,group_fleet_catalog,1,1,1,0
+
+user_fleet_type_equipment,user_fleet_type_equipment,model_fleet_type_equipment,fleet.fleet_group_user,1,0,0,0

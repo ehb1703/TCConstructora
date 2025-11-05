@@ -1,0 +1,112 @@
+<odoo>
+    <!-- Tipos de Zona -->
+    <record id="action_tipo_zona" model="ir.actions.act_window">
+        <field name="name">Tipos de Zona</field>
+        <field name="res_model">project.tipo.zona</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_tipo_zona_tree" model="ir.ui.view">
+        <field name="name">project.tipo.zona.list</field>
+        <field name="model">project.tipo.zona</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_tipo_zona_form" model="ir.ui.view">
+        <field name="name">project.tipo.zona.form</field>
+        <field name="model">project.tipo.zona</field>
+        <field name="arch" type="xml">
+            <form string="Tipo de Zona">
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="description"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>    
+
+    <!-- Zonas Geográficas -->
+    <record id="action_zona_geografica" model="ir.actions.act_window">
+        <field name="name">Zonas Geográficas</field>
+        <field name="res_model">project.zona.geografica</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_zona_geografica_tree" model="ir.ui.view">
+        <field name="name">project.zona.geografica.list</field>
+        <field name="model">project.zona.geografica</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="tipo_zona_id"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_zona_geografica_form" model="ir.ui.view">
+        <field name="name">project.zona.geografica.form</field>
+        <field name="model">project.zona.geografica</field>
+        <field name="arch" type="xml">
+            <form string="Zona Geográfica">
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="tipo_zona_id"/>
+                        <field name="observaciones"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>    
+
+    <!-- Especialidades -->
+    <record id="action_especialidad" model="ir.actions.act_window">
+        <field name="name">Especialidades</field>
+        <field name="res_model">project.especialidad</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_especialidad_tree" model="ir.ui.view">
+        <field name="name">project.especialidad.list</field>
+        <field name="model">project.especialidad</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="clasificacion_id"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_especialidad_form" model="ir.ui.view">
+        <field name="name">project.especialidad.form</field>
+        <field name="model">project.especialidad</field>
+        <field name="arch" type="xml">
+            <form string="Especialidad">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="clasificacion_id"/>
+                        <field name="description"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_tipos_zona" name="Tipos de Zona" parent="menu_catalog_project" action="action_tipo_zona" sequence="4"/>
+    <menuitem id="menu_zonas_geo" name="Zonas Geográficas" parent="menu_catalog_project" action="action_zona_geografica" sequence="5"/> 
+    <menuitem id="menu_especialidad" name="Especialidades" parent="menu_catalog_project" action="action_especialidad" sequence="6"/>
+</odoo>

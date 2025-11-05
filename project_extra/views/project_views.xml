@@ -19,8 +19,8 @@
                         </div>
                     </group>
                     <group>
-                        <field name="centro"/>
-                        <field name="tramo"/>
+                        <field name="centro" widget="url"/>
+                        <field name="tramo" widget="url"/>
                     </group>
                     <group string="Geolocalizacion">
                         <label for="date_localization" string="Geolocalizacion"/>
