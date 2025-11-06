@@ -15,10 +15,10 @@ class TipoZona(models.Model):
     
 
 class ZonaGeografica(models.Model):
-    _name = "project.zona.geografica"
-    _description = "Zonas Geográficas"
+    _name = 'project.zona.geografica'
+    _description = 'Zonas Geográficas'
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _rec_name = 'code'  # este modelo sí tiene campo 'code'
+    _rec_name = 'code'
 
     name = fields.Char('Nombre de zona', required=True, tracking=True)
     code = fields.Char('Código de zona', size=10, tracking=True)
@@ -33,8 +33,8 @@ class Especialidad(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'name'
 
-    name = fields.Char("Nombre de especialidad", required=True, tracking=True)
-    description = fields.Char("Descripción", size=300)
+    name = fields.Char('Nombre de especialidad', required=True, tracking=True)
+    description = fields.Char('Descripción', size=300)
     clasificacion_id = fields.Many2one('project.technical.category', string='Categoría técnica', tracking=True)
     active = fields.Boolean('Activo', default=True)
     
@@ -43,7 +43,7 @@ class CrmLead(models.Model):
     _inherit = 'crm.lead'
 
     zona_geografica_id = fields.Many2one('project.zona.geografica', string='Zona geográfica', tracking=True)
-    #partner_emisor_id = fields.Many2one('res.partner', string='Dependencia emisora', tracking=True)
+    partner_emisor_id = fields.Many2one('res.partner', string='Dependencia emisora', tracking=True)
     tipo_obra_id = fields.Many2one('project.type', string='Tipo de obra', tracking=True)
     especialidad_ids = fields.Many2many('project.especialidad', string='Especialidad(es) requerida(s)')
     monto_min = fields.Float('Monto mínimo')

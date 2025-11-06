@@ -25,6 +25,11 @@ class projectType(models.Model):
     observations = fields.Char(string='Observaciones')
     active = fields.Boolean(string='Activo', default=True, required=True)
 
+    @api.depends('code', 'name')
+    def _compute_display_name(self):
+        for rec in self:
+            rec.display_name = f"{rec.code} / {rec.name}"
+
 
 class projectTechnicalCategory(models.Model):
     _name = 'project.technical.category'
@@ -152,7 +157,7 @@ class projectResidentes(models.Model):
     _name = 'project.residents'
     _description = 'Residentes de obra'
 
-    project_id = fields.Many2one(comodel_name='', string='Proyecto', readonly=True)
+    project_id = fields.Many2one('project.project', string='Proyecto', readonly=True)
     resident_id = fields.Many2one('hr.employee', string='Residente de Obra')
     active = fields.Boolean('Active', default=True, tracking=True)
 
