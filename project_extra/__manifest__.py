@@ -11,7 +11,7 @@ Personalización del modulo:
     Campos proyecto
     """,
     'category': 'Services/Project',
-    'depends': ['base','project','crm'],
+    'depends': ['base', 'project', 'crm'],
     'data': [
         'security/res_groups.xml',
         'security/ir.model.access.csv',

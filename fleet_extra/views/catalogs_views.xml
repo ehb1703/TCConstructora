@@ -35,8 +35,43 @@
         </field>
     </record>
 
+    <record id="action_fleet_state_equipment" model="ir.actions.act_window">
+        <field name="name">Estado del Equipo</field>
+        <field name="res_model">fleet.state.equipment</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_fleet_state_equipment_list" model="ir.ui.view">
+        <field name="name">view.fleet.state.equipment.list</field>
+        <field name="model">fleet.state.equipment</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Estado del Equipo">
+                <field name="name"/>
+                <field name="description"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_fleet_state_equipment_from" model="ir.ui.view">
+        <field name="name">view.fleet.state.equipment.from</field>
+        <field name="model">fleet.state.equipment</field>
+        <field name="arch" type="xml">
+            <form string="Estado del Equipo" delete="0" duplicate="0">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="description"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
     <menuitem id="menu_catalog_fleet" name="Catálogos" parent="fleet.menu_root" sequence="200" groups="fleet.fleet_group_user,group_fleet_catalog">
         <menuitem id="menu_fleet_type_equipment" name="Tipo de Equipo" action="action_fleet_type_equipment" sequence="1"/>
+        <menuitem id="menu_fleet_state_equipment" name="Estado de Equipo" action="action_fleet_state_equipment" sequence="2"/>
     </menuitem>
 
 </odoo>

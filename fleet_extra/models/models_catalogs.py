@@ -16,3 +16,13 @@ class fleetTypeEquipment(models.Model):
     name = fields.Char(string='Nombre')
     description = fields.Char(string='Descripción')
     active = fields.Boolean(string='Activo', default=True, required=True)
+
+class fleetEdoEquipment(models.Model):
+    _name = 'fleet.state.equipment'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _description = 'Estado del equipo'
+    _rec_name = 'name'
+
+    name = fields.Char(string='Nombre')
+    description = fields.Char(string='Descripción')
+    active = fields.Boolean(string='Activo', default=True, required=True)    
