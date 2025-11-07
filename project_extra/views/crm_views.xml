@@ -1,34 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_crm_lead_form_inherit_convocatorias" model="ir.ui.view">
-        <field name="name">view.crm.lead.form.inherit.convocatorias</field>
+    <record id="view_crm_lead_convocatorias_form" model="ir.ui.view">
+        <field name="name">view.crm.lead.convocatorias.form</field>
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='stage_id']" position="before">
+                <button string="Base de Licitación" name="action_generar_orden" type="object" class="btn-primary" invisible="not req_bases"/>
+            </xpath>
+
             <xpath expr="//field[@name='expected_revenue']" position="attributes">
                 <attribute name="string">Capital contable</attribute>
             </xpath>
 
-            <xpath expr="//sheet/notebook" position="inside">
-                <page string="Nuevas Convocatorias">
+            <xpath expr="//notebook" position="before">
+                <field name="origen_id" options="{'no_open':True, 'no_create':True}"/>
+                <group string="Información Convocatoria" invisible="origen_name != 'Público'">
                     <group>
-                        <group>
-                            <field name="zona_geografica_id"/>
-                            <field name="partner_emisor_id" options="{'no_create_edit': True}"/>
-                            <field name="tipo_obra_id"/>
-                            <field name="especialidad_ids" widget="many2many_tags"/>
-                        </group>
-                        <group>
-                            <!--field name="monto_min"/>
-                            <field name="monto_max"/-->
-                            <field name="fecha_convocatoria"/>
-                            <field name="fecha_limite_inscripcion"/>
-                            <field name="fecha_apertura"/>
-                        </group>
+                        <field name="req_bases" invisible="1"/>
+                        <field name="partner_emisor_id" options="{'no_open':True, 'no_create':True}"/>
+                        <field name="tipo_obra_id"/>
+                        <field name="zona_geografica_id"/>
+                        <field name="especialidad_ids" widget="many2many_tags"/>
                     </group>
-                    <group string="Documento">
-                        <field name="convocatoria_pdf" filename="convocatoria_pdf_name"/>
+                    <group>
+                        <field name="fecha_convocatoria"/>
+                        <field name="fecha_limite_inscripcion"/>
+                        <field name="fecha_apertura"/>
+                        <field name="convocatoria_pdf_name" string="Nombre del Documento" invisible="True"/>
+                        <field name="convocatoria_pdf" filename="convocatoria_pdf_name" string="Convocatoria" widget="binary"/>
                     </group>
-                </page>
+                </group>                
+                <group string="Criterios de aprobación" invisible="origen_name != 'Público'">
+                    <field name="tipo_obra_ok"/>
+                    <field name="dependencia_ok"/>
+                    <field name="capital_ok"/>
+                </group>
             </xpath>
         </field>
     </record>

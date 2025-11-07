@@ -1,35 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_crm_lead_form_inherit_convocatorias" model="ir.ui.view">
-        <field name="name">view.crm.lead.form.inherit.convocatorias</field>
-        <field name="model">crm.lead</field>
-        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='expected_revenue']" position="attributes">
-                <attribute name="string">Capital contable</attribute>
-            </xpath>
+    <record id="action_crm_lead_type" model="ir.actions.act_window">
+        <field name="name">Tipo de Venta</field>
+        <field name="res_model">crm.lead.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
 
-            <xpath expr="//sheet/notebook" position="inside">
-                <page string="Nuevas Convocatorias">
+    <record id="view_crm_lead_type_list" model="ir.ui.view">
+        <field name="name">view.crm.lead.type.list</field>
+        <field name="model">crm.lead.type</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Tipo de Venta">
+                <field name="name"/>
+                <field name="bases"/>
+                <field name="description"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_crm_lead_type_from" model="ir.ui.view">
+        <field name="name">view.crm.lead.type.from</field>
+        <field name="model">crm.lead.type</field>
+        <field name="arch" type="xml">
+            <form string="Tipo de Venta" delete="0" duplicate="0">
+                <sheet>
                     <group>
-                        <group>
-                            <field name="zona_geografica_id"/>
-                            <!--field name="partner_emisor_id" options="{'no_create_edit': True}"/-->
-                            <field name="tipo_obra_id"/>
-                            <field name="especialidad_ids" widget="many2many_tags"/>
-                        </group>
-                        <group>
-                            <field name="monto_min"/>
-                            <field name="monto_max"/>
-                            <field name="fecha_convocatoria"/>
-                            <field name="fecha_limite_inscripcion"/>
-                            <field name="fecha_apertura"/>
-                        </group>
+                        <field name="name"/>
+                        <field name="bases"/>
+                        <field name="description"/>
                     </group>
-                    <group string="Documento">
-                        <field name="convocatoria_pdf" filename="convocatoria_pdf_name"/>
-                    </group>
-                </page>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_crm_stage_type_from" model="ir.ui.view">
+        <field name="name">view.crm.stage.type.from</field>
+        <field name="model">crm.stage</field>
+        <field name="inherit_id" ref="crm.crm_stage_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='team_id']" position="after">
+                <field name="origen_ids" widget="many2many_tags"/>
             </xpath>
         </field>
     </record>
+
+    <menuitem id="menu_catalog_crm" name="Catálogos" parent="crm.crm_menu_root" sequence="30" groups="sales_team.group_sale_manager,group_project_catalog">
+        <menuitem id="menu_crm_lead_type" name="Origen" action="action_crm_lead_type" sequence="1"/>
+    </menuitem>
 </odoo>

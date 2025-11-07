@@ -8,10 +8,10 @@ class TipoZona(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'code'
 
-    name = fields.Char('Nombre del tipo', required=True, tracking=True)
-    code = fields.Char('ID / Clave', tracking=True)
-    description = fields.Char('Descripción', size=250)
-    active = fields.Boolean('Activo', default=True)
+    name = fields.Char(string='Nombre del tipo', required=True, tracking=True)
+    code = fields.Char(string='ID / Clave', tracking=True)
+    description = fields.Char(string='Descripción', size=250)
+    active = fields.Boolean(string='Activo', default=True)
     
 
 class ZonaGeografica(models.Model):
@@ -20,11 +20,16 @@ class ZonaGeografica(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'code'
 
-    name = fields.Char('Nombre de zona', required=True, tracking=True)
-    code = fields.Char('Código de zona', size=10, tracking=True)
+    name = fields.Char(string='Nombre de zona', required=True, tracking=True)
+    code = fields.Char(string='Código de zona', size=10, tracking=True)
     tipo_zona_id = fields.Many2one('project.tipo.zona', string='Tipo de zona', ondelete='restrict', tracking=True)
-    active = fields.Boolean('Activo', default=True)
-    observaciones = fields.Text('Observaciones')
+    active = fields.Boolean(string='Activo', default=True)
+    observaciones = fields.Text(string='Observaciones')
+
+    @api.depends('code', 'name')
+    def _compute_display_name(self):
+        for rec in self:
+            rec.display_name = f"{rec.code} / {rec.name}"
 
 
 class Especialidad(models.Model):
@@ -33,10 +38,10 @@ class Especialidad(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'name'
 
-    name = fields.Char('Nombre de especialidad', required=True, tracking=True)
-    description = fields.Char('Descripción', size=300)
+    name = fields.Char(string='Nombre de especialidad', required=True, tracking=True)
+    description = fields.Char(string='Descripción', size=300)
     clasificacion_id = fields.Many2one('project.technical.category', string='Categoría técnica', tracking=True)
-    active = fields.Boolean('Activo', default=True)
+    active = fields.Boolean(string='Activo', default=True)
     
 
 class CrmLead(models.Model):
@@ -46,19 +51,26 @@ class CrmLead(models.Model):
     partner_emisor_id = fields.Many2one('res.partner', string='Dependencia emisora', tracking=True)
     tipo_obra_id = fields.Many2one('project.type', string='Tipo de obra', tracking=True)
     especialidad_ids = fields.Many2many('project.especialidad', string='Especialidad(es) requerida(s)')
-    monto_min = fields.Float('Monto mínimo')
-    monto_max = fields.Float('Monto máximo')
-    fecha_convocatoria = fields.Date('Fecha de convocatoria')
-    fecha_limite_inscripcion = fields.Date('Fecha límite de inscripción')
-    fecha_apertura = fields.Date('Fecha de apertura')
-    convocatoria_pdf = fields.Binary('PDF de convocatoria', attachment=True)
-    convocatoria_pdf_name = fields.Char('Nombre del archivo')
+    monto_min = fields.Float(string='Monto mínimo')
+    monto_max = fields.Float(string='Monto máximo')
+    fecha_convocatoria = fields.Date(string='Fecha de convocatoria')
+    fecha_limite_inscripcion = fields.Date(string='Fecha límite de inscripción')
+    fecha_apertura = fields.Date(string='Fecha de apertura')
+    convocatoria_pdf = fields.Binary(string='PDF de convocatoria', attachment=True)
+    convocatoria_pdf_name = fields.Char(string='Nombre del archivo')
+    origen_id = fields.Many2one('crm.lead.type', string='Tipo')
+    origen_name = fields.Char(string='Tipo nombre', compute='_compute_bases' )
+    req_bases = fields.Boolean(string='Requiere pago de bases', compute='_compute_bases')
+    tipo_obra_ok = fields.Boolean('Tipo de obra cumple', tracking=True)
+    dependencia_ok = fields.Boolean('Dependencia emisora cumple', tracking=True)
+    capital_ok = fields.Boolean('Capital contable cumple', tracking=True)
+    oc_id = fields.Many2one('purchase.order', string='Ordenes de compra relacionada')
 
-    """def write(self, vals):
-        if 'stage_id' in vals:
-            stage_to = self.env['crm.stage'].browse(vals['stage_id'])
-            stage_from_names = set(self.mapped('stage_id.name'))
-            if ('Nuevas Convocatorias' in stage_from_names) and stage_to and stage_to.name == 'Calificado':
-                if not self.env.user.has_group('crm_convocatorias.group_convocatorias_autoriza_calificado'):
-                    raise UserError('No tienes permiso para mover a 'Calificado'.')
-        return super().write(vals)"""
+    @api.onchange('origen_id')
+    def _compute_bases(self):
+        for record in self:
+            record.req_bases = record.origen_id.bases
+            record.origen_name = record.origen_id.name
+
+    def action_generar_orden(self):
+        raise UserError('Pendiente de hacer el proceso completo')

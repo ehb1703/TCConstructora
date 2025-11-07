@@ -52,11 +52,6 @@ class documentosRequeridos(models.Model):
     desc_archivo = fields.Char(string='Descripcion', tracking=True)    
     active = fields.Boolean(string='Activo', tracking=True, default=True, required=True)
 
-    @api.onchange('nombre_archivo')
-    def _onchange_nombre_archivo(self):
-        if self.nombre_archivo:
-            self.nombre_archivo = self.nombre_archivo.upper()
-
     @api.constrains('nombre_archivo')
     def fnc_check_codigo(self):
         for x in self:
