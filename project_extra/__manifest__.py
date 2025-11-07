@@ -11,12 +11,13 @@ Personalización del modulo:
     Campos proyecto
     """,
     'category': 'Services/Project',
-    'depends': ['base', 'project', 'crm'],
+    'depends': ['base', 'project', 'crm', 'sale_purchase_project'],
     'data': [
         'security/res_groups.xml',
         'security/ir.model.access.csv',
         'views/project_views.xml',
         'views/models_crm_views.xml',
+        'views/crm_catalog_views.xml',
         'views/crm_views.xml',
     ],        
     'license': 'LGPL-3',
