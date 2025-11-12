@@ -8,14 +8,16 @@
 Extra de contactos
 ====================
 Personalización de catálogos
+Plan de cuentas contables
     """,
     'category': 'Contacts',
     'depends': ['base', 'contacts', 'account'],
     'data': [
         'security/res_groups.xml',
         'security/ir.model.access.csv',
-        'views/catalogs_views.xml',
+        'views/models_catalogs_views.xml',
         'views/res_company_views.xml',
+        'views/models_account_views.xml',
     ],        
     'license': 'LGPL-3',
     'installable': True,

@@ -17,20 +17,6 @@ class cls_municipios(models.Model):
     state_id = fields.Many2one('res.country.state', string='Estado', tracking=True, required=True)
     active = fields.Boolean(String='Activo', default=True, tracking=True)
     
-    def name_get(self):
-        res = []
-        if self._context.get('special_display_name', False):
-            for record in self:
-                res.append((record.id,record.codigo.encode('utf-8') ))
-        else:
-            for municipio in self:
-                for mun in municipio:
-                    if mun.codigo and mun.municipio:
-                        res.append((mun.id,mun.codigo.encode('utf-8')+' '+mun.municipio.encode('utf-8')))
-                    else:
-                         res.append((mun.id,str(mun.codigo)+' '+str(mun.municipio)))
-        return res
-    
     @api.constrains('municipio')
     def fnc_check_municipio(self):
         for x in self:

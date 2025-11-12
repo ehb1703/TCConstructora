@@ -33,7 +33,7 @@
                 </sheet>
             </form>
         </field>
-    </record>    
+    </record>
 
     <!-- Zonas Geográficas -->
     <record id="action_zona_geografica" model="ir.actions.act_window">
@@ -70,7 +70,7 @@
                 </sheet>
             </form>
         </field>
-    </record>    
+    </record>
 
     <!-- Especialidades -->
     <record id="action_especialidad" model="ir.actions.act_window">

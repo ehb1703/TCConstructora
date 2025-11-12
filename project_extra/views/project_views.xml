@@ -8,7 +8,7 @@
         <field name="arch" type="xml">
             <xpath expr="//notebook[last()]" position="inside">
                 <page string="Localizacion" name="geo_location">
-                    <group string='Ubicación de la Obra'>
+                    <group string="Ubicación de la Obra">
                         <span>Ubicación</span>
                         <div class="o_address_format">
                             <field name="country_id" class="o_address_country" placeholder="País" options="{'no_open':True, 'no_create':True}"/>
@@ -54,7 +54,7 @@
                             <field name="responsable_id"/>
                         </group>
                     </group>
-                    <group string='Residentes'>
+                    <group string="Residentes">
                         <field name="resident_ids">
                             <list>
                                 <field name="resident_id"/>
@@ -68,10 +68,10 @@
                     <button name="cargar_docs" string="Documentos" icon="fa-archive" class="btn-primary" type="object" invisible="stage_id != 1"/>
                     <field name="documentos_ids" create="0" delete="0">
                         <list decoration-success="requerido == True" decoration-bf="filename != False" editable="bottom" create="0" delete="0">
-                            <field name="requerido" readonly="1" />
+                            <field name="requerido" readonly="1"/>
                             <field name="docto_id" readonly="1" options="{'no_create':True, 'no_open':True}"/>
                             <field name="filename" string="Nombre del Documento" column_invisible="True"/>
-                            <field name="archivo" string="Archivo" widget="binary" filename="filename" />
+                            <field name="archivo" string="Archivo" widget="binary" filename="filename"/>
                         </list>
                         <form><p>Información no disponible a través de esta vista</p></form>
                      </field>
