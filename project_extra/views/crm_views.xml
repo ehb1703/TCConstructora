@@ -6,8 +6,28 @@
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='stage_id']" position="before">
+                <!-- Solicitar autorización -->
+                <field name="in_calificado" invisible="1"/>
+                <button name="action_request_authorization" type="object" string="Solicitar autorización" class="btn-secondary" invisible="not in_calificado"/>
+                <!-- Autorizar convocatoria -->
+                <button name="action_authorize" type="object" string="Autorizar convocatoria" class="oe_highlight" groups="project_extra.group_conv_authorizer" invisible="not in_calificado"/>
+                <!-- Declinar convocatoria -->
+                <button name="action_decline" type="object" string="Declinar convocatoria" class="btn-danger" groups="project_extra.group_conv_authorizer" invisible="not in_calificado"/>
                 <button string="Base de Licitación" name="action_generar_orden" type="object" class="btn-primary" invisible="not req_bases"/>
+                <!-- Regresar etapa (visible solo cuando está en Calificado) -->
+                <button name="action_revert_stage" type="object" string="Regresar etapa" class="btn-secondary" invisible="stage_id.name == 'Nuevas Convocatorias'"/>
+                <!-- Perdido: visibles solo en etapa 'Fallo' -->
+                <button name="action_set_lost" type="object" string="Marcar como Perdido" class="btn-secondary" invisible="stage_id.name != 'Fallo'"/>
             </xpath>
+
+            <xpath expr="//button[@name='action_set_won_rainbowman']" position="replace">
+                <button name="action_set_won_rainbowman" string="Won" type="object" class="oe_highlight" data-hotkey="w" title="Mark as won" invisible="not active or probability == 100 or type == 'lead' or stage_id.name != 'Fallo'"/>
+            </xpath>
+
+            <xpath expr="//field[@name='stage_id']" position="attributes">
+                <attribute name="options">{'clickable': 0}</attribute>
+            </xpath>
+
 
             <xpath expr="//field[@name='expected_revenue']" position="attributes">
                 <attribute name="string">Capital contable</attribute>
@@ -30,12 +50,37 @@
                         <field name="convocatoria_pdf_name" string="Nombre del Documento" invisible="True"/>
                         <field name="convocatoria_pdf" filename="convocatoria_pdf_name" string="Convocatoria" widget="binary"/>
                     </group>
-                </group>                
+                </group>
                 <group string="Criterios de aprobación" invisible="origen_name != 'Público'">
                     <field name="tipo_obra_ok"/>
                     <field name="dependencia_ok"/>
                     <field name="capital_ok"/>
                 </group>
+            </xpath>
+
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Bitácora">
+                    <field name="revert_log_ids" nolabel="1" readonly="1" context="{'default_lead_id': id}">
+                        <list>
+                            <field name="create_date" string="Fecha"/>
+                            <field name="user_id"/>
+                            <field name="old_stage_id"/>
+                            <field name="new_stage_id"/>
+                            <field name="reason_id"/>
+                            <field name="reason_text"/>
+                        </list>
+                        <form>
+                            <group>
+                                <field name="user_id" readonly="1"/>
+                                <field name="old_stage_id" readonly="1"/>
+                                <field name="new_stage_id" readonly="1"/>
+                                <field name="reason_id" readonly="1"/>
+                                <field name="reason_text" readonly="1"/>
+                                <field name="create_date" readonly="1"/>
+                            </group>
+                        </form>
+                    </field>
+                </page>
             </xpath>
         </field>
     </record>

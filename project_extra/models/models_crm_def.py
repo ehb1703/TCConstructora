@@ -14,6 +14,16 @@ class crmStageOrigen(models.Model):
     active = fields.Boolean(string='Activo', default=True)
 
 
+class CrmRevertReason(models.Model):
+    _name = 'crm.revert.reason'
+    _description = 'Catálogo de motivos de reversión'
+    _order = 'name'
+
+    name = fields.Char(string='Motivo', required=True)
+    description = fields.Char(string='Descripción',)
+    active = fields.Boolean(default=True)
+
+
 class crmStageOrigen(models.Model):
     _inherit = 'crm.stage'
     

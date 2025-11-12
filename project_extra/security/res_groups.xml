@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-
+    <!-- Grupo: Catálogos de proyecto -->
     <record id="group_project_catalog" model="res.groups">
-        <field name="name">Catalogos</field>
+        <field name="name">Catálogos</field>
         <field name="implied_ids" eval="[(4, ref('base.group_user')), (4, ref('project.group_project_stages'))]"/>
         <field name="category_id" ref="base.module_category_services_project"/>
     </record>
 
+    <!-- Grupo: Puede autorizar convocatorias -->
+    <record id="group_conv_authorizer" model="res.groups">
+        <field name="name">Puede autorizar convocatorias</field>
+        <field name="category_id" ref="base.module_category_services_project"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
 </odoo>
