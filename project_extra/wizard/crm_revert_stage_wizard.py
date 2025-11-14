@@ -9,14 +9,9 @@ class CrmRevertStageWizard(models.TransientModel):
     _name = 'crm.revert.stage.wizard'
     _description = 'Revertir etapa de CRM con motivo'
 
-    lead_id = fields.Many2one(
-        'crm.lead',
-        required=True,
-        default=lambda self: self.env.context.get('default_lead_id') or self.env.context.get('active_id')
-    )
+    lead_id = fields.Many2one('crm.lead', required=True, default=lambda self: self.env.context.get('default_lead_id') or self.env.context.get('active_id'))
     current_stage_sequence = fields.Integer(related='lead_id.stage_id.sequence', store=False, readonly=True)
     current_team_id = fields.Many2one('crm.team', related='lead_id.team_id', store=False, readonly=True)
-
     target_stage_id = fields.Many2one('crm.stage', string='Etapa destino', required=True)
     reason_id = fields.Many2one('crm.revert.reason', string='Motivo (catálogo)')
     reason_text = fields.Text(string='Motivo adicional')
@@ -31,16 +26,16 @@ class CrmRevertStageWizard(models.TransientModel):
         return {'domain': {'target_stage_id': []}}
 
     def _check_target_stage(self):
-        """Validación en servidor por si cambian el dominio desde el cliente."""
+        #Validación en servidor por si cambian el dominio desde el cliente.
         self.ensure_one()
         lead = self.lead_id
         if not self.target_stage_id:
-            raise UserError(_('Debes seleccionar una etapa destino.'))
+            raise UserError('Debe seleccionar una etapa destino.')
         if lead.stage_id == self.target_stage_id:
             raise UserError(_('La etapa destino debe ser distinta a la actual.'))
         # Solo permitir secuencia estrictamente menor (ir hacia atrás)
         if not lead.stage_id or self.target_stage_id.sequence >= lead.stage_id.sequence:
-            raise UserError(_('Solo puedes regresar a etapas con secuencia menor a la actual.'))
+            raise UserError('No es posible realizar esta acción.')
         # Misma pipeline/equipo si ambos lo tienen
         if lead.team_id and self.target_stage_id.team_id and lead.team_id != self.target_stage_id.team_id:
             raise UserError(_('La etapa destino no pertenece al equipo del lead.'))
@@ -73,12 +68,12 @@ class CrmRevertStageWizard(models.TransientModel):
         reason_html = '<br/>'.join(reason_lines) if reason_lines else '-'
 
         body = (
-            f"<div>"
-            f"<p>{html_escape(_('Reversión de etapa ejecutada.'))}</p>"
-            f"<p>{html_escape(_('De'))} <b>{html_escape(old_stage.name or '-')}</b> "
-            f"{html_escape(_('a'))} <b>{html_escape(self.target_stage_id.name or '-')}</b>.</p>"
-            f"<p>{html_escape(_('Motivo:'))} {reason_html}</p>"
-            f"</div>"
+            f'<div>'
+            f'<p>{html_escape(_('Reversión de etapa ejecutada.'))}</p>'
+            f'<p>{html_escape(_('De'))} <b>{html_escape(old_stage.name or '-')}</b> '
+            f'{html_escape(_('a'))} <b>{html_escape(self.target_stage_id.name or '-')}</b>.</p>'
+            f'<p>{html_escape(_('Motivo:'))} {reason_html}</p>'
+            f'</div>'
         )
         lead.message_post(body=Markup(body), message_type='comment', subtype_xmlid='mail.mt_note')
 
