@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_project_type" model="ir.actions.act_window">
+        <field name="name">Tipo de Obra</field>
+        <field name="res_model">project.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_project_type_list" model="ir.ui.view">
+        <field name="name">view.project.type.list</field>
+        <field name="model">project.type</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Tipo de Obra">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="normative_clas"/>
+                <field name="technicalcat_id"/>
+                <field name="uom_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_project_type_from" model="ir.ui.view">
+        <field name="name">view.project.type.from</field>
+        <field name="model">project.type</field>
+        <field name="arch" type="xml">
+            <form string="Tipo de Obra" delete="0" duplicate="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="normative_clas"/>
+                        </group>
+                        <group>
+                            <field name="technicalcat_id"/>
+                            <field name="uom_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description"/>
+                        <field name="observations"/>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="docto_req_id" widget="many2many_tags"/>
+                        </group>
+                        <group>
+                            <field name="docto_noreq_id" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_project_docsrequeridos" model="ir.actions.act_window">
+        <field name="name">Documentos</field>
+        <field name="res_model">project.docsrequeridos</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_project_docsrequeridos_list" model="ir.ui.view">
+        <field name="name">view.project.type.list</field>
+        <field name="model">project.docsrequeridos</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Documentos">
+                <field name="nombre_archivo"/>
+                <field name="desc_archivo"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_project_docsrequeridos_from" model="ir.ui.view">
+        <field name="name">view.project.docsrequeridos.from</field>
+        <field name="model">project.docsrequeridos</field>
+        <field name="arch" type="xml">
+            <form string="Documentos" delete="0" duplicate="0">
+                <sheet>
+                    <group>
+                        <field name="nombre_archivo"/>
+                        <field name="desc_archivo"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_project_technical_category" model="ir.actions.act_window">
+        <field name="name">Categoría Técnica</field>
+        <field name="res_model">project.technical.category</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_project_technical_category_list" model="ir.ui.view">
+        <field name="name">view.project.technical.category.list</field>
+        <field name="model">project.technical.category</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Categoría Técnica">
+                <field name="name"/>
+                <field name="description"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_project_technical_category_from" model="ir.ui.view">
+        <field name="name">view.project.technical.category.from</field>
+        <field name="model">project.technical.category</field>
+        <field name="arch" type="xml">
+            <form string="Categoría Técnica" delete="0" duplicate="0">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="description"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+        <record id="action_tipo_zona" model="ir.actions.act_window">
+        <field name="name">Tipos de Zona</field>
+        <field name="res_model">project.tipo.zona</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_tipo_zona_tree" model="ir.ui.view">
+        <field name="name">project.tipo.zona.list</field>
+        <field name="model">project.tipo.zona</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_tipo_zona_form" model="ir.ui.view">
+        <field name="name">project.tipo.zona.form</field>
+        <field name="model">project.tipo.zona</field>
+        <field name="arch" type="xml">
+            <form string="Tipo de Zona">
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="description"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Zonas Geográficas -->
+    <record id="action_zona_geografica" model="ir.actions.act_window">
+        <field name="name">Zonas Geográficas</field>
+        <field name="res_model">project.zona.geografica</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_zona_geografica_tree" model="ir.ui.view">
+        <field name="name">project.zona.geografica.list</field>
+        <field name="model">project.zona.geografica</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="tipo_zona_id"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_zona_geografica_form" model="ir.ui.view">
+        <field name="name">project.zona.geografica.form</field>
+        <field name="model">project.zona.geografica</field>
+        <field name="arch" type="xml">
+            <form string="Zona Geográfica">
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="tipo_zona_id"/>
+                        <field name="observaciones"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Especialidades -->
+    <record id="action_especialidad" model="ir.actions.act_window">
+        <field name="name">Especialidades</field>
+        <field name="res_model">project.especialidad</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_especialidad_tree" model="ir.ui.view">
+        <field name="name">project.especialidad.list</field>
+        <field name="model">project.especialidad</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="clasificacion_id"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_especialidad_form" model="ir.ui.view">
+        <field name="name">project.especialidad.form</field>
+        <field name="model">project.especialidad</field>
+        <field name="arch" type="xml">
+            <form string="Especialidad">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="clasificacion_id"/>
+                        <field name="description"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_catalog_project" name="Catálogos" parent="project.menu_main_pm" sequence="200" groups="project.group_project_user,group_project_catalog">
+        <menuitem id="menu_project_type" name="Tipo de Obra" action="action_project_type" sequence="1"/>
+        <menuitem id="menu_project_docsrequeridos" name="Documentos" action="action_project_docsrequeridos" sequence="2"/>
+        <menuitem id="menu_project_technical_category" name="Categoría Técnica" action="action_project_technical_category" sequence="3"/>
+        <menuitem id="menu_tipos_zona" name="Tipos de Zona" action="action_tipo_zona" sequence="4"/>
+        <menuitem id="menu_zonas_geo" name="Zonas Geográficas" action="action_zona_geografica" sequence="5"/> 
+        <menuitem id="menu_especialidad" name="Especialidades" action="action_especialidad" sequence="6"/>
+    </menuitem>
+
+</odoo>

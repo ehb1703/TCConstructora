@@ -8,8 +8,8 @@
             <form string="Revertir etapa">
                 <group>
                     <field name="lead_id" readonly="1"/>
-                    <field name="target_stage_id" required="1" domain="[('sequence','&lt;', current_stage_sequence), '|', ('team_id','=', current_team_id), ('team_id','=', False)]"/>
-                    <field name="reason_id"/>
+                    <field name="target_stage_id" required="1" domain="[('sequence','&lt;',current_stage_sequence), '|', ('team_id','=',current_team_id), ('team_id','=', False)]"/>
+                    <field name="reason_id" domain="[('tipo','=','rt')]"/>
                     <field name="reason_text"/>
                 </group>
                 <footer>

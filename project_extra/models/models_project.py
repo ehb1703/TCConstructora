@@ -6,71 +6,18 @@ from odoo.tools import config
 
 _logger = logging.getLogger(__name__)
 
-
-class projectType(models.Model):
-    _name = 'project.type'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
-    _description = 'Tipo de Obra'
-    _rec_name = 'code'
-
-    code = fields.Char(string='Codigo del tipo de obra')
-    name = fields.Char(string='Nombre')
-    description = fields.Char(string='Descripción')
-    normative_clas = fields.Selection(selection=[('na','No Aplica'), ('nom','NOM'), ('sct','SCT'), ('cfe','CFE'), ('conagua','CONAGUA')], 
-        string = 'Clasificación Normativa', default = 'na')
-    technicalcat_id = fields.Many2one('project.technical.category', string = 'Categoría Técnica')
-    uom_id = fields.Many2one('uom.uom', string='Unidad de medida principal')
-    docto_req_id = fields.Many2many('project.docsrequeridos', 'project_type_docsrequeridos_rel', 'project_req', string='Documentos Requeridos')
-    docto_noreq_id = fields.Many2many('project.docsrequeridos', 'project_type_docsnorequeridos_rel', 'projet_noreq', string='Documentos no Requeridos')
-    observations = fields.Char(string='Observaciones')
-    active = fields.Boolean(string='Activo', default=True, required=True)
-
-    @api.depends('code', 'name')
-    def _compute_display_name(self):
-        for rec in self:
-            rec.display_name = f"{rec.code} / {rec.name}"
-
-
-class projectTechnicalCategory(models.Model):
-    _name = 'project.technical.category'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
-    _description = 'Categoría Técnica'
-    _rec_name = 'name'
-
-    name = fields.Char(string='Nombre')
-    description = fields.Char(string='Descripción')
-    active = fields.Boolean(string='Activo', default=True, required=True)    
-
-
-class documentosRequeridos(models.Model):
-    _name = 'project.docsrequeridos'
-    _inherit = ['mail.thread', 'mail.activity.mixin'] 
-    _description = 'Documentos'
-    _rec_name = 'nombre_archivo'
-   
-    nombre_archivo = fields.Char(string='Valor', required=True, tracking=True)
-    desc_archivo = fields.Char(string='Descripcion', tracking=True)    
-    active = fields.Boolean(string='Activo', tracking=True, default=True, required=True)
-
-    @api.constrains('nombre_archivo')
-    def fnc_check_codigo(self):
-        for x in self:
-            if x.nombre_archivo:
-                res = self.search([('nombre_archivo','=',x.nombre_archivo), ('id','!=',x.id)])
-                if res:
-                    raise UserError('Ya existe el archivo')
-
-
 class projectObra(models.Model):
     _inherit = 'project.project'
     
     country_id = fields.Many2one('res.country', string='Pais')
     state_id = fields.Many2one('res.country.state', string='Estado')    
     city_id = fields.Many2one('res.municipalities', string='Municipio')
-    street = fields.Char('Street')
-    zip = fields.Char('Zip')
-    partner_latitude = fields.Float('Geo Latitude', digits=(10, 7), default=0.0)
-    partner_longitude = fields.Float('Geo Longitude', digits=(10, 7), default=0.0)
+    street = fields.Char(string='Street')
+    between_streets = fields.Char(string='Entre Calles')
+    col = fields.Char(strign='Colonia')
+    zip = fields.Char(string='Zip')
+    partner_latitude = fields.Float(string='Geo Latitude', digits=(10, 7), default=0.0)
+    partner_longitude = fields.Float(string='Geo Longitude', digits=(10, 7), default=0.0)
     date_localization = fields.Date(string='Geolocation Date')
     licitacion = fields.Char(string='Licitación')
     num_contrato = fields.Char(string='Número de contrato')
