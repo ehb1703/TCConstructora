@@ -69,7 +69,7 @@
                             <group invisible="stage_name != 'Inscripción/Compra de bases'"/>
                             <group invisible="stage_name != 'Inscripción/Compra de bases'">
                                 <list editable="bottom">
-                                    <button name="action_send_bases" type="object" icon="fa-envelope" invisible="not bases_pay"/><button name="action_authorize_bases" type="object" string="Autorizar bases" class="oe_highlight" groups="project_extra.group_conv_authorizer" invisible="not bases_pay"/>
+                                    <button name="action_send_bases" string="Enviar" type="object" icon="fa-envelope" invisible="not bases_pay"/><button name="action_authorize_bases" type="object" string="Autorizar bases" class="oe_highlight" groups="project_extra.group_conv_authorizer" invisible="not bases_pay"/>
                                 </list>
                             </group>
                             <field name="bases_doc_name" string="Nombre del Documento" invisible="True"/>
@@ -91,25 +91,77 @@
                             <group>
                                 <field name="visita_obligatoria" readonly="stage_name != 'Visita de Obra'"/>
                             </group>
-                            <group invisible="stage_name != 'Visita de Obra'">
-                                <list editable="bottom">
-                                    <button name="action_send_visita_reminder" type="object" icon="fa-envelope" invisible="not visita_obligatoria"/>
+                            <group>
+                                <list editable="bottom" invisible="stage_name != 'Visita de Obra'">
+                                    <button name="action_send_visita_reminder" string="Enviar" type="object" icon="fa-envelope"/>
                                 </list>
                             </group>
                             <field name="visita_acta_name" invisible="1"/>
-                            <group invisible="not visita_obligatoria">
+                            <group>
                                 <field name="visita_notif_auto_sent" readonly="1"/>
                             </group>
-                            <group invisible="not visita_obligatoria">
+                            <group>
                                 <field name="visita_notif_manual_sent" readonly="1"/>
                             </group>
-                            <group colspan="2" invisible="not visita_obligatoria">
-                                <field name="visita_personas_ids" widget="many2many_tags" readonly="stage_name != 'Visita de Obra'"/>
+                            <group colspan="2">
+                                <field name="visita_personas_ids" widget="many2many_tags" readonly="stage_name != 'Visita de Obra'" required="visita_obligatoria"/>
                                 <field name="visita_fecha" readonly="stage_name != 'Visita de Obra'"/>
                                 <field name="visita_acta" filename="visita_acta_name" readonly="stage_name != 'Visita de Obra'"/>
                             </group>
                         </group>
+                        <group string="Junta de Aclaración de Dudas">
+                            <group>
+                                <field name="junta_obligatoria" readonly="stage_name != 'Junta de Aclaración de Duda'"/>
+                            </group>
+                            <group invisible="stage_name != 'Junta de Aclaración de Dudas'">
+                                <list editable="bottom" >
+                                    <button name="action_send_junta_reminder_manual" string="Enviar" type="object" icon="fa-envelope" invisible="not junta_obligatoria"/>
+                                </list>
+                            </group>
+                            <field name="junta_acta_name" invisible="1"/>
+                            <group invisible="not junta_obligatoria">
+                                <field name="junta_notif_auto_sent" readonly="1"/>
+                            </group>
+                            <group invisible="not junta_obligatoria">
+                                <field name="junta_notif_manual_sent" readonly="1"/>
+                            </group>
+                            <group colspan="2" invisible="not junta_obligatoria">
+                                <field name="junta_personas_ids" widget="many2many_tags" readonly="stage_name != 'Junta de Aclaración de Duda'"/>
+                                <field name="junta_fecha" readonly="stage_name != 'Junta de Aclaración de Duda'"/>
+                                <field name="junta_docto_dudas" filename="junta_docto_dudas_name" readonly="stage_name != 'Junta de Aclaración de Duda'"/>
+                                <field name="junta_acta" filename="junta_acta_name" readonly="stage_name != 'Junta de Aclaración de Duda'"/>
+                            </group>
+                        </group>
                     </group>
+                </page>
+
+                <page string="Insumos">
+                    <group>
+                        <field name="input_filename" string="Archivo" invisible="1"/>
+                        <field name="input_file" widget="binary" filename="input_filename"/>
+                    </group>
+                    <group invisible="stage_name != 'Cotización de insumos y trabajos especiales'">
+                        <div class="oe_button_box" invisible="input_file == False">                                    
+                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_registros" string="Cargar" type="object" invisible="input_ids" confirm="Se agregará el contenido del archivo seleccionado, ¿continuar?"/>
+                            <button class="oe_stat_button" confirm="¿Está seguro que desea eliminar los registros cargados?" icon="fa-times" name="action_unlink_details" string="Eliminar Detalle" type="object" invisible="not input_ids"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_genera_conceptos" string="Conceptos" type="object" invisible="not input_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
+                            <!--button class="oe_stat_button" icon="fa-upload" name="action_vincular" string="Vincular Empresa - Obra" type="object" invisible="act_informacion and not input_ids"/-->
+                        </div>
+                    </group>
+                    <field name="input_ids" widget="one2many_list">
+                        <list string="Detalles" delete="0" create="0" edit="0">
+                            <field name="col1"/>
+                            <field name="col2"/>
+                            <field name="col3"/>
+                            <field name="col4"/>
+                            <field name="col5"/>
+                            <field name="col6"/>
+                            <field name="col7"/>
+                            <field name="col8"/>
+                            <field name="input_ex"/>
+                        </list>
+                        <form><p>Información no disponible a través de esta vista</p></form>
+                    </field>
                 </page>
 
                 <page string="Bitácora">

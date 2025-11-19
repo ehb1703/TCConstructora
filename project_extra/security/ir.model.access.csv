@@ -24,3 +24,4 @@ sales_crm_lead_type,catalog_crm_lead_type,model_crm_lead_type,sales_team.group_s
 
 access_crm_revert_log,access_crm_revert_log,model_crm_revert_log,,1,1,1,1
 access_revert_stage_user,access_revert_stage_user,model_crm_revert_stage_wizard,,1,1,1,1
+access_crm_input_line,access_crm_input_line,model_crm_input_line,,1,1,1,1
