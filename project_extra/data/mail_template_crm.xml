@@ -30,12 +30,11 @@
             </field>
         </record>
 
-	    <record id="mail_tmpl_bases_solicitud" model="mail.template">
+        <record id="mail_tmpl_bases_solicitud" model="mail.template">
             <field name="name">Solicitud de Autorización de Compra de Bases</field>
             <field name="model_id" ref="crm.model_crm_lead"/>
             <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
             <field name="email_to"></field>
-
             <field name="subject">[Bases] Solicitud de autorización - {{object.name}}</field>
             <field name="body_html" type="html">
                 <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
@@ -70,7 +69,7 @@
                     <p>Se ha registrado una <b>orden de compra de bases</b> para la convocatoria:</p>
                     <ul>
                         <li><b>Nombre: </b><t t-if="object.lead_id.name"><span t-out="object.lead_id.name or ''"/></t></li>
-                        <li><b>Dependencia emisora: </b> <t t-if="object.partner_id"><t t-out="object.partner_id.name"/></t></li>
+                        <li><b>Dependencia emisora: </b><t t-if="object.partner_id"><t t-out="object.partner_id.name"/></t></li>
                         <li><b>Tipo de obra: </b><t t-if="object.lead_id.tipo_obra_id"><t t-out="object.lead_id.tipo_obra_id.name"/></t></li>
                         <li><b>Costo de bases: </b><t t-if="object.amount_total"><t t-out="object.amount_total"/></t></li>
                     </ul>
@@ -83,12 +82,12 @@
             </field>
         </record>
 
-	   <record id="mail_tmpl_visita_recordatorio" model="mail.template">
+        <record id="mail_tmpl_visita_recordatorio" model="mail.template">
             <field name="name">Recordatorio de Visita de Obra</field>
             <field name="model_id" ref="crm.model_crm_lead"/>
             <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
             <field name="email_to"></field>
-            <field name="subject">[Visita de Obra] Recordatorio - {{ object.name }}</field>
+            <field name="subject">[Visita de Obra] Recordatorio - {{object.name}}</field>
             <field name="body_html" type="html">
                 <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
                     <p>Estimado/a,</p>
@@ -106,5 +105,26 @@
                 </div>
             </field>
         </record>
+        
+        <record id="mail_tmpl_junta_recordatorio" model="mail.template">
+            <field name="name">Recordatorio junta de aclaración de dudas</field>
+            <field name="model_id" ref="crm.model_crm_lead"/>
+            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
+            <field name="email_to"></field>
+            <field name="subject">[Junta de aclaración de dudas] Recordatorio - {{object.name}}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+                    <p>Buen día,</p>
+                    <p>Se les recuerda la <b>junta de aclaración de dudas</b> de la convocatoria <b><t t-out="object.name or ''"/></b>.</p>
+                    <p><b>Fecha de la junta: </b><t t-if="object.junta_fecha"><t t-out="object.junta_fecha"/></t></p>
+                    <p>
+                        Abrir en la Aplicación:
+                        <a t-att-href="'%s/web#id=%s&amp;model=crm.lead&amp;view_type=form' % (object.get_base_url(), object.id)" style="color:#1A73E8; text-decoration:none;" target="_blank" rel="noopener">Ver convocatoria</a>
+                    </p>
+                    <p>Enviado automáticamente por el Sistema.</p>
+                </div>
+            </field>
+        </record>
+
     </data>
 </odoo>

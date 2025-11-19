@@ -47,6 +47,18 @@ class CrmRevertStageWizard(models.TransientModel):
         lead = self.lead_id.sudo()
         old_stage = lead.stage_id
 
+        if old_stage == 'Junta de Aclaración de Dudas':
+            lead.junta_notif_auto_sent = False
+            lead.junta_notif_manual_sent = False
+            lead.junta_obligatoria = False
+            lead.junta_personas_ids = [(5, 0, 0)]
+            lead.junta_fecha = False
+            lead.junta_fecha_limite_dudas = False
+            lead.junta_docto_dudas = False
+            lead.junta_docto_dudas_name = False
+            lead.junta_acta = False
+            lead.junta_acta_name = False
+
         # Mover etapa permitiendo retroceso
         lead.with_context(allow_stage_revert=True).write({'stage_id': self.target_stage_id.id})
 

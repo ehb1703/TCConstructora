@@ -5,6 +5,10 @@ from odoo.tools import html_escape
 from markupsafe import Markup
 from dateutil.relativedelta import relativedelta
 import logging
+import os
+import tempfile
+import openpyxl
+import binascii
 
 _logger = logging.getLogger(__name__)
 
@@ -60,7 +64,22 @@ class CrmLead(models.Model):
     visita_acta = fields.Binary(string='Acta de visita', attachment=True)
     visita_acta_name = fields.Char(string='Nombre acta de visita')
     visita_notif_auto_sent = fields.Boolean(string='Notif. automática enviada', default=False)
-    visita_notif_manual_sent = fields.Boolean(string='Notif. manual enviada', default=False)    
+    visita_notif_manual_sent = fields.Boolean(string='Notif. manual enviada', default=False)
+    # Junta de Aclaración de dudas
+    junta_obligatoria = fields.Boolean(string='Asistencia obligatoria')
+    junta_personas_ids = fields.Many2many('hr.employee','crm_lead_junta_employee_rel','lead_id','employee_id',string='Personas asignadas')
+    junta_fecha = fields.Date(string='Fecha de junta')
+    junta_fecha_limite_dudas = fields.Date(string='Fecha límite para envío de dudas')
+    junta_docto_dudas = fields.Binary(string='Docto. de dudas', attachment=True)
+    junta_docto_dudas_name = fields.Char(string='Nombre docto. de dudas')
+    junta_acta = fields.Binary(string='Acta de la junta', attachment=True)
+    junta_acta_name = fields.Char(string='Nombre acta de la junta')
+    junta_notif_auto_sent = fields.Boolean(string='Notif. automática junta enviada', default=False)
+    junta_notif_manual_sent = fields.Boolean(string='Notif. manual junta enviada', default=False)
+    # Insumos
+    input_ids = fields.One2many('crm.input.line', 'lead_id', string='Insumos')
+    input_file = fields.Binary(string='Archivo', help='Seleccionar el archivo con el formato correcto para la carga la información.')
+    input_filename = fields.Char(string='Nombre del archivo', tracking=True)
 
     @api.onchange('origen_id')
     def _compute_bases(self):
@@ -98,61 +117,27 @@ class CrmLead(models.Model):
         return Stage.search(domain, limit=1)
 
     def _is_forward_or_same_stage(self, new_stage):
-        #Permite avanzar a etapas con secuencia mayor o igual. Bloquea retrocesos salvo contexto.
+        # Permite avanzar a etapas con secuencia mayor o igual. Bloquea retrocesos salvo contexto.
         self.ensure_one()
         if not self.stage_id or not new_stage:
             return True
         return (new_stage.sequence or 0) >= (self.stage_id.sequence or 0)
 
     def _ensure_stage_is_fallo(self):
-        #Asegura que la etapa actual sea 'Fallo' (por nombre).
+        # Asegura que la etapa actual sea 'Fallo' (por nombre).
         self.ensure_one()
         stage_name = (self.stage_id.name or '').strip().lower()
         if stage_name != 'fallo':
             raise UserError(_('Solo puede marcar Perdido en la etapa FALLO.'))
 
     def _get_authorizer_emails_from_group(self, grupo):
-        #Obtiene correos de los usuarios del grupo project_extra.group_conv_authorizer.
+        # Obtiene correos de los usuarios del grupo project_extra.group_conv_authorizer.
         emails = set()
         group = self.env.ref(grupo, raise_if_not_found=False)
         if group:
             for user in group.users.filtered(lambda u: u.active and u.partner_id and u.partner_id.email):
                 emails.add(user.partner_id.email.strip())
         return sorted(e for e in emails if '@' in e)
-
-    def _get_visita_emails(self):
-        if not self.stage_id.email_ids:
-            raise UserError('No hay información para realizar la distribución de correos.')
-
-        emails = set()
-        for rec in self.stage_id.email_ids:
-            _logger.warning('Aqui 129')
-            _logger.wanring(rec.id)
-
-        raise UserError('Pendiente de revisar bien el proceso :D')
-        
-
-    def _send_visita_reminder(self, manual=False):
-        # Envía correo de recordatorio de visita usando la plantilla de visita.
-        template = self.env.ref('project_extra.mail_tmpl_visita_recordatorio', raise_if_not_found=False)
-        if not template:
-            raise UserError('No se encontró la plantilla de correo para recordatorio de visita de obra.')
-
-        correos_list = self._get_visita_emails()
-        correos = ', '.join(correos_list)
-
-        for lead in self:
-            if not lead.visita_obligatoria or not lead.visita_fecha:
-                continue
-
-            email_values = {'email_to': correos,}
-            template.send_mail(lead.id, force_send=True, email_values=email_values)
-            if manual:
-                lead.visita_notif_manual_sent = True
-            else:
-                lead.visita_notif_auto_sent = True
-
-            lead.message_post(body=_("Se envió recordatorio de visita de obra a: %s") % correos)
 
     def _post_html(self, title, old_stage=None, new_stage=None):
         parts = [f'<p>{html_escape(title)}</p>']
@@ -174,7 +159,7 @@ class CrmLead(models.Model):
 
     # ----------------- Acciones -----------------
     def action_request_authorization(self):
-        #Envía notificación de autorización.
+        # Envía notificación de autorización.
         for lead in self:
             if not lead.in_calificado:
                 raise UserError(_('Debe marcar los 3 criterios para solicitar autorización.'))
@@ -206,7 +191,7 @@ class CrmLead(models.Model):
                 lead._post_html(_('Error al enviar el correo'))
 
     def action_authorize(self):
-        #Autoriza la convocatoria y mueve a 'Calificado'.
+        # Autoriza la convocatoria y mueve a 'Calificado'.
         self.ensure_one()
         if not self.env.user.has_group('project_extra.group_conv_authorizer'):
             raise UserError(_('No tiene permisos para autorizar.'))
@@ -224,7 +209,7 @@ class CrmLead(models.Model):
         self._post_html(_('Convocatoria autorizada.'), old_stage, dest_stage)
 
     def action_decline(self):
-	#Declinar convocatoria.
+        # Declinar convocatoria.
         self.ensure_one()
         if not self.env.user.has_group('project_extra.group_conv_authorizer'):
             raise UserError(_('No tiene permisos para declinar.'))
@@ -271,6 +256,10 @@ class CrmLead(models.Model):
             if self.visita_obligatoria and not self.visita_acta:
                 raise UserError('Falta cargar el Acta de la Visita')
 
+        if self.stage_name == 'Junta de Aclaración de Dudas':
+            if self.junta_obligatoria and not self.junta_acta:
+                raise UserError('Falta cargar el Acta de la Junta de Aclaración de Dudas.')
+
         sequence = self.stage_id.sequence
         reason = self.env['crm.revert.reason'].search([('name','=','Avance')])
         new_stage = self.env['crm.stage'].search([('sequence','=', sequence + 1)])
@@ -280,6 +269,7 @@ class CrmLead(models.Model):
 
         self._log_stage_change(self.stage_id, new_stage, reason.id, 'Autorizado')
         self.stage_id = new_stage.id
+
 
     def action_revert_stage(self):
         # Abre el asistente para regresar la etapa con motivo.
@@ -371,7 +361,7 @@ class CrmLead(models.Model):
         return action
 
     def action_send_bases(self):
-        #Envía correo a group_conv_authorizer para solicitar autorización de compra de bases.
+        # Envía correo a group_conv_authorizer para solicitar autorización de compra de bases.
         for lead in self:
             if not lead.bases_cost:
                 raise UserError('Debes capturar el costo de las bases.')
@@ -417,6 +407,62 @@ class CrmLead(models.Model):
         except Exception:
             self._post_html(_('Error al enviar el correo'))
 
+
+    def _get_emails(self):
+        emails = set()
+        for rec in self.stage_id.email_ids:
+            if rec.work_email:
+                emails.add(rec.work_email.strip())
+            elif rec.private_email:
+                emails.add(rec.private_email.strip())
+            elif rec.address_id.email:
+                emails.add(rec.address_id.email.strip())
+            else:
+                raise UserError(('No existen correos configurados del empleado %s') % rec.name)
+
+        if self.stage_name == 'Visita de Obra':
+            correos = self.visita_personas_ids
+        else:
+            correos = self.junta_personas_ids
+
+        if not correos:
+            raise UserError(_('Debe asignar al menos una persona para la %s') % self.stage_name)
+
+        for rec in correos:
+            if rec.work_email:
+                emails.add(rec.work_email.strip())
+            elif rec.private_email:
+                emails.add(rec.private_email.strip())
+            elif rec.address_id.email:
+                emails.add(rec.address_id.email.strip())
+            else:
+                raise UserError(('No existen correos configurados del empleado %s') % rec.name)
+
+        return sorted(e for e in emails if '@' in e) 
+
+
+    def _send_visita_reminder(self, manual=False):
+        # Envía correo de recordatorio de visita usando la plantilla de visita.
+        template = self.env.ref('project_extra.mail_tmpl_visita_recordatorio', raise_if_not_found=False)
+        if not template:
+            raise UserError('No se encontró la plantilla de correo para recordatorio de visita de obra.')
+
+        correos_list = self._get_emails()
+        correos = ', '.join(correos_list)
+
+        for lead in self:
+            if not lead.visita_obligatoria or not lead.visita_fecha:
+                continue
+
+            email_values = {'email_to': correos,}
+            template.send_mail(lead.id, force_send=True, email_values=email_values)
+            if manual:
+                lead.visita_notif_manual_sent = True
+            else:
+                lead.visita_notif_auto_sent = True
+
+            lead.message_post(body=_("Se envió recordatorio de visita de obra a: %s") % correos)
+
     def action_send_visita_reminder(self):
         #Botón manual para enviar recordatorio de visita.
         self.ensure_one()
@@ -424,10 +470,9 @@ class CrmLead(models.Model):
             raise UserError('Debe capturar la fecha de visita.')
         self._send_visita_reminder(manual=True)
 
-    # --- VISITA DE OBRA: CRON ---
     @api.model
     def cron_send_visita_reminders(self):
-        """Cron: envía recordatorio un día antes de la fecha de visita."""
+        # Cron: envía recordatorio un día antes de la fecha de visita.
         today = fields.Date.context_today(self)
         target = today + relativedelta(days=1)
 
@@ -435,3 +480,162 @@ class CrmLead(models.Model):
         leads = self.search(domain)
         if leads:
             leads._send_visita_reminder(manual=False)
+
+    # Funciones de actualización de los campos relacionados con la junta
+    @api.onchange('junta_obligatoria', 'junta_personas_ids', 'junta_fecha')
+    def _compute_junta_notif(self):
+        for rec in self:
+            if rec.junta_obligatoria and rec.junta_personas_ids:
+                rec.junta_notif_auto_sent = False
+                rec.junta_notif_manual_sent = False
+
+    @api.onchange('junta_fecha', 'junta_fecha_limite_dudas')
+    def _validate_junta_fields(self):
+        for rec in self:
+            if rec.junta_fecha and rec.junta_fecha_limite_dudas and rec.junta_fecha > rec.junta_fecha_limite_dudas:
+                raise UserError(_('La fecha límite para enviar dudas no puede ser posterior a la fecha de la junta.'))
+
+    def _send_junta_reminder(self, manual=False):
+        template = self.env.ref('project_extra.mail_tmpl_junta_recordatorio', raise_if_not_found=False)
+        if not template:
+            raise UserError(_('No se encontró la plantilla de correo para recordatorio de la Junta de Aclaración de Dudas.'))
+
+        for lead in self:
+            if not lead.junta_obligatoria or not lead.junta_fecha:
+                continue
+
+            email_to = ', '.join(lead._get_emails())
+            email_values = {'email_to': email_to}
+
+            template.send_mail(lead.id, force_send=True, email_values=email_values)
+
+            if manual:
+                lead.junta_notif_manual_sent = True
+            else:
+                lead.junta_notif_auto_sent = True
+
+            lead.message_post(body=_("Se envió recordatorio de junta a: %s") % email_to)
+
+    def action_send_junta_reminder_manual(self):
+        self.ensure_one()
+        if not self.junta_fecha:
+            raise UserError(_('Debe capturar la fecha de la Junta de Aclaración de Dudas.'))
+        self._send_junta_reminder(manual=True)
+
+    @api.model
+    def cron_send_junta_reminders(self):
+        # Cron: envía recordatorio un día antes de la Junta de Aclaración de Dudas.
+        today = fields.Date.context_today(self)
+        target = today + relativedelta(days=1)
+
+        domain = [('junta_obligatoria', '=', True), ('junta_fecha', '=', target), ('junta_notif_auto_sent', '=', False),]
+        leads = self.search(domain)
+        if leads:
+            leads._send_junta_reminder(manual=False)
+
+    def action_cargar_registros(self):
+        for record in self:
+            if not record.input_file:
+                raise ValidationError('Seleccione un archivo para cargar.')
+
+            if record.input_file and record.input_ids:
+                raise ValidationError('Ya hay información cargada. En caso de ser necesario volver a cargar debe eliminarlos.')
+
+            filename, file_extension = os.path.splitext(record.input_filename)
+            if file_extension in ['.xlsx', '.xls', '.xlsm']:
+                record.__leer_carga_archivo()
+            else:
+                raise ValidationError('Seleccione un archivo tipo xlsx, xls, xlsm')
+
+
+    def __leer_carga_archivo(self):
+        for record in self:
+            file = tempfile.NamedTemporaryFile(suffix=".xlsx")
+            file.write(binascii.a2b_base64(record.input_file))
+            file.seek(0)
+            xlsx_file = file.name
+            
+            wb = openpyxl.load_workbook(filename=xlsx_file, data_only=True)
+            sheets = wb.sheetnames
+            sheet_name = sheets[0]
+            sheet = wb[sheet_name]
+            registros = []
+            cargar = False
+            for row in sheet.iter_rows(values_only=True):
+                col1 = str(row[0]).strip()
+                col2 = str(row[1]).strip()
+                col3 = str(row[2]).strip()
+                col4 = str(row[3]).strip()
+                col5 = str(row[4]).strip()
+                col6 = str(row[5]).strip()
+                col7 = str(row[6]).strip()
+                col8 = str(row[7]).strip()
+                if col1 == 'None':
+                    col1 = ''
+                if col2 == 'None':
+                    col2 = ''
+                if col3 == 'None':
+                    col3 = ''
+                if col4 == 'None':
+                    col4 = ''
+                if col5 == 'None':
+                    col5 = ''
+                if col6 == 'None':
+                    col6 = ''
+                if col7 == 'None':
+                    col7 = ''
+                if col8 == 'None':
+                    col8 = ''
+                if col1.upper() == 'CÓDIGO':
+                    cargar = True
+
+                if cargar:
+                    if col1 != '' and col8 != '':
+                        registro = {'col1': col1, 'col2': col2, 'col3': col3, 'col4': col4, 'col5': col5, 'col6': col6, 'col7': col7, 'col8': col8}
+                        registros.append((0, 0, registro))
+
+            record.write({'input_ids': registros})
+
+    def action_genera_conceptos(self):
+        self.env.cr.execute('SELECT col1, COUNT(*) num FROM crm_input_line WHERE lead_id = ' + str(self.id) + ' GROUP BY 1 HAVING COUNT(*) > 1')
+        duplicado = self.env.cr.dictfetchall()
+        if duplicado:
+            raise UserError('Existen conceptos repetidos favor de revisar el archivo.')
+
+        self.env.cr.execute('SELECT MIN(ID) min_id FROM crm_input_line ci WHERE ci.lead_id = ' + str(self.id))
+        min_id = self.env.cr.dictfetchall()
+
+        self.env.cr.execute('''UPDATE crm_input_line cil SET input_ex = True
+            FROM (SELECT cil.id, REPLACE(cil.col1, ' ', '') CODE, COUNT(pt.id) num 
+                    FROM crm_input_line cil LEFT JOIN product_template pt ON REPLACE(cil.col1, ' ', '') = pt.default_code 
+                   WHERE cil.LEAD_ID = ''' + str(self.id) + ' and cil.id != ' + str(min_id[0]['min_id']) + ''' AND cil.input_ex = False GROUP BY 1, 2) as t1
+            WHERE cil.id = t1.id AND t1.num != 0;
+            UPDATE crm_input_line cil SET account_ex = true
+            FROM (SELECT cil.id, REPLACE(cil.col1, ' ', '') code, COUNT(pt.account_id) num 
+                    FROM crm_input_line cil JOIN product_template pt ON REPLACE(cil.col1, ' ', '') = pt.default_code 
+                   WHERE cil.LEAD_ID = ''' + str(self.id) + ' AND cil.id != ' + str(min_id[0]['min_id']) + ''' AND pt.account_id = False GROUP BY 1, 2) as t1
+            WHERE cil.id = t1.id;''')
+
+        #self.
+
+
+    def action_unlink_details(self):
+        for record in self:
+            record.input_ids.unlink()
+
+
+class crmInputsLine(models.Model):
+    _name = 'crm.input.line'
+    _description = 'Insumos'
+    
+    lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportudidad', readonly=True)
+    col1 = fields.Char(string='Columna 1')
+    col2 = fields.Char(string='Columna 2')
+    col3 = fields.Char(string='Columna 3')
+    col4 = fields.Char(string='Columna 4')
+    col5 = fields.Char(string='Columna 5')
+    col6 = fields.Char(string='Columna 6')
+    col7 = fields.Char(string='Columna 7')
+    col8 = fields.Char(string='Columna 8')
+    input_ex = fields.Boolean(string='Insumo cargado', default=False)
+    account_ex = fields.Char(string='Cuenta relacionada', default=False)

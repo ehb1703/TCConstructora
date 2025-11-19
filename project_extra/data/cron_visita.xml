@@ -14,5 +14,14 @@
             <field name="active">True</field>
         </record>
 
+        <record id="ir_cron_send_junta_reminders" model="ir.cron">
+            <field name="name">Recordatorio junta de aclaración de dudas</field>
+            <field name="model_id" ref="crm.model_crm_lead"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_send_junta_reminders()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+        </record>
     </data>
 </odoo>
