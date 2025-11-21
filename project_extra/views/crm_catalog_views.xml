@@ -82,10 +82,73 @@
                 </sheet>
             </form>
         </field>
-    </record>          
+    </record>
+
+    <!-- Acción y vistas para catálogo de Analistas -->
+    <record id="action_crm_analyst" model="ir.actions.act_window">
+        <field name="name">Analistas</field>
+        <field name="res_model">crm.analyst</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_crm_analyst_list" model="ir.ui.view">
+        <field name="name">view.crm.analyst.list</field>
+        <field name="model">crm.analyst</field>
+        <field name="arch" type="xml">
+            <list string="Analistas">
+                <field name="code" string="ID"/>
+                <field name="name"/>
+                <field name="origen"/>
+                <field name="especialidad_id"/>
+                <field name="years_experience"/>
+                <field name="quality_analysis"/>
+                <field name="quality_documental"/>
+                <field name="agility_operativa"/>
+                <field name="availability"/>
+                <field name="compromiso_institucional"/>
+                <field name="proyectos_asignados"/>
+                <field name="ultima_evaluacion"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_crm_analyst_form" model="ir.ui.view">
+        <field name="name">view.crm.analyst.form</field>
+        <field name="model">crm.analyst</field>
+        <field name="arch" type="xml">
+            <form string="Analista">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="code" readonly="1"/>
+                            <field name="origen" required="1"/>
+                            <field name="employee_id" invisible="origen == 'externo'"/>
+                            <field name="partner_id" invisible="origen == 'interno'"/>
+                            <field name="name" readonly="1"/>
+                            <field name="especialidad_id"/>
+                            <field name="years_experience"/>
+                        </group>
+                        <group string="Evaluación">
+                            <field name="quality_analysis" required="1"/>
+                            <field name="quality_documental" required="1"/>
+                            <field name="agility_operativa" required="1"/>
+                            <field name="availability" required="1"/>
+                            <field name="compromiso_institucional" required="1"/>
+                            <field name="proyectos_asignados"/>
+                            <field name="ultima_evaluacion"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="observaciones" colspan="4"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
 
     <menuitem id="menu_catalog_crm" name="Catálogos" parent="crm.crm_menu_root" sequence="30" groups="sales_team.group_sale_manager,group_project_catalog">
         <menuitem id="menu_crm_lead_type" name="Origen" action="action_crm_lead_type" sequence="1"/>
         <menuitem id="menu_crm_revert_reason" name="Motivos cambio" action="action_crm_revert_reason" sequence="2"/>
+        <menuitem id="menu_crm_analyst" name="Analistas" action="action_crm_analyst" sequence="3"/>
     </menuitem>
 </odoo>

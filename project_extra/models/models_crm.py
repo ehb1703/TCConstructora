@@ -20,8 +20,8 @@ class CrmRevertLog(models.Model):
     user_id = fields.Many2one('res.users', string='Usuario', default=lambda self: self.env.user, required=True)
     old_stage_id = fields.Many2one('crm.stage', string='Etapa anterior', required=True)
     new_stage_id = fields.Many2one('crm.stage', string='Etapa nueva', required=True)
-    reason_id = fields.Many2one('crm.revert.reason', string='Motivo (catálogo)')
-    reason_text = fields.Text(string='Motivo adicional')
+    reason_id = fields.Many2one('crm.revert.reason', string='Motivo')
+    reason_text = fields.Text(string='Observaciones')
 
 class CrmLead(models.Model):
     _inherit = 'crm.lead'
@@ -57,6 +57,10 @@ class CrmLead(models.Model):
     bases_doc = fields.Binary(string='Docto. Bases', attachment=True)
     bases_doc_name = fields.Char(string='Nombre del documento')
     bases_notification_sent = fields.Boolean(string='Notificación de bases enviada', default=False)
+    ptdcto_ids = fields.Many2many('project.docsrequeridos', 'propuesta_tecnica_doctos_rel', 'tecnica_id', 'docto_id', string='Documentos requeridos',
+        domain="[('model_id', '=', 'crm.lead'), ('etapa','=','tecnica')]")
+    pedcto_ids = fields.Many2many('project.docsrequeridos', 'propuesta_economica_doctos_rel', 'economica_id', 'docto_id', string='Documentos requeridos',
+        domain="[('model_id', '=', 'crm.lead'), ('etapa','=','economica')]")
     # Visita de obra
     visita_obligatoria = fields.Boolean(string='Visita obligatoria')
     visita_personas_ids = fields.Many2many('hr.employee', 'crm_lead_visita_employee_rel', 'lead_id', 'employee_id', string='Personas asignadas')
@@ -76,6 +80,11 @@ class CrmLead(models.Model):
     junta_acta_name = fields.Char(string='Nombre acta de la junta')
     junta_notif_auto_sent = fields.Boolean(string='Notif. automática junta enviada', default=False)
     junta_notif_manual_sent = fields.Boolean(string='Notif. manual junta enviada', default=False)
+    # Asignación de responsable
+    tecnico_documental_id = fields.Many2one('hr.employee', 'Técnico/documental', tracking=True)
+    analista_id = fields.Many2one('crm.analyst', 'Analista', tracking=True)
+    economico_operativo_id = fields.Many2one('hr.employee', 'Económico/operativo', tracking=True)
+    junta_dudas_notif_auto_sent = fields.Boolean(string='Notif. automática fecha límite dudas enviada',default=False,)
     # Insumos
     input_ids = fields.One2many('crm.input.line', 'lead_id', string='Insumos')
     input_file = fields.Binary(string='Archivo', help='Seleccionar el archivo con el formato correcto para la carga la información.')
@@ -149,13 +158,8 @@ class CrmLead(models.Model):
         self.message_post(body=Markup(body), message_type='comment', subtype_xmlid='mail.mt_note')
 
     def _log_stage_change(self, old_stage, new_stage, reason_id, reason_text=''):
-        self.env['crm.revert.log'].sudo().create({
-            'lead_id': self.id,
-            'user_id': self.env.user.id,
-            'old_stage_id': old_stage.id if old_stage else False,
-            'new_stage_id': new_stage.id if new_stage else False,
-            'reason_id': reason_id,
-            'reason_text': reason_text or False,})
+        self.env['crm.revert.log'].sudo().create({'lead_id': self.id, 'user_id': self.env.user.id, 'old_stage_id': old_stage.id if old_stage else False,
+            'new_stage_id': new_stage.id if new_stage else False, 'reason_id': reason_id, 'reason_text': reason_text or False,})
 
     # ----------------- Acciones -----------------
     def action_request_authorization(self):
@@ -201,10 +205,8 @@ class CrmLead(models.Model):
         dest_stage = self._get_stage_by_name('Calificado')
         if not dest_stage:
             raise UserError(_('No se encontró la etapa CALIFICADO'))
-        old_stage = self.stage_id
-        if old_stage.id != dest_stage.id:
-            self.with_context(allow_stage_revert=True).write({'stage_id': dest_stage.id})
 
+        old_stage = self.stage_id
         self._log_stage_change(old_stage, dest_stage, False, 'Autorizado')
         self._post_html(_('Convocatoria autorizada.'), old_stage, dest_stage)
 
@@ -221,20 +223,8 @@ class CrmLead(models.Model):
             raise UserError('No se encontró la etapa DECLINADO')
 
         old_stage = self.stage_id
-        if old_stage.id != dest_stage.id:
-            self.with_context(allow_stage_revert=True).write({'stage_id': dest_stage.id})
-
         self._log_stage_change(old_stage, dest_stage, False, 'Declinado')
         self._post_html(_('Declinada por %s.') % self.env.user.display_name, old_stage, dest_stage)
-
-    def write(self, vals):
-        # Bloquea retrocesos de etapa salvo contexto {'allow_stage_revert': True}.
-        if 'stage_id' in vals and not self.env.context.get('allow_stage_revert'):
-            new_stage = self.env['crm.stage'].browse(vals['stage_id'])
-            for lead in self:
-                if not lead._is_forward_or_same_stage(new_stage):
-                    raise UserError('No está permitido regresar etapas manualmente.')
-        return super().write(vals)
 
     def action_set_lost(self, **kwargs):
         for lead in self:
@@ -267,7 +257,7 @@ class CrmLead(models.Model):
         if not new_stage:
             raise UserError('Existe un error en el flujo de las etapas, favor de revisar las configuraciones')
 
-        self._log_stage_change(self.stage_id, new_stage, reason.id, 'Autorizado')
+        self._log_stage_change(self.stage_id, new_stage, reason.id, 'Avance de etapa')
         self.stage_id = new_stage.id
 
 
@@ -320,31 +310,13 @@ class CrmLead(models.Model):
         if self.no_licitacion:
             name += ' ' + self.no_licitacion
 
-        raise UserError(name)
-
         order_lines.append((0, 0, {
-            'name': name,
-            'product_uom': self.origen_id.product_id.uom_po_id.id,            
-            'product_id': self.origen_id.product_id.id,
-            'company_id': self.company_id.id,
-            'partner_id': self.partner_id.id,
-            'currency_id': self.origen_id.product_id.currency_id.id,
-            'state': 'purchase',
-            'product_qty': 1,
-            'price_unit': price,
-            'taxes_id': fpos.map_tax(taxes) },))
-        
-        values = {
-            'lead_id': self.id,
-            'name': sequence,
-            'partner_id': self.partner_id.id,
-            'company_id': self.company_id.id,
-            'currency_id': self.origen_id.product_id.currency_id.id,
-            'user_id': self.env.uid,
-            'state': 'purchase',
-            'invoice_status': 'no',
-            'type_purchase': 'bases',
-            'order_line': order_lines}
+            'name': name, 'product_uom': self.origen_id.product_id.uom_po_id.id, 'product_id': self.origen_id.product_id.id, 'company_id': self.company_id.id,
+            'partner_id': self.partner_id.id, 'currency_id': self.origen_id.product_id.currency_id.id, 'state': 'purchase', 'product_qty': 1, 
+            'price_unit': price, 'taxes_id': fpos.map_tax(taxes) },))        
+        values = {'lead_id': self.id, 'name': sequence, 'partner_id': self.partner_id.id, 'company_id': self.company_id.id, 
+            'currency_id': self.origen_id.product_id.currency_id.id, 'user_id': self.env.uid, 'state': 'purchase', 'invoice_status': 'no', 
+            'type_purchase': 'bases', 'order_line': order_lines}
         orders.append(values)
         return orders
 
@@ -384,10 +356,10 @@ class CrmLead(models.Model):
             except Exception:
                 lead._post_html(_('Error al enviar el correo'))
 
+
     def action_authorize_bases(self):
         # La ejecuta un usuario del grupo project_extra.group_conv_authorizer. Genera OC y notifica a Finanzas.
         self.ensure_one()
-
         oc = self.action_generar_orden()
 
         correos_list = self._get_authorizer_emails_from_group('purchase.group_purchase_user')
@@ -470,17 +442,6 @@ class CrmLead(models.Model):
             raise UserError('Debe capturar la fecha de visita.')
         self._send_visita_reminder(manual=True)
 
-    @api.model
-    def cron_send_visita_reminders(self):
-        # Cron: envía recordatorio un día antes de la fecha de visita.
-        today = fields.Date.context_today(self)
-        target = today + relativedelta(days=1)
-
-        domain = [('visita_obligatoria', '=', True), ('visita_fecha', '=', target), ('visita_notif_auto_sent', '=', False),]
-        leads = self.search(domain)
-        if leads:
-            leads._send_visita_reminder(manual=False)
-
     # Funciones de actualización de los campos relacionados con la junta
     @api.onchange('junta_obligatoria', 'junta_personas_ids', 'junta_fecha')
     def _compute_junta_notif(self):
@@ -501,8 +462,10 @@ class CrmLead(models.Model):
             raise UserError(_('No se encontró la plantilla de correo para recordatorio de la Junta de Aclaración de Dudas.'))
 
         for lead in self:
-            if not lead.junta_obligatoria or not lead.junta_fecha:
+            if not lead.junta_obligatoria:
                 continue
+            if not lead.junta_fecha:
+                raise UserError(_('Debe capturar la fecha de la junta de aclaración de dudas.'))
 
             email_to = ', '.join(lead._get_emails())
             email_values = {'email_to': email_to}
@@ -522,16 +485,56 @@ class CrmLead(models.Model):
             raise UserError(_('Debe capturar la fecha de la Junta de Aclaración de Dudas.'))
         self._send_junta_reminder(manual=True)
 
+    def _send_junta_dudas_deadline_reminder(self):
+        template = self.env.ref('project_extra.mail_tmpl_junta_dudas_deadline', raise_if_not_found=False)
+        if not template:
+            raise UserError(_('No se encontró la plantilla de recordatorio de fecha límite de dudas.'))
+
+        for lead in self:
+            if not (lead.junta_obligatoria and lead.junta_fecha_limite_dudas):
+                continue
+
+            if lead.stage_name == 'Junta de Aclaración de Dudas':
+                correos = ', '.join(lead._get_emails())
+                template.send_mail(lead.id, force_send=True, email_values={'email_to': correos})
+                lead.junta_dudas_notif_auto_sent = True
+                lead.message_post(body=_("Se envió recordatorio de FECHA LÍMITE DE DUDAS a: %s") % correos)
+
+
+    @api.model
+    def cron_send_visita_reminders(self):
+        # Cron: envía recordatorio un día antes de la fecha de visita.
+        today = fields.Date.context_today(self)
+        target = today + relativedelta(days=1)
+
+        domain = [('visita_obligatoria','=',True), ('visita_fecha','=',target), ('visita_notif_auto_sent','=',False), ('stage_name','=','Visita de Obra')]
+        leads = self.search(domain)
+        for rec in leads:
+            rec._send_visita_reminder(manual=False)
+            
     @api.model
     def cron_send_junta_reminders(self):
         # Cron: envía recordatorio un día antes de la Junta de Aclaración de Dudas.
         today = fields.Date.context_today(self)
         target = today + relativedelta(days=1)
 
-        domain = [('junta_obligatoria', '=', True), ('junta_fecha', '=', target), ('junta_notif_auto_sent', '=', False),]
+        domain = [('junta_obligatoria','=',True), ('junta_fecha','=',target), ('junta_notif_auto_sent','=',False), 
+            ('stage_name','=','Junta de Aclaración de Dudas')]
         leads = self.search(domain)
-        if leads:
-            leads._send_junta_reminder(manual=False)
+        for rec in leads:
+            rec._send_junta_reminder(manual=False)
+
+
+    @api.model
+    def cron_send_junta_dudas_deadline(self):
+        # Cron: envía recordatorio un día antes de la fecha límite de dudas.
+        today = fields.Date.context_today(self)
+        target = today + relativedelta(days=1)
+        domain = [('junta_obligatoria','=',True), ('junta_fecha_limite_dudas','=',target), ('junta_dudas_notif_auto_sent','=',False), 
+            ('stage_name','=','Junta de Aclaración de Dudas')]
+        leads = self.search(domain)
+        for rec in leads:
+            rec._send_junta_dudas_deadline_reminder()            
 
     def action_cargar_registros(self):
         for record in self:
@@ -546,7 +549,6 @@ class CrmLead(models.Model):
                 record.__leer_carga_archivo()
             else:
                 raise ValidationError('Seleccione un archivo tipo xlsx, xls, xlsm')
-
 
     def __leer_carga_archivo(self):
         for record in self:
@@ -602,21 +604,65 @@ class CrmLead(models.Model):
         if duplicado:
             raise UserError('Existen conceptos repetidos favor de revisar el archivo.')
 
-        self.env.cr.execute('SELECT MIN(ID) min_id FROM crm_input_line ci WHERE ci.lead_id = ' + str(self.id))
+        self.env.cr.execute('''SELECT MIN(ID) min_id, (case when UPPER(col3) = 'UNIDAD' then 'col3' else 'col5' end) unidad, 
+                (case when UPPER(col5) = 'CANTIDAD' then 'col5' else 'col6' end) cantidad, (case when UPPER(col6) = 'PRECIO' then 'col6' else 'col7' end) precio 
+            FROM crm_input_line ci WHERE ci.lead_id = ''' + str(self.id))
         min_id = self.env.cr.dictfetchall()
 
-        self.env.cr.execute('''UPDATE crm_input_line cil SET input_ex = True
-            FROM (SELECT cil.id, REPLACE(cil.col1, ' ', '') CODE, COUNT(pt.id) num 
-                    FROM crm_input_line cil LEFT JOIN product_template pt ON REPLACE(cil.col1, ' ', '') = pt.default_code 
+        unidad = min_id[0]['unidad']
+        cantidad = min_id[0]['cantidad']
+        precio = min_id[0]['precio']
+
+        self.env.cr.execute('''UPDATE crm_input_line cil SET input_ex = True, input_id = t1.IDCOD
+            FROM (SELECT cil.id, TRIM(cil.col1) code, MIN(pt.ID) idcod, COUNT(pt.id) num 
+                    FROM crm_input_line cil LEFT JOIN product_template pt ON TRIM(cil.col1) = pt.default_code 
                    WHERE cil.LEAD_ID = ''' + str(self.id) + ' and cil.id != ' + str(min_id[0]['min_id']) + ''' AND cil.input_ex = False GROUP BY 1, 2) as t1
             WHERE cil.id = t1.id AND t1.num != 0;
             UPDATE crm_input_line cil SET account_ex = true
-            FROM (SELECT cil.id, REPLACE(cil.col1, ' ', '') code, COUNT(pt.account_id) num 
-                    FROM crm_input_line cil JOIN product_template pt ON REPLACE(cil.col1, ' ', '') = pt.default_code 
-                   WHERE cil.LEAD_ID = ''' + str(self.id) + ' AND cil.id != ' + str(min_id[0]['min_id']) + ''' AND pt.account_id = False GROUP BY 1, 2) as t1
-            WHERE cil.id = t1.id;''')
+            FROM (SELECT cil.id, TRIM(cil.col1) code, COUNT(pt.property_account_expense_id) num 
+                    FROM crm_input_line cil JOIN product_template pt ON TRIM(cil.col1) = pt.default_code 
+                   WHERE cil.LEAD_ID = ''' + str(self.id) + ' AND cil.id != ' + str(min_id[0]['min_id']) + ''' AND pt.property_account_expense_id IS NOT NULL
+                   GROUP BY 1, 2) as t1
+            WHERE cil.id = t1.id; ''')
 
-        #self.
+        iva = self.env['account.tax'].search([('name','=','16%'),('type_tax_use','=','purchase')])
+        for rec in self.input_ids.filtered(lambda u: not u.input_ex):
+            if rec.id == min_id[0]['min_id']:
+                _logger.warning('Titulos')
+            else:
+                statement = ("""SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat,
+                        (CASE WHEN uu.NAME->>'en_US' = 'Service' THEN 'service' ELSE 'consu' END) type, """ + cantidad + ' qty, ' + precio + 
+                        '::float importe FROM crm_input_line cil JOIN uom_uom uu ON (CASE WHEN cil.' + unidad + 
+                        " IN ('%MO', 'PIE TAB') THEN 'pza' ELSE lower(cil." + unidad + """) END) = lower(uu.name->>'en_US') 
+                                JOIN uom_category uc ON uu.CATEGORY_ID = uc.ID 
+                                JOIN product_category pc ON pc.NAME = 'All'
+                    WHERE cil.id = """ + str(rec.id))
+                #_logger.warning(statement)
+                self.env.cr.execute(statement)
+                info = self.env.cr.dictfetchall()
+                if info:                
+                    insumo = self.env['product.template'].create({'purchase_ok': True, 'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'],
+                        'uom_po_id': info[0]['uom'], 'type': info[0]['type'], 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': True,
+                        'sale_ok': False, 'supplier_taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'active': True,})
+                    rec.write({'input_ex': True, 'input_id': insumo.id})
+
+
+    def action_genera_cotizaciones(self):
+        self.ensure_one()
+        count = len(self.input_ids.filtered(lambda u: not u.input_ex))
+        if count != 1:
+            raise UserError('Existen insumos sin cargar, revise la información.')
+
+        count = len(self.input_ids.filtered(lambda u: not u.account_ex))
+        if count != 1:
+            raise UserError('Los insumos cargados no cuentan con la información contable. Favor de contactar con el área correspondiente')
+
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'crm.cotizacion.insumos.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_lead_id': self.id}}
 
 
     def action_unlink_details(self):
@@ -638,4 +684,5 @@ class crmInputsLine(models.Model):
     col7 = fields.Char(string='Columna 7')
     col8 = fields.Char(string='Columna 8')
     input_ex = fields.Boolean(string='Insumo cargado', default=False)
-    account_ex = fields.Char(string='Cuenta relacionada', default=False)
+    input_id = fields.Many2one(comodel_name='product.template', string='Concepto de cobro')
+    account_ex = fields.Boolean(string='Cuenta relacionada', default=False)
