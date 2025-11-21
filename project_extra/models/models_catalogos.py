@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+import logging
 
+_logger = logging.getLogger(__name__)
 
 class projectType(models.Model):
     _name = 'project.type'
@@ -13,11 +15,13 @@ class projectType(models.Model):
     name = fields.Char(string='Nombre')
     description = fields.Char(string='Descripción')
     normative_clas = fields.Selection(selection=[('na','No Aplica'), ('nom','NOM'), ('sct','SCT'), ('cfe','CFE'), ('conagua','CONAGUA')], 
-        string = 'Clasificación Normativa', default = 'na')
+        string='Clasificación Normativa', default='na')
     technicalcat_id = fields.Many2one('project.technical.category', string = 'Categoría Técnica')
     uom_id = fields.Many2one('uom.uom', string='Unidad de medida principal')
-    docto_req_id = fields.Many2many('project.docsrequeridos', 'project_type_docsrequeridos_rel', 'project_req', string='Documentos Requeridos')
-    docto_noreq_id = fields.Many2many('project.docsrequeridos', 'project_type_docsnorequeridos_rel', 'projet_noreq', string='Documentos no Requeridos')
+    docto_req_id = fields.Many2many('project.docsrequeridos', 'project_type_docsrequeridos_rel', 'project_req', string='Documentos Requeridos', 
+        domain="[('model_id', '=', 'project.proyect')]")
+    docto_noreq_id = fields.Many2many('project.docsrequeridos', 'project_type_docsnorequeridos_rel', 'projet_noreq', string='Documentos no Requeridos',
+        domain="[('model_id', '=', 'project.proyect')]")
     observations = fields.Char(string='Observaciones')
     active = fields.Boolean(string='Activo', default=True, required=True)
 
@@ -45,7 +49,9 @@ class documentosRequeridos(models.Model):
     _rec_name = 'nombre_archivo'
    
     nombre_archivo = fields.Char(string='Valor', required=True, tracking=True)
-    desc_archivo = fields.Char(string='Descripcion', tracking=True)    
+    desc_archivo = fields.Char(string='Descripcion', tracking=True)
+    model_id = fields.Many2one('ir.model', string='Modelo')
+    etapa = fields.Selection(selection=[('tecnica','Propuesta Técnica'),('economica','Propuesta Económica')], string='Etapa')
     active = fields.Boolean(string='Activo', tracking=True, default=True, required=True)
 
     @api.constrains('nombre_archivo')
@@ -55,6 +61,14 @@ class documentosRequeridos(models.Model):
                 res = self.search([('nombre_archivo','=',x.nombre_archivo), ('id','!=',x.id)])
                 if res:
                     raise UserError('Ya existe el archivo')
+
+    @api.depends('nombre_archivo', 'desc_archivo')
+    def _compute_display_name(self):
+        for rec in self:
+            if rec.nombre_archivo != rec.desc_archivo:
+                rec.display_name = f'{rec.nombre_archivo} - {rec.desc_archivo}'
+            else:
+                rec.display_name = f'{rec.nombre_archivo}'
 
 
 class TipoZona(models.Model):
@@ -97,6 +111,9 @@ class Especialidad(models.Model):
     description = fields.Char(string='Descripción', size=300)
     clasificacion_id = fields.Many2one('project.technical.category', string='Categoría técnica', tracking=True)
     active = fields.Boolean(string='Activo', default=True)
+    nivel_complejidad = fields.Selection(selection=[('alta','Alta'),('media','Media'),('baja','Baja')], string='Nivel de complejidad')
+    requiere_validacion_externa = fields.Boolean('Requiere validación externa', tracking=True)
+
 
 class crmStageOrigen(models.Model):
     _name = 'crm.lead.type'
@@ -111,6 +128,45 @@ class crmStageOrigen(models.Model):
     active = fields.Boolean(string='Activo', default=True)
 
 
+class CrmAnalyst(models.Model):
+    _name = 'crm.analyst'
+    _description = 'Analistas'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'name'
+
+    code = fields.Char('ID del analista', readonly=True, copy=False, tracking=True)
+    origen = fields.Selection([('interno','Interno'),('externo','Externo')], default='interno', tracking=True)
+    name = fields.Char(string='Nombre completo', compute='_compute_name', store=False)
+    employee_id = fields.Many2one('hr.employee', string='Empleado interno', tracking=True)
+    partner_id = fields.Many2one('res.partner', string='Contacto externo', tracking=True)
+    especialidad_id = fields.Many2one('project.especialidad', string='Especialidad', tracking=True)
+    years_experience = fields.Integer(string='Años de experiencia', tracking=True)
+    quality_analysis = fields.Selection([('alto','Alto'),('medio','Medio'),('bajo','Bajo')], string='Calidad de análisis', tracking=True)
+    quality_documental = fields.Selection([('alto','Alto'),('medio','Medio'),('bajo','Bajo')], string='Calidad documental', tracking=True)
+    agility_operativa = fields.Selection([('alta','Alta'),('media','Media'),('baja','Baja')], string='Agilidad operativa', tracking=True)
+    availability = fields.Selection([('disponible','Disponible'),('parcial','Parcial'),('no_disponible','No disponible')], string='Disponibilidad', tracking=True)
+    compromiso_institucional = fields.Selection([('alto','Alto'),('medio','Medio'),('bajo','Bajo')], string='Compromiso institucional', tracking=True)
+    proyectos_asignados = fields.Integer(string='Proyectos asignados actuales', tracking=True)
+    ultima_evaluacion = fields.Date(string='Última evaluación de desempeño', tracking=True)
+    observaciones = fields.Text(string='Observaciones', tracking=True)
+
+    @api.depends('origen', 'employee_id', 'partner_id')
+    def _compute_name(self):
+        for record in self:
+            if record.origen == 'interno':
+                record.name = record.employee_id.name
+            else:
+                record.name = record.partner_id.name
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if 'code' not in vals:
+                seq = self.env['ir.sequence'].next_by_code('crm.analyst')
+                vals['code'] = seq
+        return super().create(vals_list)
+
+
 class CrmRevertReason(models.Model):
     _name = 'crm.revert.reason'
     _description = 'Catálogo de motivos de reversión'
@@ -123,7 +179,7 @@ class CrmRevertReason(models.Model):
     active = fields.Boolean(default=True)
 
 
-class crmStageOrigen(models.Model):
+class crmStageTypeBills(models.Model):
     _inherit = 'crm.stage'
     
     origen_ids = fields.Many2many('crm.lead.type', string='Tipo de venta permitido')

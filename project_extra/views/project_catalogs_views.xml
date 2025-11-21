@@ -70,6 +70,7 @@
             <list string="Documentos">
                 <field name="nombre_archivo"/>
                 <field name="desc_archivo"/>
+                <field name="model_id"/>
             </list>
         </field>
     </record>
@@ -83,6 +84,8 @@
                     <group>
                         <field name="nombre_archivo"/>
                         <field name="desc_archivo"/>
+                        <field name="model_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                        <field name="etapa"/>
                     </group>
                 </sheet>
                 <chatter/>
@@ -209,6 +212,8 @@
             <list>
                 <field name="name"/>
                 <field name="clasificacion_id"/>
+                <field name="nivel_complejidad"/>
+                <field name="requiere_validacion_externa"/>
                 <field name="active"/>
             </list>
         </field>
@@ -221,8 +226,16 @@
             <form string="Especialidad">
                 <sheet>
                     <group>
-                        <field name="name"/>
-                        <field name="clasificacion_id"/>
+                        <group>
+                            <field name="name"/>
+                            <field name="clasificacion_id"/>
+                        </group>
+                        <group>
+                            <field name="nivel_complejidad"/>
+                            <field name="requiere_validacion_externa"/>
+                        </group>
+                    </group>
+                    <group>
                         <field name="description"/>
                     </group>
                 </sheet>

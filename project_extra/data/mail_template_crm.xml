@@ -105,7 +105,7 @@
                 </div>
             </field>
         </record>
-        
+
         <record id="mail_tmpl_junta_recordatorio" model="mail.template">
             <field name="name">Recordatorio junta de aclaración de dudas</field>
             <field name="model_id" ref="crm.model_crm_lead"/>
@@ -126,5 +126,25 @@
             </field>
         </record>
 
+        <record id="mail_tmpl_junta_dudas_deadline" model="mail.template">
+            <field name="name">Recordatorio fecha límite de dudas</field>
+            <field name="model_id" ref="crm.model_crm_lead"/>
+            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
+            <field name="subject">[Junta de aclaración de dudas] Recordatorio - {{ object.name }}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+                    <p>
+                        Este es un recordatorio de que
+                        <t t-if="object.junta_fecha_limite_dudas">
+                            <t t-out="object.junta_fecha_limite_dudas"/>
+                        </t>
+                        es la fecha límite para enviar dudas para su aclaración.
+                    </p>
+                    <p>
+                        No es necesario realizar ninguna acción adicional si la información ya fue enviada.
+                    </p>
+                </div>
+            </field>
+        </record>
     </data>
 </odoo>

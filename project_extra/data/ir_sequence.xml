@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="seq_crm_analyst" model="ir.sequence">
+            <field name="name">ID Analista</field>
+            <field name="code">crm.analyst</field>
+            <field name="prefix">ANL</field>
+            <field name="padding">4</field>
+        </record>
+
+    </data>
+</odoo>

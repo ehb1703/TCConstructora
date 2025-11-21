@@ -15,6 +15,7 @@ Personalización del modulo:
     'data': [
         'data/mail_template_crm.xml',
         'data/cron_visita.xml',
+        'data/ir_sequence.xml',
         'security/res_groups.xml',
         'security/ir.model.access.csv',
         'views/project_catalogs_views.xml',
@@ -23,6 +24,7 @@ Personalización del modulo:
         'views/crm_views.xml',
         'views/purchase_views.xml',
         'wizard/crm_revert_stage_views.xml',
+        'wizard/crm_cotizacion_insumos_views.xml',
     ],        
     'license': 'LGPL-3',
     'installable': True,

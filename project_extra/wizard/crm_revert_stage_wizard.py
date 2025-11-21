@@ -13,8 +13,8 @@ class CrmRevertStageWizard(models.TransientModel):
     current_stage_sequence = fields.Integer(related='lead_id.stage_id.sequence', store=False, readonly=True)
     current_team_id = fields.Many2one('crm.team', related='lead_id.team_id', store=False, readonly=True)
     target_stage_id = fields.Many2one('crm.stage', string='Etapa destino', required=True)
-    reason_id = fields.Many2one('crm.revert.reason', string='Motivo (catálogo)')
-    reason_text = fields.Text(string='Motivo adicional')
+    reason_id = fields.Many2one('crm.revert.reason', string='Motivo')
+    reason_text = fields.Text(string='Observaciones')
 
     @api.onchange('lead_id')
     def _onchange_lead_id_set_domain(self):
@@ -26,7 +26,7 @@ class CrmRevertStageWizard(models.TransientModel):
         return {'domain': {'target_stage_id': []}}
 
     def _check_target_stage(self):
-        #Validación en servidor por si cambian el dominio desde el cliente.
+        # Validación en servidor por si cambian el dominio desde el cliente.
         self.ensure_one()
         lead = self.lead_id
         if not self.target_stage_id:
@@ -47,7 +47,7 @@ class CrmRevertStageWizard(models.TransientModel):
         lead = self.lead_id.sudo()
         old_stage = lead.stage_id
 
-        if old_stage == 'Junta de Aclaración de Dudas':
+        if old_stage.name == 'Junta de Aclaración de Dudas':
             lead.junta_notif_auto_sent = False
             lead.junta_notif_manual_sent = False
             lead.junta_obligatoria = False
@@ -60,7 +60,7 @@ class CrmRevertStageWizard(models.TransientModel):
             lead.junta_acta_name = False
 
         # Mover etapa permitiendo retroceso
-        lead.with_context(allow_stage_revert=True).write({'stage_id': self.target_stage_id.id})
+        lead.write({'stage_id': self.target_stage_id.id})
 
         # Log
         self.env['crm.revert.log'].sudo().create({
