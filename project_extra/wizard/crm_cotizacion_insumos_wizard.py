@@ -22,48 +22,36 @@ class CrmRevertStageWizard(models.TransientModel):
         if not supplier.id:
             raise UserError('No se ha capturado información de contacto')
 
-        if self.lead_id.oc_ids.filtered(lambda u: u.state != 'cancel' and u.type_purchase == 'insumos'):
-            raise UserError('Ya existen Cotizaciones de Insumos generadas.')
+        self.env.cr.execute('''SELECT (case when UPPER(col5) = 'CANTIDAD' then 'col5' else 'col6' end) cantidad, 
+                (case when UPPER(col6) = 'PRECIO' then 'col6' else 'col7' end) precio 
+            FROM crm_input_line ci WHERE ci.id = (select MIN(ID) min_id from crm_input_line ci WHERE ci.lead_id = ''' + str(lead.id) + ')')
+        min_id = self.env.cr.dictfetchall()
 
+        cantidad = min_id[0]['cantidad']
+        precio = min_id[0]['precio']
         sequence = self.env['ir.sequence'].next_by_code('purchase.order')
-
-        
-                
         orders = []
         order_lines = []
         taxes = []
-        fpos = self.env['account.fiscal.position'].with_company(self.company_id)._get_fiscal_position(self.partner_id)
+        fpos = self.env['account.fiscal.position'].with_company(lead.company_id)._get_fiscal_position(supplier)
+        origin = 'Insumos - ' + lead.name
 
         for rec in lead.input_ids.filtered(lambda u: u.input_ex):
+            taxes = rec.input_id.supplier_taxes_id._filter_taxes_by_company(lead.company_id)
             product_id = self.env['product.product'].search([('product_tmpl_id','=',rec.input_id.id)])
+            self.env.cr.execute('SELECT ' + cantidad + '::float qty, ' + precio + '::float importe FROM crm_input_line cil WHERE cil.id = ' + str(rec.id))
+            statement = self.env.cr.dictfetchall()
 
-            statement = ("""SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat,
-                        (CASE WHEN uu.NAME->>'en_US' = 'Service' THEN 'service' ELSE 'consu' END) type, """ + cantidad + ' qty, ' + precio + 
-                        '::float importe FROM crm_input_line cil JOIN uom_uom uu ON (CASE WHEN cil.' + unidad + 
-                        " IN ('%MO', 'PIE TAB') THEN 'pza' ELSE lower(cil." + unidad + """) END) = lower(uu.name->>'en_US') 
-                                JOIN uom_category uc ON uu.CATEGORY_ID = uc.ID 
-                                JOIN product_category pc ON pc.NAME = 'All'
-                    WHERE cil.id = """ + str(rec.id))
+            lines = {'name': product_id.name, 'product_uom': product_id.uom_po_id.id, 'product_id': product_id.id, 'company_id': lead.company_id.id,
+                'partner_id': supplier.id, 'currency_id': product_id.currency_id.id, 'state': 'draft', 'product_qty': statement[0]['qty'], 
+                'price_unit': statement[0]['importe'], 'taxes_id': fpos.map_tax(taxes)}
+            order_lines.append((0, 0, lines))
 
-            taxes = rec.input_id.supplier_taxes_id._filter_taxes_by_company(self.company_id)
-            order_lines.append((0, 0, {
-                'name': product_id.name, 'product_uom': product_id.uom_po_id.id, 'product_id': product_id.id, 'company_id': self.lead_id.id,
-                'partner_id': supplier.id, 'currency_id': product_id.currency_id.id, 'state': 'purchase', 'product_qty': 1, 
-                'price_unit': price, 'taxes_id': fpos.map_tax(taxes) },))
-
-            name = self.origen_id.product_id.name
-
-        raise UserError('Sigo probando....')
-
-        if self.no_licitacion:
-            name += ' ' + self.no_licitacion
-
-        
-        values = {'lead_id': self.id, 'name': sequence, 'partner_id': self.partner_id.id, 'company_id': self.company_id.id, 
-            'currency_id': self.origen_id.product_id.currency_id.id, 'user_id': self.env.uid, 'state': 'purchase', 'invoice_status': 'no', 
-            'type_purchase': 'bases', 'order_line': order_lines}
+        values = {'lead_id': lead.id, 'name': sequence, 'partner_id': supplier.id, 'company_id': lead.company_id.id, 'currency_id': lead.company_id.currency_id.id,
+            'user_id': self.env.uid, 'state': 'draft', 'invoice_status': 'no', 'type_purchase': 'ins', 'origin': origin, 'order_line': order_lines}
         orders.append(values)
         return orders
+
 
     def _create_oc_async(self, oc_vals):
         oc_obj = self.env['purchase.order']
@@ -71,5 +59,8 @@ class CrmRevertStageWizard(models.TransientModel):
         return new_oc
 
     def action_confirm(self):
+        if self.lead_id.oc_ids.filtered(lambda u: u.state != 'cancel' and u.type_purchase == 'ins'):
+            raise UserError('Ya existen Cotizaciones de Insumos generadas.')
+
         for rec in self.supplier_ids:
             oc = self.action_generar_orden(rec)

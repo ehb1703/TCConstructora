@@ -26,14 +26,16 @@
                 <!-- Declinar convocatoria -->
                 <button name="action_decline" type="object" string="Declinar convocatoria" class="btn-danger" groups="project_extra.group_conv_authorizer" invisible="not in_calificado"/>
                 <!-- Regresar etapa (visible solo cuando está en Calificado) -->
-                <button name="action_advance_stage" type="object" string="Avanzar etapa" class="btn-secondary" invisible="stage_name in ('Nuevas Convocatorias')"/>
+                <button name="action_advance_stage" type="object" string="Avanzar etapa" class="btn-secondary" invisible="stage_name in ('Nuevas Convocatorias', 'Fallo', 'Declinado', 'Ganado')"/>
                 <button name="action_revert_stage" type="object" string="Regresar etapa" class="btn-secondary" invisible="stage_name == 'Nuevas Convocatorias'"/>
-                <!-- Perdido: visibles solo en etapa 'Fallo' -->
-                <button name="action_set_lost" type="object" string="Marcar como Perdido" class="btn-secondary" invisible="stage_name != 'Fallo'"/>
             </xpath>
 
-            <xpath expr="//button[@name='action_set_won_rainbowman']" position="replace">
-                <button name="action_set_won_rainbowman" string="Won" type="object" class="oe_highlight" data-hotkey="w" title="Mark as won" invisible="not active or probability == 100 or type == 'lead' or stage_name != 'Fallo'"/>
+            <!--xpath expr="//button[@name='action_set_won_rainbowman']" position="replace">
+                <button name="action_set_won_rainbowman" string="Won" type="object" class="oe_highlight" data-hotkey="w" title="Mark as won" invisible="not active or probability == 100 or type == 'lead' or stage_name != 'Fallo' or fallo_ganado"/>
+            </xpath-->
+
+            <xpath expr="//button[@name='action_set_won_rainbowman']" position="attributes">
+                <attribute name="invisible">1</attribute>
             </xpath>
 
             <xpath expr="//field[@name='stage_id']" position="attributes">
@@ -67,9 +69,17 @@
                     </group>
                 </group>
                 <group string="Criterios de aprobación" invisible="origen_name != 'Público'">
-                    <field name="tipo_obra_ok" readonly="stage_name not in ['Nuevas Convocatorias', 'Declinado']"/>
-                    <field name="dependencia_ok" readonly="stage_name not in ['Nuevas Convocatorias', 'Declinado']"/>
-                    <field name="capital_ok" readonly="stage_name not in ['Nuevas Convocatorias', 'Declinado']"/>
+                    <group>
+                        <group>
+                            <field name="tipo_obra_ok" readonly="stage_name not in ['Nuevas Convocatorias', 'Declinado']"/>
+                        </group>
+                        <group>
+                            <field name="dependencia_ok" readonly="stage_name not in ['Nuevas Convocatorias', 'Declinado']"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="capital_ok" readonly="stage_name not in ['Nuevas Convocatorias', 'Declinado']"/>
+                    </group>
                 </group>
             </xpath>
 
@@ -103,7 +113,6 @@
                                 <field name="bases_supervisor_id" readonly="stage_name != 'Inscripción/Compra de bases'"/>
                                 <field name="bases_cost" string="Importe" readonly="stage_name != 'Inscripción/Compra de bases'"/>
                                 <field name="bases_doc" string="Bases" filename="bases_doc_name" widget="binary" readonly="stage_name != 'Inscripción/Compra de bases'"/>
-                                <field name="oc_ids" widget="many2many_tags" readonly="1"/>
                             </group>
                         </group>
                         <group string="Visita de Obra">
@@ -180,7 +189,93 @@
                             <field name="economico_operativo_id" string="Económico/operativo" readonly="stage_name != 'Asignación de Responsables'"/>
                             <field name="analista_id" string="Analista" readonly="stage_name != 'Asignación de Responsables'"/>
                         </group>
+                        <group string="Junta de Apertura de Propuestas">
+                            <group>
+                                <field name="apertura_obligatoria" readonly="stage_name != 'Junta de Apertura de Propuestas'"/>
+                            </group>
+                            <group invisible="stage_name != 'Junta de Apertura de Propuestas'">
+                                <list editable="bottom">
+                                    <button name="action_send_apertura_reminder" type="object" icon="fa-envelope" string="Enviar" invisible="not apertura_obligatoria"/>
+                                </list>
+                            </group>
+                            <field name="apertura_acta_name" invisible="1"/>
+                            <group>
+                                <field name="apertura_notif_auto_sent" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="apertura_notif_manual_sent" readonly="1"/>
+                            </group>
+                            <group colspan="2" invisible="not apertura_obligatoria">
+                                <field name="apertura_personas_ids" widget="many2many_tags" readonly="stage_name != 'Junta de Apertura de Propuestas'"/>
+                                <field name="apertura_fecha" string="Fecha de junta" readonly="stage_name != 'Junta de Apertura de Propuestas'"/>
+                                <field name="apertura_acta" filename="apertura_acta_name" string="Acta de la junta" widget="binary" readonly="stage_name != 'Junta de Apertura de Propuestas'"/>
+                            </group>
+                        </group>
+                        <group string="Fallo">
+                            <group>
+                                <field name="fallo_ganado" readonly="stage_name != 'Fallo'"/>
+                            </group>
+                            <group>
+                                <list editable="bottom">
+                                    <button name="action_send_fallo_notification" type="object" icon="fa-envelope" string="Enviar" invisible="not fallo_ganado"/>
+                                </list>
+                            </group>
+                            <field name="fallo_acta_name" invisible="1"/>
+                            <group>
+                                <field name="fallo_notif_auto_sent" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="fallo_notif_manual_sent" readonly="1"/>
+                            </group>
+                            <group colspan="2">
+                                <field name="fallo_fecha_publicacion" string="Fecha de publicación" readonly="stage_name != 'Fallo'"/>
+                                <field name="fallo_acta" filename="fallo_acta_name" string="Acta de fallo" readonly="stage_name != 'Fallo'"/>
+                            </group>
+                        </group>
+                        <group string="Ganado">
+                            <field name="contrato_documento_name" invisible="1"/>
+                            <group>
+                                <field name="fecha_limite_firma" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado'"/>
+                                <field name="contrato_firmado" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado'"/>
+                            </group>
+                            <group>
+                                <field name="fecha_firma" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado'"/>
+                            </group>
+                            <group colspan="2">
+                                <field name="contrato_documento" filename="contrato_documento_name" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado'"/>
+                            </group>
+                        </group>
                     </group>
+                </page>
+
+                <page string="Conceptos de Obra">
+                    <group invisible="stage_name != 'Cotización de insumos y trabajos especiales'">
+                        <field name="concept_filename" string="Archivo" invisible="1"/>
+                        <field name="concept_file" widget="binary" filename="concept_filename"/>
+                    </group>
+                    <group invisible="stage_name != 'Cotización de insumos y trabajos especiales'">
+                        <div class="oe_button_box" invisible="concept_file == False">                                    
+                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_concept" string="Cargar" type="object" invisible="concept_ids" confirm="Se agregará el contenido del archivo seleccionado, ¿continuar?"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_genera_partidas" string="Partidas" type="object" invisible="not concept_ids"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_genera_concept" string="Conceptos" type="object" invisible="not concept_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
+                            <button class="oe_stat_button" confirm="¿Está seguro que desea eliminar los registros cargados?" icon="fa-times" name="action_unlink_concept" string="Eliminar Detalle" type="object" invisible="not concept_ids"/>
+                        </div>
+                    </group>
+                    <field name="concept_ids" widget="one2many_list">
+                        <list string="Detalles" delete="0" create="0" edit="0" context="{'default_lead_id': id}">
+                            <field name="col1"/>
+                            <field name="col2"/>
+                            <field name="col3"/>
+                            <field name="col4"/>
+                            <field name="col5"/>
+                            <field name="col6"/>
+                            <field name="col7"/>
+                            <field name="col8"/>
+                            <field name="concept_ex"/>
+                            <field name="account_ex"/>
+                        </list>
+                        <form><p>Información no disponible a través de esta vista</p></form>
+                    </field>
                 </page>
 
                 <page string="Insumos">
@@ -190,10 +285,10 @@
                     </group>
                     <group invisible="stage_name != 'Cotización de insumos y trabajos especiales'">
                         <div class="oe_button_box" invisible="input_file == False">                                    
-                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_registros" string="Cargar" type="object" invisible="input_ids" confirm="Se agregará el contenido del archivo seleccionado, ¿continuar?"/>
-                            <button class="oe_stat_button" icon="fa-upload" name="action_genera_conceptos" string="Insumos" type="object" invisible="not input_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_insumos" string="Cargar" type="object" invisible="input_ids" confirm="Se agregará el contenido del archivo seleccionado, ¿continuar?"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_genera_insumos" string="Insumos" type="object" invisible="not input_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
                             <button class="oe_stat_button" icon="fa-upload" name="action_genera_cotizaciones" string="Cotizaciones" type="object" invisible="not input_ids"/>
-                            <button class="oe_stat_button" confirm="¿Está seguro que desea eliminar los registros cargados?" icon="fa-times" name="action_unlink_details" string="Eliminar Detalle" type="object" invisible="not input_ids"/>
+                            <button class="oe_stat_button" confirm="¿Está seguro que desea eliminar los registros cargados?" icon="fa-times" name="action_unlink_insumos" string="Eliminar Detalle" type="object" invisible="not input_ids"/>
                         </div>
                     </group>
                     <field name="input_ids" widget="one2many_list">
@@ -208,6 +303,20 @@
                             <field name="col8"/>
                             <field name="input_ex"/>
                             <field name="account_ex"/>
+                        </list>
+                        <form><p>Información no disponible a través de esta vista</p></form>
+                    </field>
+                </page>
+
+                <page string="Ordenes de compra">
+                    <field name="oc_ids" widget="one2many_list">
+                        <list string="Ordenes de compra" delete="0" create="0" edit="0" context="{'default_lead_id': id}">
+                            <field name="name"/>
+                            <field name="partner_id"/>
+                            <field name="type_purchase"/>
+                            <field name="amount_untaxed"/>
+                            <field name="amount_total"/>
+                            <field name="state"/>
                         </list>
                         <form><p>Información no disponible a través de esta vista</p></form>
                     </field>
@@ -245,7 +354,7 @@
         <field name="inherit_id" ref="sale_crm.crm_case_form_view_oppor"/>
         <field name="arch" type="xml">
             <xpath expr="//button[@name='action_sale_quotations_new']" position="attributes">
-                <attribute name="invisible">stage_name != 'Propuesta Económica'</attribute>
+                <attribute name="invisible">1</attribute>
             </xpath>
         </field>
     </record>

@@ -85,10 +85,35 @@ class CrmLead(models.Model):
     analista_id = fields.Many2one('crm.analyst', 'Analista', tracking=True)
     economico_operativo_id = fields.Many2one('hr.employee', 'Económico/operativo', tracking=True)
     junta_dudas_notif_auto_sent = fields.Boolean(string='Notif. automática fecha límite dudas enviada',default=False,)
+    # Conceptos de obra
+    concept_ids = fields.One2many('crm.concept.line', 'lead_id', string='Conceptos de trabajo')
+    concept_file = fields.Binary(string='Archivo', attachment=True)
+    concept_filename = fields.Char(string='Nombre del archivo', tracking=True)
     # Insumos
     input_ids = fields.One2many('crm.input.line', 'lead_id', string='Insumos')
-    input_file = fields.Binary(string='Archivo', help='Seleccionar el archivo con el formato correcto para la carga la información.')
+    input_file = fields.Binary(string='Archivo', attachment=True)
     input_filename = fields.Char(string='Nombre del archivo', tracking=True)
+    # Junta de Apertura de Propuestas
+    apertura_obligatoria = fields.Boolean('Asistencia obligatoria')
+    apertura_personas_ids = fields.Many2many('hr.employee', 'crm_lead_apertura_employee_rel', 'lead_id', 'employee_id', 'Personas asignadas')
+    apertura_fecha = fields.Date('Fecha de junta')
+    apertura_acta = fields.Binary('Acta de la junta', attachment=True)
+    apertura_acta_name = fields.Char('Nombre acta de la junta')
+    apertura_notif_auto_sent = fields.Boolean('Notif. automática enviada', default=False)
+    apertura_notif_manual_sent = fields.Boolean('Notif. manual junta enviada', default=False)
+    # Fallo
+    fallo_ganado = fields.Boolean(string='Ganado')
+    fallo_notif_auto_sent = fields.Boolean(string='Notif. automática enviada', default=False)
+    fallo_notif_manual_sent = fields.Boolean(string='Notif. manual junta enviada', default=False)
+    fallo_fecha_publicacion = fields.Date(string='Fecha de publicación')
+    fallo_acta = fields.Binary(string='Acta de fallo', attachment=True)
+    fallo_acta_name = fields.Char(string='Nombre acta de fallo')
+    # Ganado
+    fecha_limite_firma = fields.Date('Fecha límite de firma')
+    fecha_firma = fields.Date('Fecha de firma')
+    contrato_firmado = fields.Boolean('Contrato firmado')
+    contrato_documento = fields.Binary('Contrato', attachment=True)
+    contrato_documento_name = fields.Char('Nombre del contrato')
 
     @api.onchange('origen_id')
     def _compute_bases(self):
@@ -100,7 +125,7 @@ class CrmLead(models.Model):
     def _compute_botones(self):
         for rec in self:
             rec.in_calificado = False
-            if rec.stage_id.name in ('Nuevas Convocatorias', 'Fallo'):
+            if rec.stage_id.name in ('Nuevas Convocatorias', 'Declinado'):
                 if (rec.tipo_obra_ok and rec.dependencia_ok and rec.capital_ok):
                     rec.in_calificado = True
 
@@ -135,9 +160,13 @@ class CrmLead(models.Model):
     def _ensure_stage_is_fallo(self):
         # Asegura que la etapa actual sea 'Fallo' (por nombre).
         self.ensure_one()
+        if self.env.context.get('allow_lost_any_stage'):
+            return
+
         stage_name = (self.stage_id.name or '').strip().lower()
         if stage_name != 'fallo':
             raise UserError(_('Solo puede marcar Perdido en la etapa FALLO.'))
+
 
     def _get_authorizer_emails_from_group(self, grupo):
         # Obtiene correos de los usuarios del grupo project_extra.group_conv_authorizer.
@@ -225,6 +254,73 @@ class CrmLead(models.Model):
         old_stage = self.stage_id
         self._log_stage_change(old_stage, dest_stage, False, 'Declinado')
         self._post_html(_('Declinada por %s.') % self.env.user.display_name, old_stage, dest_stage)
+        
+
+    def write(self, vals):
+        # Detectar cambio de "fallo_ganado" para disparar proceso automático
+        change_fallo = 'fallo_ganado' in vals
+        previous_fallo = {}
+        if change_fallo:
+            for lead in self:
+                previous_fallo[lead.id] = lead.fallo_ganado
+
+        # --- tracking cambios de CONTRATO FIRMADO ---
+        change_contrato = 'contrato_firmado' in vals
+        previous_contrato = {}
+        if change_contrato:
+            for lead in self:
+                previous_contrato[lead.id] = lead.contrato_firmado
+
+        # Escritura real (MUY IMPORTANTE)
+        res = super(CrmLead, self).write(vals)
+
+        # Proceso automático de FALLO "Ganado"
+        if change_fallo:
+            for lead in self:
+                if not previous_fallo.get(lead.id) and lead.fallo_ganado:
+                    # 1) Enviar correo automático
+                    try:
+                        lead._send_fallo_notification(manual=False)
+                    except Exception:
+                        _logger.exception('Error al enviar notificación automática de FALLO GANADO.')
+                    
+                    # 2) Ejecutar proceso estándar de Ganado
+                    try:
+                        lead.action_set_won_rainbowman()
+                    except Exception:
+                        _logger.exception('Error al ejecutar acción de Ganado desde FALLO.')
+
+        # Proceso automático cuando se marca "Contrato firmado"
+        if change_contrato:
+            for lead in self:
+                if not previous_contrato.get(lead.id) and lead.contrato_firmado:
+                    lead._on_contract_signed()
+        return res
+
+
+    def _on_contract_signed(self):
+        # Se ejecuta automáticamente cuando se marca 'contrato_firmado'
+        self.ensure_one()
+
+        if self.stage_name != 'Ganado':
+            return
+
+        if self.fecha_firma > self.fecha_limite_firma:
+            raise UserError(_('La fecha de firma no puede ser mayor a la fecha límite de firma.'))
+
+        _logger.warning(self.order_ids)
+        raise UserError('Pendiente cargar los conceptos de trabajo........')
+
+        # Crear Orden de Venta (Orden de trabajo) si no existe
+        SaleOrder = self.env['sale.order']
+        order_vals = {
+            'partner_id': self.partner_id.id,
+            'origin': self.no_licitacion or self.name,
+            'opportunity_id': self.id,
+            'client_order_ref': _('Orden de trabajo de %s') % (self.name or ''),
+            'state': 'sent'
+        }
+        order = SaleOrder.create(order_vals)
 
     def action_set_lost(self, **kwargs):
         for lead in self:
@@ -309,16 +405,18 @@ class CrmLead(models.Model):
         name = self.origen_id.product_id.name
         if self.no_licitacion:
             name += ' ' + self.no_licitacion
+        origin = 'Base - ' + self.name
 
         order_lines.append((0, 0, {
             'name': name, 'product_uom': self.origen_id.product_id.uom_po_id.id, 'product_id': self.origen_id.product_id.id, 'company_id': self.company_id.id,
             'partner_id': self.partner_id.id, 'currency_id': self.origen_id.product_id.currency_id.id, 'state': 'purchase', 'product_qty': 1, 
             'price_unit': price, 'taxes_id': fpos.map_tax(taxes) },))        
-        values = {'lead_id': self.id, 'name': sequence, 'partner_id': self.partner_id.id, 'company_id': self.company_id.id, 
+        values = {'lead_id': self.id, 'name': sequence, 'partner_id': self.partner_id.id, 'company_id': self.company_id.id, 'origin': origin,
             'currency_id': self.origen_id.product_id.currency_id.id, 'user_id': self.env.uid, 'state': 'purchase', 'invoice_status': 'no', 
             'type_purchase': 'bases', 'order_line': order_lines}
         orders.append(values)
         return orders
+
 
     def _create_oc_async(self, oc_vals):
         oc_obj = self.env['purchase.order']
@@ -394,8 +492,10 @@ class CrmLead(models.Model):
 
         if self.stage_name == 'Visita de Obra':
             correos = self.visita_personas_ids
-        else:
+        elif self.stage_name == 'Junta de Aclaración de Dudas':
             correos = self.junta_personas_ids
+        else:
+            correos = self.apertura_personas_ids
 
         if not correos:
             raise UserError(_('Debe asignar al menos una persona para la %s') % self.stage_name)
@@ -501,6 +601,66 @@ class CrmLead(models.Model):
                 lead.message_post(body=_("Se envió recordatorio de FECHA LÍMITE DE DUDAS a: %s") % correos)
 
 
+    # Enviar recordatorio (plantilla de correo) junta de apertura
+    def _send_apertura_reminder(self, manual=False):
+        template = self.env.ref('project_extra.mail_tmpl_apertura_recordatorio', raise_if_not_found=False)
+        if not template:
+            raise UserError(_('No se encontró la plantilla de correo para recordatorio de junta de apertura de propuestas.'))
+
+        for lead in self:
+            # Solo enviar si es obligatoria y tiene fecha
+            if not (lead.apertura_obligatoria and lead.apertura_fecha):
+                continue
+
+            correos = ', '.join(lead._get_emails())
+            template.send_mail(lead.id, force_send=True, email_values={'email_to': correos})
+            lead.write({'apertura_notif_manual_sent': manual, 'apertura_notif_auto_sent': not manual})
+            lead.message_post(body=_("Se envió recordatorio de junta de apertura de propuestas a: %s") % correos)
+
+
+    # Botón manual “Enviar” junta de apertura
+    def action_send_apertura_reminder(self):
+        # Botón manual para enviar recordatorio de junta de apertura de propuestas.
+        self.ensure_one()
+        if not self.apertura_fecha:
+            raise UserError(_('Debe capturar la fecha de la junta de apertura de propuestas.'))
+        if not self.apertura_personas_ids:
+            raise UserError(_('Debe asignar al menos una persona a la junta de apertura de propuestas.'))
+
+        self._send_apertura_reminder(manual=True)
+
+
+    def _send_fallo_notification(self, manual=False):
+        template = self.env.ref('project_extra.mail_tmpl_fallo_ganado', raise_if_not_found=False)
+        if not template:
+            raise UserError(_('No se encontró la plantilla de correo para fallo GANADO.'))
+
+        for lead in self:
+            # Si quieres forzar que solo se mande en etapa FALLO:
+            if lead.stage_name != 'Fallo':
+                continue
+
+            email_values = {}
+            template.send_mail(lead.id, force_send=True, email_values=email_values)
+            if manual:
+                lead.fallo_notif_manual_sent = True
+            else:
+                lead.fallo_notif_auto_sent = True
+
+            lead.message_post(body=_("Se envió notificación de FALLO GANADO."))
+
+            
+    def action_send_fallo_notification(self):
+        # Botón manual para enviar notificación de FALLO GANADO.
+        self.ensure_one()
+
+        if not self.fallo_ganado:
+            raise UserError(_('Debe marcar la casilla "Ganado" antes de enviar la notificación.'))
+
+        # Usamos el helper genérico para enviar el correo
+        self._send_fallo_notification(manual=True)
+
+        
     @api.model
     def cron_send_visita_reminders(self):
         # Cron: envía recordatorio un día antes de la fecha de visita.
@@ -511,7 +671,8 @@ class CrmLead(models.Model):
         leads = self.search(domain)
         for rec in leads:
             rec._send_visita_reminder(manual=False)
-            
+
+
     @api.model
     def cron_send_junta_reminders(self):
         # Cron: envía recordatorio un día antes de la Junta de Aclaración de Dudas.
@@ -536,7 +697,7 @@ class CrmLead(models.Model):
         for rec in leads:
             rec._send_junta_dudas_deadline_reminder()            
 
-    def action_cargar_registros(self):
+    def action_cargar_insumos(self):
         for record in self:
             if not record.input_file:
                 raise ValidationError('Seleccione un archivo para cargar.')
@@ -546,11 +707,12 @@ class CrmLead(models.Model):
 
             filename, file_extension = os.path.splitext(record.input_filename)
             if file_extension in ['.xlsx', '.xls', '.xlsm']:
-                record.__leer_carga_archivo()
+                record.__leer_carga_insumos()
             else:
                 raise ValidationError('Seleccione un archivo tipo xlsx, xls, xlsm')
 
-    def __leer_carga_archivo(self):
+
+    def __leer_carga_insumos(self):
         for record in self:
             file = tempfile.NamedTemporaryFile(suffix=".xlsx")
             file.write(binascii.a2b_base64(record.input_file))
@@ -598,15 +760,16 @@ class CrmLead(models.Model):
 
             record.write({'input_ids': registros})
 
-    def action_genera_conceptos(self):
+
+    def action_genera_insumos(self):
         self.env.cr.execute('SELECT col1, COUNT(*) num FROM crm_input_line WHERE lead_id = ' + str(self.id) + ' GROUP BY 1 HAVING COUNT(*) > 1')
         duplicado = self.env.cr.dictfetchall()
         if duplicado:
             raise UserError('Existen conceptos repetidos favor de revisar el archivo.')
 
-        self.env.cr.execute('''SELECT MIN(ID) min_id, (case when UPPER(col3) = 'UNIDAD' then 'col3' else 'col5' end) unidad, 
+        self.env.cr.execute('''SELECT ID min_id, (case when UPPER(col3) = 'UNIDAD' then 'col3' else 'col5' end) unidad, 
                 (case when UPPER(col5) = 'CANTIDAD' then 'col5' else 'col6' end) cantidad, (case when UPPER(col6) = 'PRECIO' then 'col6' else 'col7' end) precio 
-            FROM crm_input_line ci WHERE ci.lead_id = ''' + str(self.id))
+            FROM crm_input_line ci WHERE ci.id = (select MIN(ID) min_id from crm_input_line ci WHERE ci.lead_id = ''' + str(self.id) + ')')
         min_id = self.env.cr.dictfetchall()
 
         unidad = min_id[0]['unidad']
@@ -631,13 +794,12 @@ class CrmLead(models.Model):
                 _logger.warning('Titulos')
             else:
                 statement = ("""SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat,
-                        (CASE WHEN uu.NAME->>'en_US' = 'Service' THEN 'service' ELSE 'consu' END) type, """ + cantidad + ' qty, ' + precio + 
+                        (CASE WHEN uc.NAME->>'en_US' = 'Service' THEN 'service' ELSE 'consu' END) type, """ + cantidad + ' qty, ' + precio + 
                         '::float importe FROM crm_input_line cil JOIN uom_uom uu ON (CASE WHEN cil.' + unidad + 
-                        " IN ('%MO', 'PIE TAB') THEN 'pza' ELSE lower(cil." + unidad + """) END) = lower(uu.name->>'en_US') 
+                        " IN ('%MO', 'PIE TAB', '%') THEN 'pza' ELSE lower(cil." + unidad + """) END) = lower(uu.name->>'en_US') 
                                 JOIN uom_category uc ON uu.CATEGORY_ID = uc.ID 
                                 JOIN product_category pc ON pc.NAME = 'All'
                     WHERE cil.id = """ + str(rec.id))
-                #_logger.warning(statement)
                 self.env.cr.execute(statement)
                 info = self.env.cr.dictfetchall()
                 if info:                
@@ -665,7 +827,142 @@ class CrmLead(models.Model):
             'context': {'default_lead_id': self.id}}
 
 
-    def action_unlink_details(self):
+    def action_unlink_insumos(self):
+        for record in self:
+            record.input_ids.unlink()
+
+    def action_cargar_concept(self):
+        for record in self:
+            if not record.input_file:
+                raise ValidationError('Seleccione un archivo para cargar.')
+
+            if record.input_file and record.input_ids:
+                raise ValidationError('Ya hay información cargada. En caso de ser necesario volver a cargar debe eliminarlos.')
+
+            filename, file_extension = os.path.splitext(record.input_filename)
+            if file_extension in ['.xlsx', '.xls', '.xlsm']:
+                record.__leer_carga_concept()
+            else:
+                raise ValidationError('Seleccione un archivo tipo xlsx, xls, xlsm')
+
+
+    def __leer_carga_concept(self):
+        for record in self:
+            file = tempfile.NamedTemporaryFile(suffix=".xlsx")
+            file.write(binascii.a2b_base64(record.input_file))
+            file.seek(0)
+            xlsx_file = file.name
+            
+            wb = openpyxl.load_workbook(filename=xlsx_file, data_only=True)
+            sheets = wb.sheetnames
+            sheet_name = sheets[0]
+            sheet = wb[sheet_name]
+            registros = []
+            cargar = False
+            for row in sheet.iter_rows(values_only=True):
+                col1 = str(row[0]).strip()
+                col2 = str(row[1]).strip()
+                col3 = str(row[2]).strip()
+                col4 = str(row[3]).strip()
+                col5 = str(row[4]).strip()
+                col6 = str(row[5]).strip()
+                col7 = str(row[6]).strip()
+                col8 = str(row[7]).strip()
+                if col1 == 'None':
+                    col1 = ''
+                if col2 == 'None':
+                    col2 = ''
+                if col3 == 'None':
+                    col3 = ''
+                if col4 == 'None':
+                    col4 = ''
+                if col5 == 'None':
+                    col5 = ''
+                if col6 == 'None':
+                    col6 = ''
+                if col7 == 'None':
+                    col7 = ''
+                if col8 == 'None':
+                    col8 = ''
+                if col1.upper() == 'CÓDIGO':
+                    cargar = True
+
+                if cargar:
+                    if col1 != '' and col8 != '':
+                        registro = {'col1': col1, 'col2': col2, 'col3': col3, 'col4': col4, 'col5': col5, 'col6': col6, 'col7': col7, 'col8': col8}
+                        registros.append((0, 0, registro))
+
+            record.write({'input_ids': registros})
+
+
+    def action_genera_concept(self):
+        self.env.cr.execute('SELECT col1, COUNT(*) num FROM crm_input_line WHERE lead_id = ' + str(self.id) + ' GROUP BY 1 HAVING COUNT(*) > 1')
+        duplicado = self.env.cr.dictfetchall()
+        if duplicado:
+            raise UserError('Existen conceptos repetidos favor de revisar el archivo.')
+
+        self.env.cr.execute('''SELECT ID min_id, (case when UPPER(col3) = 'UNIDAD' then 'col3' else 'col5' end) unidad, 
+                (case when UPPER(col5) = 'CANTIDAD' then 'col5' else 'col6' end) cantidad, (case when UPPER(col6) = 'PRECIO' then 'col6' else 'col7' end) precio 
+            FROM crm_input_line ci WHERE ci.id = (select MIN(ID) min_id from crm_input_line ci WHERE ci.lead_id = ''' + str(self.id) + ')')
+        min_id = self.env.cr.dictfetchall()
+
+        unidad = min_id[0]['unidad']
+        cantidad = min_id[0]['cantidad']
+        precio = min_id[0]['precio']
+
+        self.env.cr.execute('''UPDATE crm_input_line cil SET input_ex = True, input_id = t1.IDCOD
+            FROM (SELECT cil.id, TRIM(cil.col1) code, MIN(pt.ID) idcod, COUNT(pt.id) num 
+                    FROM crm_input_line cil LEFT JOIN product_template pt ON TRIM(cil.col1) = pt.default_code 
+                   WHERE cil.LEAD_ID = ''' + str(self.id) + ' and cil.id != ' + str(min_id[0]['min_id']) + ''' AND cil.input_ex = False GROUP BY 1, 2) as t1
+            WHERE cil.id = t1.id AND t1.num != 0;
+            UPDATE crm_input_line cil SET account_ex = true
+            FROM (SELECT cil.id, TRIM(cil.col1) code, COUNT(pt.property_account_expense_id) num 
+                    FROM crm_input_line cil JOIN product_template pt ON TRIM(cil.col1) = pt.default_code 
+                   WHERE cil.LEAD_ID = ''' + str(self.id) + ' AND cil.id != ' + str(min_id[0]['min_id']) + ''' AND pt.property_account_expense_id IS NOT NULL
+                   GROUP BY 1, 2) as t1
+            WHERE cil.id = t1.id; ''')
+
+        iva = self.env['account.tax'].search([('name','=','16%'),('type_tax_use','=','purchase')])
+        for rec in self.input_ids.filtered(lambda u: not u.input_ex):
+            if rec.id == min_id[0]['min_id']:
+                _logger.warning('Titulos')
+            else:
+                statement = ("""SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat,
+                        (CASE WHEN uc.NAME->>'en_US' = 'Service' THEN 'service' ELSE 'consu' END) type, """ + cantidad + ' qty, ' + precio + 
+                        '::float importe FROM crm_input_line cil JOIN uom_uom uu ON (CASE WHEN cil.' + unidad + 
+                        " IN ('%MO', 'PIE TAB', '%') THEN 'pza' ELSE lower(cil." + unidad + """) END) = lower(uu.name->>'en_US') 
+                                JOIN uom_category uc ON uu.CATEGORY_ID = uc.ID 
+                                JOIN product_category pc ON pc.NAME = 'All'
+                    WHERE cil.id = """ + str(rec.id))
+                _logger.warning(statement)
+                self.env.cr.execute(statement)
+                info = self.env.cr.dictfetchall()
+                if info:                
+                    insumo = self.env['product.template'].create({'purchase_ok': True, 'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'],
+                        'uom_po_id': info[0]['uom'], 'type': info[0]['type'], 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': True,
+                        'sale_ok': False, 'supplier_taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'active': True,})
+                    rec.write({'input_ex': True, 'input_id': insumo.id})
+
+
+    def action_genera_partidas(self):
+        self.ensure_one()
+        count = len(self.input_ids.filtered(lambda u: not u.input_ex))
+        if count != 1:
+            raise UserError('Existen insumos sin cargar, revise la información.')
+
+        count = len(self.input_ids.filtered(lambda u: not u.account_ex))
+        if count != 1:
+            raise UserError('Los insumos cargados no cuentan con la información contable. Favor de contactar con el área correspondiente')
+
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'crm.cotizacion.insumos.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_lead_id': self.id}}
+
+
+    def action_unlink_concept(self):
         for record in self:
             record.input_ids.unlink()
 
@@ -685,4 +982,22 @@ class crmInputsLine(models.Model):
     col8 = fields.Char(string='Columna 8')
     input_ex = fields.Boolean(string='Insumo cargado', default=False)
     input_id = fields.Many2one(comodel_name='product.template', string='Concepto de cobro')
+    account_ex = fields.Boolean(string='Cuenta relacionada', default=False)
+
+
+class crmConceptLine(models.Model):
+    _name = 'crm.concept.line'
+    _description = 'Conceptos de trabajo'
+    
+    lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportudidad', readonly=True)
+    col1 = fields.Char(string='Columna 1')
+    col2 = fields.Char(string='Columna 2')
+    col3 = fields.Char(string='Columna 3')
+    col4 = fields.Char(string='Columna 4')
+    col5 = fields.Char(string='Columna 5')
+    col6 = fields.Char(string='Columna 6')
+    col7 = fields.Char(string='Columna 7')
+    col8 = fields.Char(string='Columna 8')
+    concept_ex = fields.Boolean(string='Concepto cargado', default=False)
+    concept_id = fields.Many2one(comodel_name='product.template', string='Concepto de cobro')
     account_ex = fields.Boolean(string='Cuenta relacionada', default=False)
