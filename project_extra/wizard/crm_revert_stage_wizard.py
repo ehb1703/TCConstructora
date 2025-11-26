@@ -59,10 +59,25 @@ class CrmRevertStageWizard(models.TransientModel):
             lead.junta_acta = False
             lead.junta_acta_name = False
 
-        # Mover etapa permitiendo retroceso
+        if old_stage.name == 'Junta de Apertura de Propuestas':
+            lead.apertura_obligatoria = False
+            lead.apertura_personas_ids = [(5, 0, 0)]
+            lead.apertura_fecha = False
+            lead.apertura_acta = False
+            lead.apertura_acta_name = False
+            lead.apertura_notif_auto_sent = False
+            lead.apertura_notif_manual_sent = False
+
+        if old_stage.name == 'Fallo':
+            lead.fallo_ganado = False
+            lead.fallo_notif_auto_sent = False
+            lead.fallo_notif_manual_sent = False
+            lead.fallo_fecha_publicacion = False
+            lead.fallo_acta = False
+            lead.fallo_acta_name = False
+
         lead.write({'stage_id': self.target_stage_id.id})
 
-        # Log
         self.env['crm.revert.log'].sudo().create({
             'lead_id': lead.id,
             'user_id': self.env.user.id,
