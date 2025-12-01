@@ -28,11 +28,8 @@
                 <!-- Regresar etapa (visible solo cuando está en Calificado) -->
                 <button name="action_advance_stage" type="object" string="Avanzar etapa" class="btn-secondary" invisible="stage_name in ('Nuevas Convocatorias', 'Fallo', 'Declinado', 'Ganado')"/>
                 <button name="action_revert_stage" type="object" string="Regresar etapa" class="btn-secondary" invisible="stage_name == 'Nuevas Convocatorias'"/>
+                <button name="action_genera_ordentrabajo" type="object" string="Orden de trabajo" class="btn-secondary" invisible="stage_name != 'Ganado'"/>
             </xpath>
-
-            <!--xpath expr="//button[@name='action_set_won_rainbowman']" position="replace">
-                <button name="action_set_won_rainbowman" string="Won" type="object" class="oe_highlight" data-hotkey="w" title="Mark as won" invisible="not active or probability == 100 or type == 'lead' or stage_name != 'Fallo' or fallo_ganado"/>
-            </xpath-->
 
             <xpath expr="//button[@name='action_set_won_rainbowman']" position="attributes">
                 <attribute name="invisible">1</attribute>
@@ -206,9 +203,9 @@
                                 <field name="apertura_notif_manual_sent" readonly="1"/>
                             </group>
                             <group colspan="2" invisible="not apertura_obligatoria">
-                                <field name="apertura_personas_ids" widget="many2many_tags" readonly="stage_name != 'Junta de Apertura de Propuestas'"/>
-                                <field name="apertura_fecha" string="Fecha de junta" readonly="stage_name != 'Junta de Apertura de Propuestas'"/>
-                                <field name="apertura_acta" filename="apertura_acta_name" string="Acta de la junta" widget="binary" readonly="stage_name != 'Junta de Apertura de Propuestas'"/>
+                                <field name="apertura_personas_ids" widget="many2many_tags" readonly="stage_name != 'Junta de Apertura de Propuestas'" required="apertura_obligatoria"/>
+                                <field name="apertura_fecha" string="Fecha de junta" readonly="stage_name != 'Junta de Apertura de Propuestas'" required="apertura_obligatoria"/>
+                                <field name="apertura_acta" filename="apertura_acta_name" string="Acta de la junta" widget="binary" readonly="stage_name != 'Junta de Apertura de Propuestas'" required="apertura_obligatoria"/>
                             </group>
                         </group>
                         <group string="Fallo">
@@ -228,21 +225,21 @@
                                 <field name="fallo_notif_manual_sent" readonly="1"/>
                             </group>
                             <group colspan="2">
-                                <field name="fallo_fecha_publicacion" string="Fecha de publicación" readonly="stage_name != 'Fallo'"/>
-                                <field name="fallo_acta" filename="fallo_acta_name" string="Acta de fallo" readonly="stage_name != 'Fallo'"/>
+                                <field name="fallo_fecha_publicacion" string="Fecha de publicación" readonly="stage_name != 'Fallo'" required="stage_name == 'Fallo'"/>
+                                <field name="fallo_acta" filename="fallo_acta_name" string="Acta de fallo" readonly="stage_name != 'Fallo'" required="stage_name == 'Fallo'"/>
                             </group>
                         </group>
                         <group string="Ganado">
                             <field name="contrato_documento_name" invisible="1"/>
                             <group>
                                 <field name="fecha_limite_firma" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado'"/>
-                                <field name="contrato_firmado" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado'"/>
+                                <field name="contrato_firmado" readonly="stage_name != 'Ganado'"/>
                             </group>
                             <group>
-                                <field name="fecha_firma" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado'"/>
+                                <field name="fecha_firma" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado' and contrato_firmado"/>
                             </group>
                             <group colspan="2">
-                                <field name="contrato_documento" filename="contrato_documento_name" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado'"/>
+                                <field name="contrato_documento" filename="contrato_documento_name" readonly="stage_name != 'Ganado'"/>
                             </group>
                         </group>
                     </group>
@@ -261,21 +258,32 @@
                             <button class="oe_stat_button" confirm="¿Está seguro que desea eliminar los registros cargados?" icon="fa-times" name="action_unlink_concept" string="Eliminar Detalle" type="object" invisible="not concept_ids"/>
                         </div>
                     </group>
-                    <field name="concept_ids" widget="one2many_list">
-                        <list string="Detalles" delete="0" create="0" edit="0" context="{'default_lead_id': id}">
-                            <field name="col1"/>
-                            <field name="col2"/>
-                            <field name="col3"/>
-                            <field name="col4"/>
-                            <field name="col5"/>
-                            <field name="col6"/>
-                            <field name="col7"/>
-                            <field name="col8"/>
-                            <field name="concept_ex"/>
-                            <field name="account_ex"/>
-                        </list>
-                        <form><p>Información no disponible a través de esta vista</p></form>
-                    </field>
+                    <group>
+                        <group string="Partidas presupuestales">
+                            <field name="budget_ids" nolabel="1" widget="one2many_list">                        
+                                <list delete="0" create="0" edit="0" context="{'default_lead_id': id}">
+                                    <field name="col1"/>
+                                    <field name="col2"/>
+                                    <field name="budget_id"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
+                            </field>
+                        </group>
+                        <group string="Conceptos de trabajo">
+                            <field name="concept_ids" nolabel="1" widget="one2many_list">                        
+                                <list delete="0" create="0" edit="0" context="{'default_lead_id': id}">
+                                    <field name="col1"/>
+                                    <field name="col2"/>
+                                    <field name="col3"/>
+                                    <field name="col4"/>
+                                    <field name="col5"/>
+                                    <field name="concept_ex"/>
+                                    <field name="account_ex"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
+                            </field>
+                        </group>
+                    </group>
                 </page>
 
                 <page string="Insumos">
@@ -320,6 +328,52 @@
                         </list>
                         <form><p>Información no disponible a través de esta vista</p></form>
                     </field>
+                </page>
+
+                <page string="Propuesta Técnica" name="pt_docs">
+                    <button name="action_open_attachments" type="object" class="oe_stat_button" icon="fa-folder-open">
+                        <field name="documents_count" widget="statinfo" string="Documentos"/>
+                    </button>
+                    <group string="Documentos Requeridos">
+                        <field name="pt_doc_line_ids" nolabel="1">
+                            <list editable="bottom" delete="0">
+                                <field name="docto_id" string="Documento" readonly="1" options="{'no_open': True, 'no_create': True}"/>
+                                <field name="generado" string="¿Generado?"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Revisiones">
+                        <field name="pt_revision_ids" nolabel="1">
+                            <list editable="bottom" delete="0" create="0">
+                                <field name="fecha_revision"/>
+                                <field name="employee_id" string="Revisor" options="{'no_create': True, 'no_edit': True}"/>
+                                <field name="revisado" widget="boolean_toggle"/>
+                            </list>
+                        </field>
+                    </group>
+                </page>
+
+                <page string="Propuesta Económica" name="pe_docs">
+                    <button name="action_open_attachments" type="object" class="oe_stat_button" icon="fa-folder-open">
+                        <field name="documents_count" widget="statinfo" string="Documentos"/>
+                    </button>
+                    <group string="Documentos Requeridos">
+                        <field name="pe_doc_line_ids" nolabel="1">
+                            <list editable="bottom" delete="0" create="0">
+                                <field name="docto_id" string="Documento" readonly="1" options="{'no_open': True, 'no_create': True}"/>
+                                <field name="generado" string="¿Generado?"/>
+                            </list>
+                        </field>
+                    </group>                    
+                    <group string="Revisiones">
+                        <field name="pe_revision_ids" nolabel="1">
+                            <list editable="bottom">
+                                <field name="fecha_revision"/>
+                                <field name="employee_id" string="Revisor" options="{'no_create': True, 'no_edit': True}"/>
+                                <field name="revisado" widget="boolean_toggle"/>
+                            </list>
+                        </field>
+                    </group>
                 </page>
 
                 <page string="Bitácora">

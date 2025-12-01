@@ -20,11 +20,19 @@
                         <li><b>Fecha convocatoria: </b><t t-if="object.fecha_convocatoria"><t t-out="object.fecha_convocatoria"></t></t></li>
                         <li><b>Fecha límite inscripción: </b><t t-if="object.fecha_limite_inscripcion"><t t-out="object.fecha_limite_inscripcion"></t></t></li>
                     </ul>
-                    <p>
-                        Abrir en la Aplicación:
-                        <a t-att-href="'%s/web#id=%s&amp;model=crm.lead&amp;view_type=form' % (object.get_base_url(), object.id)"
-                        style="color:#1A73E8; text-decoration:none;" target="_blank" rel="noopener">Ver convocatoria</a>
-                    </p>
+                    <table align="center">
+                        <tr>
+                            <td>
+                                <a t-att-href="'%s/project_extra/bases/%s/authorize' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#28a745; color:#fff; border-radius:4px; text-decoration:none;font-size:12px;"> Autorizar </a>
+                            </td>
+                            <td>
+                                <a t-att-href="'%s/project_extra/bases/%s/decline' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#dc3545; color:#fff; border-radius:4px; text-decoration:none; font-size:12px;"> Declinar </a>
+                            </td>
+                            <td>
+                                <a t-att-href="'%s/web#id=%s&amp;model=crm.lead&amp;view_type=form' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#6c757d; color:#fff; border-radius:4px; text-decoration:none; font-size:12px;"> Ver </a>
+                            </td>
+                        </tr>
+                    </table>
                     <p>Enviado automáticamente por el Sistema.</p>
                 </div>
             </field>
@@ -48,10 +56,19 @@
                         <li><b>Fecha convocatoria: </b><t t-if="object.fecha_convocatoria"><t t-out="object.fecha_convocatoria"></t></t></li>
                         <li><b>Fecha límite inscripción: </b><t t-if="object.fecha_limite_inscripcion"><t t-out="object.fecha_limite_inscripcion"></t></t></li>
                     </ul>
-                    <p>
-                        Abrir en la Aplicación:
-                        <a t-att-href="'%s/web#id=%s&amp;model=crm.lead&amp;view_type=form' % (object.get_base_url(), object.id)" style="color:#1A73E8; text-decoration:none;" target="_blank" rel="noopener">Ver información</a>
-                    </p>
+                    <table align="center">
+                        <tr>
+                            <td>
+                                <a t-att-href="'%s/project_extra/bases/%s/authorize' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#28a745; color:#fff; border-radius:4px; text-decoration:none; font-size:12px;"> Autorizar </a>
+                            </td>
+                            <td>
+                                <a t-att-href="'%s/project_extra/bases/%s/decline' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#dc3545; color:#fff; border-radius:4px; text-decoration:none; font-size:12px;"> Declinar </a>
+                            </td>
+                            <td>
+                                <a t-att-href="'%s/web#id=%s&amp;model=crm.lead&amp;view_type=form' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#6c757d; color:#fff; border-radius:4px; text-decoration:none; font-size:12px;"> Ver </a>
+                            </td>
+                        </tr>
+                    </table>
                     <p>Enviado automáticamente por el Sistema.</p>
                 </div>
             </field>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_product_budget_item" model="ir.actions.act_window">
+        <field name="name">Partida Presupuestal</field>
+        <field name="res_model">product.budget.item</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_product_budget_item_list" model="ir.ui.view">
+        <field name="name">view.product.budget.item.list</field>
+        <field name="model">product.budget.item</field>
+        <field name="priority">1</field>
+        <field name="arch" type="xml">
+            <list string="Partida Presupuestal">
+                <field name="parent_id"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="level"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_product_budget_item_from" model="ir.ui.view">
+        <field name="name">view.product.budget.item.from</field>
+        <field name="model">product.budget.item</field>
+        <field name="arch" type="xml">
+            <form string="Partida Presupuestal" delete="0" duplicate="0">
+                <sheet>
+                    <group>
+                        <field name="level"/>
+                        <field name="parent_id" required="level != 1"/>
+                        <field name="code"/>
+                        <field name="name"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_product_budget_main" name="Partida Presupuestal" action="action_product_budget_item" parent="sale.product_menu_catalog" groups="sales_team.group_sale_salesman" sequence="40"/>
+
+</odoo>

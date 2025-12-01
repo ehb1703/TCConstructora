@@ -178,7 +178,6 @@ class CrmRevertReason(models.Model):
         string='Tipo', default='rt')
     active = fields.Boolean(default=True)
 
-
 class crmStageTypeBills(models.Model):
     _inherit = 'crm.stage'
     

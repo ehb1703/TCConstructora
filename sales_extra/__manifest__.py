@@ -12,7 +12,9 @@ Personalización de catálogos
     'category': 'Sales/Sales',
     'depends': ['base', 'product'],
     'data': [
+        'security/ir.model.access.csv',
         'views/product_views.xml',
+        'views/sale_catalog_views.xml',
     ],        
     'license': 'LGPL-3',
     'installable': True,
