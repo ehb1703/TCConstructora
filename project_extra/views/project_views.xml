@@ -67,7 +67,7 @@
                 </page>
                 <page string="Documentos">
                     <br/>
-                    <button name="cargar_docs" string="Documentos" icon="fa-archive" class="btn-primary" type="object" invisible="stage_id != 1"/>
+                    <button name="cargar_docs" string="Documentos" icon="fa-archive" class="btn-primary" type="object"/>
                     <field name="documentos_ids" create="0" delete="0">
                         <list decoration-success="requerido == True" decoration-bf="filename != False" editable="bottom" create="0" delete="0">
                             <field name="requerido" readonly="1"/>

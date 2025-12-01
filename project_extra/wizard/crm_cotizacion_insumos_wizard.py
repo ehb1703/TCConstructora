@@ -5,7 +5,7 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
-class CrmRevertStageWizard(models.TransientModel):
+class CrmCotizacionInsumoseWizard(models.TransientModel):
     _name = 'crm.cotizacion.insumos.wizard'
     _description = 'Generación de cotización para insumos'
 

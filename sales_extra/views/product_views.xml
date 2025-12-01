@@ -8,6 +8,7 @@
         <field name="arch" type="xml">
             <xpath expr="//form/sheet/notebook/page[@name='general_information']/group/group[@name='group_general']/field[@name='product_tooltip']" position="after">
                 <field name="type_supply"/>
+                <field name="budget_id" invisible="not sale_ok"/>
             </xpath>
         </field>
     </record>

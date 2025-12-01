@@ -30,3 +30,8 @@ access_revert_stage_user,access_revert_stage_user,model_crm_revert_stage_wizard,
 access_crm_cotizacion_insumos_wizard,access_crm_cotizacion_insumos_wizard,model_crm_cotizacion_insumos_wizard,,1,1,1,1
 access_crm_input_line,access_crm_input_line,model_crm_input_line,,1,1,1,1
 access_crm_concept_line,access_crm_concept_line,model_crm_concept_line,,1,1,1,1
+access_crm_budget_line,access_crm_budget_line,model_crm_budget_line,,1,1,1,1
+access_crm_propuesta_tecnica_doc,access_crm_propuesta_tecnica_doc,model_crm_propuesta_tecnica_doc,,1,1,1,1
+access_crm_propuesta_tecnica_revision,access_crm_propuesta_tecnica_revision,model_crm_propuesta_tecnica_revision,,1,1,1,1
+access_crm_propuesta_economica_doc,crm.propuesta.economica.doc,model_crm_propuesta_economica_doc,base.group_user,1,1,1,1
+access_crm_propuesta_economica_revision,crm.propuesta.economica.revision,model_crm_propuesta_economica_revision,base.group_user,1,1,1,1

@@ -76,6 +76,16 @@ class CrmRevertStageWizard(models.TransientModel):
             lead.fallo_acta = False
             lead.fallo_acta_name = False
 
+        if old_stage.name == 'Ganado':
+            count = len(lead.order_ids.filtered(lambda u: u.state not in ('cancel', 'draft', 'sent')))
+            if count != 0:
+                raise UserError('Existen ordenes de trabajo pendientes, favor de revisar si no deben de ser canceladas para hacer esta acción')
+            
+            lead.fecha_limite_firma = False
+            lead.contrato_firmado = False
+            lead.fecha_firma = False
+            lead.contrato_documento = False
+        
         lead.write({'stage_id': self.target_stage_id.id})
 
         self.env['crm.revert.log'].sudo().create({

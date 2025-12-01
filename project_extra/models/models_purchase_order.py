@@ -2,7 +2,7 @@
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-class purchaseCRMLEAD(models.Model):
+class purchaseOrderInherit(models.Model):
     _inherit = 'purchase.order'
 
     lead_id = fields.Many2one('crm.lead', string='Oportunidad')

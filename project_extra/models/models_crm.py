@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tools import html_escape
 from markupsafe import Markup
 from dateutil.relativedelta import relativedelta
@@ -87,6 +87,7 @@ class CrmLead(models.Model):
     junta_dudas_notif_auto_sent = fields.Boolean(string='Notif. automática fecha límite dudas enviada',default=False,)
     # Conceptos de obra
     concept_ids = fields.One2many('crm.concept.line', 'lead_id', string='Conceptos de trabajo')
+    budget_ids = fields.One2many('crm.budget.line', 'lead_id', string='Partidas presupestales')
     concept_file = fields.Binary(string='Archivo', attachment=True)
     concept_filename = fields.Char(string='Nombre del archivo', tracking=True)
     # Insumos
@@ -114,6 +115,14 @@ class CrmLead(models.Model):
     contrato_firmado = fields.Boolean('Contrato firmado')
     contrato_documento = fields.Binary('Contrato', attachment=True)
     contrato_documento_name = fields.Char('Nombre del contrato')
+    #Propuesta Técnica
+    documents_folder_id = fields.Many2one('documents.document', string="Folder", copy=False,
+        domain="[('type', '=', 'folder'), ('shortcut_document_id', '=', False), '|', ('company_id', '=', False), ('company_id', '=', company_id)]",)
+    documents_count = fields.Integer('Documentos', compute='_compute_documents_count', readonly=True)
+    pt_doc_line_ids = fields.One2many('crm.propuesta.tecnica.doc', 'lead_id', string='Documentos Propuesta Técnica')
+    pt_revision_ids = fields.One2many('crm.propuesta.tecnica.revision', 'lead_id', string='Revisiones Propuesta Técnica')
+    pe_doc_line_ids = fields.One2many('crm.propuesta.economica.doc', 'lead_id', string='Documentos Propuesta Económica')
+    pe_revision_ids = fields.One2many('crm.propuesta.economica.revision', 'lead_id', string='Revisiones Propuesta Económica')
 
     @api.onchange('origen_id')
     def _compute_bases(self):
@@ -139,6 +148,11 @@ class CrmLead(models.Model):
     def _compute_name_stage(self):
         for record in self:
             record.stage_name = record.stage_id.name
+
+    @api.depends('pe_doc_line_ids')  # Ahora depende de los documentos
+    def _compute_documents_count(self):
+        for lead in self:
+            lead.documents_count = lead.env['documents.document'].search_count([('name', '=', self.no_licitacion)])
 
     # ---------- Helpers ----------
     def _get_stage_by_name(self, name):
@@ -264,94 +278,133 @@ class CrmLead(models.Model):
             for lead in self:
                 previous_fallo[lead.id] = lead.fallo_ganado
 
-        # --- tracking cambios de CONTRATO FIRMADO ---
-        change_contrato = 'contrato_firmado' in vals
-        previous_contrato = {}
-        if change_contrato:
-            for lead in self:
-                previous_contrato[lead.id] = lead.contrato_firmado
+        # Cambios de documentos
+        change_pt_docs = 'ptdcto_ids' in vals
+        change_pe_docs = 'pedcto_ids' in vals
 
-        # Escritura real (MUY IMPORTANTE)
         res = super(CrmLead, self).write(vals)
 
         # Proceso automático de FALLO "Ganado"
         if change_fallo:
             for lead in self:
                 if not previous_fallo.get(lead.id) and lead.fallo_ganado:
-                    # 1) Enviar correo automático
-                    try:
-                        lead._send_fallo_notification(manual=False)
-                    except Exception:
-                        _logger.exception('Error al enviar notificación automática de FALLO GANADO.')
-                    
-                    # 2) Ejecutar proceso estándar de Ganado
-                    try:
-                        lead.action_set_won_rainbowman()
-                    except Exception:
-                        _logger.exception('Error al ejecutar acción de Ganado desde FALLO.')
+                    lead._send_fallo_notification(manual=False)
+                    lead.action_set_won_rainbowman()
 
-        # Proceso automático cuando se marca "Contrato firmado"
-        if change_contrato:
+        # Sincronizar documentos de Propuesta Técnica
+        if change_pt_docs:
             for lead in self:
-                if not previous_contrato.get(lead.id) and lead.contrato_firmado:
-                    lead._on_contract_signed()
+                lead._sync_pt_doc_lines()
+
+        if change_pe_docs:
+            for lead in self:
+                lead._sync_pe_doc_lines()
         return res
 
+    def _sync_pe_doc_lines(self):
+        # Sincroniza la tabla de Propuesta Económica con los documentos seleccionados en pedcto_ids.
+        DocLine = self.env['crm.propuesta.economica.doc']
+        for lead in self:
+            docs = lead.pedcto_ids
+            existing_by_doc = {line.docto_id.id: line for line in lead.pe_doc_line_ids}
+            wanted_ids = set(docs.ids)
 
-    def _on_contract_signed(self):
-        # Se ejecuta automáticamente cuando se marca 'contrato_firmado'
-        self.ensure_one()
+            # Crear líneas nuevas para documentos que faltan
+            for doc in docs:
+                if doc.id not in existing_by_doc:
+                    DocLine.create({'lead_id': lead.id, 'docto_id': doc.id})
 
-        if self.stage_name != 'Ganado':
-            return
+            # Eliminar líneas de documentos que ya no están seleccionados
+            for line in lead.pe_doc_line_ids:
+                if line.docto_id.id not in wanted_ids:
+                    line.unlink()
 
-        if self.fecha_firma > self.fecha_limite_firma:
-            raise UserError(_('La fecha de firma no puede ser mayor a la fecha límite de firma.'))
 
-        _logger.warning(self.order_ids)
-        raise UserError('Pendiente cargar los conceptos de trabajo........')
-
-        # Crear Orden de Venta (Orden de trabajo) si no existe
-        SaleOrder = self.env['sale.order']
-        order_vals = {
-            'partner_id': self.partner_id.id,
-            'origin': self.no_licitacion or self.name,
-            'opportunity_id': self.id,
-            'client_order_ref': _('Orden de trabajo de %s') % (self.name or ''),
-            'state': 'sent'
-        }
-        order = SaleOrder.create(order_vals)
+    @api.onchange('pedcto_ids')
+    def _onchange_pedcto_ids(self):
+        #Cuando cambian los documentos requeridos de propuesta económica, actualizamos la tabla.
+        if self.id:
+            self._sync_pe_doc_lines()
 
     def action_set_lost(self, **kwargs):
         for lead in self:
             lead._ensure_stage_is_fallo()
         return super(CrmLead, self).action_set_lost(**kwargs)
 
+    def check_doctos(self, type):
+        # Verifica que haya al menos 2 personas diferentes que hayan revisado los documentos.
+        for lead in self:
+            if type == 'tecnica':
+                revisadas = lead.pt_doc_line_ids.filtered(lambda r: not r.generado)
+            else:
+                revisadas = lead.pe_doc_line_ids.filtered(lambda r: not r.generado)
+            
+            if len(revisadas) != 0:
+                raise UserError(_('Existen archivos sin cargar'))
+
+
+    def check_revisions(self, type):
+        # Verifica que haya al menos 2 personas diferentes que hayan revisado los documentos.
+        for lead in self:
+            if type == 'tecnica':
+                revisadas = lead.pt_revision_ids.filtered(lambda r: r.revisado)
+            else:
+                revisadas = lead.pe_revision_ids.filtered(lambda r: r.revisado)
+            
+            empleados = set(revisadas.mapped('employee_id.id'))
+            if len(empleados) < 2:
+                raise UserError(_('Debe haber al menos dos revisiones hechas por personas distintas para continuar.'))
+
+
     def action_advance_stage(self):
         if self.stage_name == 'Inscripción/Compra de bases':
             if self.bases_pay:
                 if not self.oc_ids.filtered(lambda u: u.state != 'cancel' and u.type_purchase == 'bases'):
-                    raise UserError('Favor de realizar la orden de compra antes de avanzar la etapa') 
+                    raise ValidationError('Favor de realizar la orden de compra antes de avanzar la etapa') 
                 if not self.bases_doc:
-                    raise UserError('Falta cargar las Bases correspondientes') 
+                    raise ValidationError('Falta cargar las Bases correspondientes') 
             else:
                 if not self.bases_doc:
-                    raise UserError('Falta cargar las Bases correspondientes')
+                    raise ValidationError('Falta cargar las Bases correspondientes')
 
         if self.stage_name == 'Visita de Obra':
             if self.visita_obligatoria and not self.visita_acta:
-                raise UserError('Falta cargar el Acta de la Visita')
+                raise ValidationError('Falta cargar el Acta de la Visita')
 
         if self.stage_name == 'Junta de Aclaración de Dudas':
             if self.junta_obligatoria and not self.junta_acta:
-                raise UserError('Falta cargar el Acta de la Junta de Aclaración de Dudas.')
+                raise ValidationError('Falta cargar el Acta de la Junta de Aclaración de Dudas.')
+
+        if self.stage_name == 'Cotización de insumos y trabajos especiales':
+            if not self.budget_ids or not self.concept_ids or not self.input_ids:
+                raise ValidationError('Falta cargar información de los conceptos de trabajo y/o insumos')
+
+            count = len(self.budget_ids.filtered(lambda u: not u.budget_id))
+            if count != 0:
+                raise ValidationError('Falta cargar las partidas')
+            
+            count = len(self.concept_ids.filtered(lambda u: not u.concept_ex and u.col4 != ''))
+            if count != 1:
+                raise ValidationError('Faltan cargar los conceptos de trabajo')
+
+            count = len(self.oc_ids.filtered(lambda u: u.type_purchase == 'ins'))
+            if self.input_ids and count == 0:
+                raise ValidationError('No se han creado cotizaciones de insumos')
+
+        if self.stage_name == 'Propuesta Técnica':
+            self.check_doctos('tecnica')
+            self.check_revisions('tecnica')
+
+        if self.stage_name == 'Propuesta Económica':
+            self.check_doctos('economica')
+            self.check_revisions('economica')
 
         sequence = self.stage_id.sequence
         reason = self.env['crm.revert.reason'].search([('name','=','Avance')])
         new_stage = self.env['crm.stage'].search([('sequence','=', sequence + 1)])
 
         if not new_stage:
-            raise UserError('Existe un error en el flujo de las etapas, favor de revisar las configuraciones')
+            raise ValidationError('Existe un error en el flujo de las etapas, favor de revisar las configuraciones')
 
         self._log_stage_change(self.stage_id, new_stage, reason.id, 'Avance de etapa')
         self.stage_id = new_stage.id
@@ -477,6 +530,27 @@ class CrmLead(models.Model):
         except Exception:
             self._post_html(_('Error al enviar el correo'))
 
+    def action_decline_bases(self):
+        self.ensure_one()
+
+        # Seguridad
+        if not self.env.user.has_group('project_extra.group_conv_authorizer'):
+            raise UserError(_('No tiene permisos para declinar la compra de bases.'))
+
+        # Publicar en el chatter
+        self.message_post(body=_('La compra de bases ha sido <b>DECLINADA</b> por %s.') % self.env.user.display_name)
+
+        # Limpiar flags
+        self.bases_pay = False
+        self.bases_notification_sent = False
+
+        # Limpiar archivo si existía
+        self.bases_doc = False
+        self.bases_doc_name = False
+
+        # Opcional: marcar flag de declinada
+        # self.bases_declined = True
+
 
     def _get_emails(self):
         emails = set()
@@ -544,7 +618,7 @@ class CrmLead(models.Model):
 
     # Funciones de actualización de los campos relacionados con la junta
     @api.onchange('junta_obligatoria', 'junta_personas_ids', 'junta_fecha')
-    def _compute_junta_notif(self):
+    def _junta_notif(self):
         for rec in self:
             if rec.junta_obligatoria and rec.junta_personas_ids:
                 rec.junta_notif_auto_sent = False
@@ -601,7 +675,6 @@ class CrmLead(models.Model):
                 lead.message_post(body=_("Se envió recordatorio de FECHA LÍMITE DE DUDAS a: %s") % correos)
 
 
-    # Enviar recordatorio (plantilla de correo) junta de apertura
     def _send_apertura_reminder(self, manual=False):
         template = self.env.ref('project_extra.mail_tmpl_apertura_recordatorio', raise_if_not_found=False)
         if not template:
@@ -618,7 +691,6 @@ class CrmLead(models.Model):
             lead.message_post(body=_("Se envió recordatorio de junta de apertura de propuestas a: %s") % correos)
 
 
-    # Botón manual “Enviar” junta de apertura
     def action_send_apertura_reminder(self):
         # Botón manual para enviar recordatorio de junta de apertura de propuestas.
         self.ensure_one()
@@ -695,7 +767,31 @@ class CrmLead(models.Model):
             ('stage_name','=','Junta de Aclaración de Dudas')]
         leads = self.search(domain)
         for rec in leads:
-            rec._send_junta_dudas_deadline_reminder()            
+            rec._send_junta_dudas_deadline_reminder()
+    
+    def _sync_pt_doc_lines(self):
+        # Sincroniza la tabla de Propuesta Técnica con los documentos seleccionados en ptdcto_ids.
+        docline = self.env['crm.propuesta.tecnica.doc']
+        for lead in self:
+            docs = lead.ptdcto_ids
+            existing_by_doc = {line.docto_id.id: line for line in lead.pt_doc_line_ids}
+            wanted_ids = set(docs.ids)
+
+            # Crear líneas nuevas para documentos que faltan
+            for doc in docs:
+                if doc.id not in existing_by_doc:
+                    docline.create({'lead_id': lead.id, 'docto_id': doc.id,})
+
+            # Eliminar líneas de documentos que ya no están seleccionados
+            for line in lead.pt_doc_line_ids:
+                if line.docto_id.id not in wanted_ids:
+                    line.unlink()
+
+
+    @api.onchange('ptdcto_ids')
+    def _onchange_ptdcto_ids(self):
+        if self.id:
+            self._sync_pt_doc_lines()
 
     def action_cargar_insumos(self):
         for record in self:
@@ -790,24 +886,21 @@ class CrmLead(models.Model):
 
         iva = self.env['account.tax'].search([('name','=','16%'),('type_tax_use','=','purchase')])
         for rec in self.input_ids.filtered(lambda u: not u.input_ex):
-            if rec.id == min_id[0]['min_id']:
-                _logger.warning('Titulos')
-            else:
-                statement = ("""SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat,
-                        (CASE WHEN uc.NAME->>'en_US' = 'Service' THEN 'service' ELSE 'consu' END) type, """ + cantidad + ' qty, ' + precio + 
+            if rec.id != min_id[0]['min_id']:
+                statement = ('''SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat,
+                        (CASE WHEN uc.NAME->>'en_US' = 'Service' THEN 'service' ELSE 'consu' END) type, ''' + cantidad + ' qty, ' + precio + 
                         '::float importe FROM crm_input_line cil JOIN uom_uom uu ON (CASE WHEN cil.' + unidad + 
-                        " IN ('%MO', 'PIE TAB', '%') THEN 'pza' ELSE lower(cil." + unidad + """) END) = lower(uu.name->>'en_US') 
+                        " IN ('%MO', 'PIE TAB', '%') THEN 'pza' ELSE lower(cil." + unidad + ''') END) = lower(uu.name->>'en_US') 
                                 JOIN uom_category uc ON uu.CATEGORY_ID = uc.ID 
                                 JOIN product_category pc ON pc.NAME = 'All'
-                    WHERE cil.id = """ + str(rec.id))
+                    WHERE cil.id = ''' + str(rec.id))
                 self.env.cr.execute(statement)
                 info = self.env.cr.dictfetchall()
                 if info:                
-                    insumo = self.env['product.template'].create({'purchase_ok': True, 'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'],
-                        'uom_po_id': info[0]['uom'], 'type': info[0]['type'], 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': True,
-                        'sale_ok': False, 'supplier_taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'active': True,})
+                    insumo = self.env['product.template'].create({'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'], 'uom_po_id': info[0]['uom'], 
+                        'type': info[0]['type'], 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': True, 'sale_ok': False, 
+                        'supplier_taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'active': True,})
                     rec.write({'input_ex': True, 'input_id': insumo.id})
-
 
     def action_genera_cotizaciones(self):
         self.ensure_one()
@@ -833,13 +926,13 @@ class CrmLead(models.Model):
 
     def action_cargar_concept(self):
         for record in self:
-            if not record.input_file:
+            if not record.concept_file:
                 raise ValidationError('Seleccione un archivo para cargar.')
 
-            if record.input_file and record.input_ids:
+            if record.input_file and record.concept_ids:
                 raise ValidationError('Ya hay información cargada. En caso de ser necesario volver a cargar debe eliminarlos.')
 
-            filename, file_extension = os.path.splitext(record.input_filename)
+            filename, file_extension = os.path.splitext(record.concept_filename)
             if file_extension in ['.xlsx', '.xls', '.xlsm']:
                 record.__leer_carga_concept()
             else:
@@ -848,8 +941,8 @@ class CrmLead(models.Model):
 
     def __leer_carga_concept(self):
         for record in self:
-            file = tempfile.NamedTemporaryFile(suffix=".xlsx")
-            file.write(binascii.a2b_base64(record.input_file))
+            file = tempfile.NamedTemporaryFile(suffix=".xlsm")
+            file.write(binascii.a2b_base64(record.concept_file))
             file.seek(0)
             xlsx_file = file.name
             
@@ -858,7 +951,9 @@ class CrmLead(models.Model):
             sheet_name = sheets[0]
             sheet = wb[sheet_name]
             registros = []
+            partidas = []
             cargar = False
+            partida = False
             for row in sheet.iter_rows(values_only=True):
                 col1 = str(row[0]).strip()
                 col2 = str(row[1]).strip()
@@ -884,87 +979,148 @@ class CrmLead(models.Model):
                     col7 = ''
                 if col8 == 'None':
                     col8 = ''
-                if col1.upper() == 'CÓDIGO':
+
+                if col1.upper() == 'CLAVE':
                     cargar = True
+                    partida = False
+
+                if col2.upper() == 'RESUMEN DE PARTIDAS':
+                    cargar = False
+                    partida = True
 
                 if cargar:
-                    if col1 != '' and col8 != '':
-                        registro = {'col1': col1, 'col2': col2, 'col3': col3, 'col4': col4, 'col5': col5, 'col6': col6, 'col7': col7, 'col8': col8}
-                        registros.append((0, 0, registro))
+                    registro = {'col1': col1, 'col2': col2, 'col3': col3, 'col4': col4, 'col5': col5, 'col6': col6, 'col7': col7, 'col8': col8}
+                    registros.append((0, 0, registro))
 
-            record.write({'input_ids': registros})
+                if partida:
+                    if col1 != '' and col2 != '':
+                        registro = {'col1': col1, 'col2': col2}
+                        partidas.append((0, 0, registro))
 
+            record.write({'concept_ids': registros, 'budget_ids': partidas})
+
+
+    def action_genera_partidas(self):
+        count = len(self.budget_ids.filtered(lambda u: not u.budget_id))
+        if count == 0:
+            raise UserError('Las partidas fueron cargadas correctamente, favor de continuar con la carga de conceptos')
+        else:
+            self.carga_partidas(self.id, self.env.user.id)
 
     def action_genera_concept(self):
-        self.env.cr.execute('SELECT col1, COUNT(*) num FROM crm_input_line WHERE lead_id = ' + str(self.id) + ' GROUP BY 1 HAVING COUNT(*) > 1')
-        duplicado = self.env.cr.dictfetchall()
-        if duplicado:
-            raise UserError('Existen conceptos repetidos favor de revisar el archivo.')
+        count = len(self.budget_ids.filtered(lambda u: not u.budget_id))
+        if count != 0:
+            raise UserError('Las partidas no han sido cargadas, favor de realizar la carga')
 
-        self.env.cr.execute('''SELECT ID min_id, (case when UPPER(col3) = 'UNIDAD' then 'col3' else 'col5' end) unidad, 
-                (case when UPPER(col5) = 'CANTIDAD' then 'col5' else 'col6' end) cantidad, (case when UPPER(col6) = 'PRECIO' then 'col6' else 'col7' end) precio 
-            FROM crm_input_line ci WHERE ci.id = (select MIN(ID) min_id from crm_input_line ci WHERE ci.lead_id = ''' + str(self.id) + ')')
+        self.env.cr.execute('''SELECT ID min_id, (case when UPPER(col3) = 'UNIDAD' then 'col3' else 'col4' end) unidad,
+                (case when UPPER(col4) = 'CANTIDAD' then 'col4' else 'col5' end) cantidad, 
+                (case when SPLIT_PART(UPPER(col5), ' ', 1) = 'PRECIO' then 'col5' else 'col6' end) precio 
+            FROM crm_concept_line ci WHERE ci.id = (select MIN(ID) min_id from crm_concept_line ci WHERE ci.lead_id = ''' + str(self.id) + ')')
         min_id = self.env.cr.dictfetchall()
 
         unidad = min_id[0]['unidad']
         cantidad = min_id[0]['cantidad']
         precio = min_id[0]['precio']
 
-        self.env.cr.execute('''UPDATE crm_input_line cil SET input_ex = True, input_id = t1.IDCOD
-            FROM (SELECT cil.id, TRIM(cil.col1) code, MIN(pt.ID) idcod, COUNT(pt.id) num 
-                    FROM crm_input_line cil LEFT JOIN product_template pt ON TRIM(cil.col1) = pt.default_code 
-                   WHERE cil.LEAD_ID = ''' + str(self.id) + ' and cil.id != ' + str(min_id[0]['min_id']) + ''' AND cil.input_ex = False GROUP BY 1, 2) as t1
-            WHERE cil.id = t1.id AND t1.num != 0;
-            UPDATE crm_input_line cil SET account_ex = true
-            FROM (SELECT cil.id, TRIM(cil.col1) code, COUNT(pt.property_account_expense_id) num 
-                    FROM crm_input_line cil JOIN product_template pt ON TRIM(cil.col1) = pt.default_code 
-                   WHERE cil.LEAD_ID = ''' + str(self.id) + ' AND cil.id != ' + str(min_id[0]['min_id']) + ''' AND pt.property_account_expense_id IS NOT NULL
-                   GROUP BY 1, 2) as t1
-            WHERE cil.id = t1.id; ''')
+        iva = self.env['account.tax'].search([('amount','=',16), ('type_tax_use','=','sale')])
+        partida = 0
+        for rec in self.concept_ids.filtered(lambda u: not u.concept_ex):
+            if rec.id != min_id[0]['min_id']:
+                if not rec.concept_ex:
+                    partida_id = self.env['crm.budget.line'].search([('lead_id','=',rec.lead_id.id), ('col1','=',rec.col1)])
+                    if partida_id:
+                        partida = partida_id.id
 
-        iva = self.env['account.tax'].search([('name','=','16%'),('type_tax_use','=','purchase')])
-        for rec in self.input_ids.filtered(lambda u: not u.input_ex):
-            if rec.id == min_id[0]['min_id']:
-                _logger.warning('Titulos')
-            else:
-                statement = ("""SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat,
-                        (CASE WHEN uc.NAME->>'en_US' = 'Service' THEN 'service' ELSE 'consu' END) type, """ + cantidad + ' qty, ' + precio + 
-                        '::float importe FROM crm_input_line cil JOIN uom_uom uu ON (CASE WHEN cil.' + unidad + 
-                        " IN ('%MO', 'PIE TAB', '%') THEN 'pza' ELSE lower(cil." + unidad + """) END) = lower(uu.name->>'en_US') 
-                                JOIN uom_category uc ON uu.CATEGORY_ID = uc.ID 
-                                JOIN product_category pc ON pc.NAME = 'All'
-                    WHERE cil.id = """ + str(rec.id))
-                _logger.warning(statement)
-                self.env.cr.execute(statement)
-                info = self.env.cr.dictfetchall()
-                if info:                
-                    insumo = self.env['product.template'].create({'purchase_ok': True, 'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'],
-                        'uom_po_id': info[0]['uom'], 'type': info[0]['type'], 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': True,
-                        'sale_ok': False, 'supplier_taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'active': True,})
-                    rec.write({'input_ex': True, 'input_id': insumo.id})
+                    if partida != 0 and rec.col1 != '':
+                        concept_id = self.env['product.template'].search([('budget_id','=',rec.lead_id.id), ('default_code','=',rec.col1)])
+                        if concept_id:
+                            if concept_id.property_account_income_id:
+                                rec.write({'concept_ex': True, 'concept_id': concept_id.id, 'account_ex': True})
+                            else:
+                                rec.write({'concept_ex': True, 'concept_id': concept_id.id})
+                        else:
+                            statement = ('SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat, ' + cantidad + ' qty, ' + precio + 
+                                    '::float importe FROM crm_concept_line cil JOIN uom_uom uu ON lower(cil.' + unidad + ''') = lower(uu.name->>'en_US') 
+                                            JOIN product_category pc ON pc.NAME = 'All'
+                                WHERE cil.id = ''' + str(rec.id))
+                            self.env.cr.execute(statement)
+                            info = self.env.cr.dictfetchall()
+                            if info:
+                                insumo = self.env['product.template'].create({'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'], 'uom_po_id': info[0]['uom'], 
+                                    'type': 'service', 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': False, 'sale_ok': True, 
+                                    'taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'list_price': info[0]['importe'], 
+                                    'service_tracking': 'task_in_project', 'active': True, 'budget_id': partida})
+                                rec.write({'concept_ex': True, 'concept_id': insumo.id})
 
-
-    def action_genera_partidas(self):
-        self.ensure_one()
-        count = len(self.input_ids.filtered(lambda u: not u.input_ex))
-        if count != 1:
-            raise UserError('Existen insumos sin cargar, revise la información.')
-
-        count = len(self.input_ids.filtered(lambda u: not u.account_ex))
-        if count != 1:
-            raise UserError('Los insumos cargados no cuentan con la información contable. Favor de contactar con el área correspondiente')
-
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'crm.cotizacion.insumos.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {'default_lead_id': self.id}}
+        for rec in self.concept_ids.filtered(lambda u: u.concept_ex):
+            if rec.concept_id.property_account_income_id:
+                rec.write({'account_ex': True})
 
 
     def action_unlink_concept(self):
         for record in self:
-            record.input_ids.unlink()
+            record.concept_ids.unlink()
+            record.budget_ids.unlink()
+
+    def action_open_attachments(self):
+        # Abrir Documentos (app Documentos) filtrado por esta oportunidad.
+        self.ensure_one()
+        action = self.env.ref('documents.document_action').read()[0]
+        action['domain'] = [('id', '=', self.documents_folder_id.id)]
+        
+        ctx = dict(self.env.context or {})
+        ctx.update({'default_res_model': 'crm.lead', 'default_res_id': self.id,})
+        action['context'] = ctx
+        return action
+
+
+    def action_genera_ordentrabajo(self):
+        self.ensure_one()
+        if self.fecha_firma > self.fecha_limite_firma:
+            raise UserError(_('La fecha de firma no puede ser mayor a la fecha límite de firma.'))
+
+        oc_vals = self.get_work_default_values()
+        oc_vals_2 = oc_vals[:]
+        oc_new = self._create_work_async(oc_vals=oc_vals_2)
+        return oc_new
+
+
+    def get_work_default_values(self):
+        self.env.cr.execute('''SELECT (CASE WHEN UPPER(col4) = 'CANTIDAD' THEN 'col4' ELSE 'col5' END) cantidad
+            FROM crm_concept_line ci WHERE ci.id = (SELECT MIN(ID) min_id FROM crm_concept_line ci WHERE ci.lead_id = ''' + str(self.id) + ')')
+        min_id = self.env.cr.dictfetchall()
+
+        cantidad = min_id[0]['cantidad']
+        sequence = self.env['ir.sequence'].next_by_code('sale.order')
+        orders = []
+        order_lines = []
+        taxes = []
+        fpos = self.env['account.fiscal.position'].with_company(self.company_id)._get_fiscal_position(self.partner_id)
+
+        for rec in self.concept_ids.filtered(lambda u: u.concept_ex):
+            taxes = rec.concept_id.taxes_id._filter_taxes_by_company(self.company_id)
+            product_id = self.env['product.product'].search([('product_tmpl_id','=',rec.concept_id.id)])
+            self.env.cr.execute('SELECT ' + cantidad + '::float qty FROM crm_concept_line cil WHERE cil.id = ' + str(rec.id))
+            statement = self.env.cr.dictfetchall()
+            name = '[' + product_id.default_code + '] ' + product_id.name 
+
+            lines = {'currency_id': product_id.currency_id.id, 'company_id': self.company_id.id, 'order_partner_id': self.partner_id.id, 
+                'salesman_id': self.env.user.id, 'product_id': product_id.id, 'product_uom': product_id.uom_po_id.id, 'qty_delivered_method': 'timesheet',
+                'invoice_status': 'to invoice', 'name': name, 'product_uom_qty': statement[0]['qty'], 'price_unit': 0, 'tax_id': fpos.map_tax(taxes), 
+                'state': 'sent', 'is_service': True, 'remaining_hours': statement[0]['qty']}
+            order_lines.append((0, 0, lines))
+
+        values = {'company_id': self.company_id.id, 'partner_id': self.partner_id.id, 'partner_invoice_id': self.partner_id.id, 
+            'partner_shipping_id': self.partner_id.id, 'currency_id': self.company_id.currency_id.id, 'user_id': self.env.uid, 'name': sequence, 'state': 'sent',
+            'origin': self.no_licitacion or self.name, 'invoice_status': 'to invoice', 'opportunity_id': self.id, 
+            'client_order_ref': 'Orden de trabajo ' + self.no_licitacion or self.name, 'order_line': order_lines}
+        orders.append(values)
+        return orders
+
+    def _create_work_async(self, oc_vals):
+        oc_obj = self.env['sale.order']
+        new_oc = oc_obj.create(oc_vals)
+        return new_oc
 
 
 class crmInputsLine(models.Model):
@@ -984,7 +1140,6 @@ class crmInputsLine(models.Model):
     input_id = fields.Many2one(comodel_name='product.template', string='Concepto de cobro')
     account_ex = fields.Boolean(string='Cuenta relacionada', default=False)
 
-
 class crmConceptLine(models.Model):
     _name = 'crm.concept.line'
     _description = 'Conceptos de trabajo'
@@ -1001,3 +1156,55 @@ class crmConceptLine(models.Model):
     concept_ex = fields.Boolean(string='Concepto cargado', default=False)
     concept_id = fields.Many2one(comodel_name='product.template', string='Concepto de cobro')
     account_ex = fields.Boolean(string='Cuenta relacionada', default=False)
+
+class crmBudgetLine(models.Model):
+    _name = 'crm.budget.line'
+    _description = 'Partidas presupuestarias'
+    
+    lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportudidad', readonly=True)
+    col1 = fields.Char(string='Codigo')
+    col2 = fields.Char(string='Descripción')
+    budget_id = fields.Many2one(comodel_name='product.budget.item', string='Partida')
+    no_char = fields.Integer(string='No. de Caracteres')
+    parent = fields.Integer(string='Padre')
+
+class CrmPropuestaTecnicaDoc(models.Model):
+
+    _name = 'crm.propuesta.tecnica.doc'
+    _description = 'Documentos Propuesta Técnica (CRM)'
+    _rec_name = 'docto_id'
+
+    lead_id = fields.Many2one('crm.lead', string='Oportunidad', required=True, ondelete='cascade',)
+    docto_id = fields.Many2one('project.docsrequeridos', string='Docto', required=True, domain="[('model_id', '=', 'crm.lead'), ('etapa', '=', 'tecnica')]",)
+    generado = fields.Boolean(string='Generado')
+
+class CrmPropuestaTecnicaRevision(models.Model):
+    _name = 'crm.propuesta.tecnica.revision'
+    _description = 'Revisión de documentos Propuesta Técnica (CRM)'
+    _rec_name = 'employee_id'
+    _order = 'fecha_revision desc'
+    
+    lead_id = fields.Many2one('crm.lead', string='Oportunidad', required=True, ondelete='cascade')
+    fecha_revision = fields.Date(string='Fecha de revisión', default=fields.Date.context_today, required=True)
+    employee_id = fields.Many2one('hr.employee', string='Nombre', required=True, help='Persona que revisó la documentación.')
+    revisado = fields.Boolean(string='Revisado', default=False)
+
+class CrmPropuestaEconomicaDoc(models.Model):
+    _name = 'crm.propuesta.economica.doc'
+    _description = 'Documentos Propuesta Económica (CRM)'
+    _rec_name = 'docto_id'
+
+    lead_id = fields.Many2one('crm.lead', string='Oportunidad', required=True, ondelete='cascade',)
+    docto_id = fields.Many2one('project.docsrequeridos', string='Docto', required=True, domain="[('model_id', '=', 'crm.lead'), ('etapa', '=', 'economica')]",)
+    generado = fields.Boolean(string='Generado')
+
+class CrmPropuestaEconomicaRevision(models.Model):
+    _name = 'crm.propuesta.economica.revision'
+    _description = 'Revisión de documentos Propuesta Económica (CRM)'
+    _rec_name = 'employee_id'
+    _order = 'fecha_revision desc'
+    
+    lead_id = fields.Many2one('crm.lead', string='Oportunidad', required=True, ondelete='cascade')
+    fecha_revision = fields.Date(string='Fecha de revisión', default=fields.Date.context_today, required=True)
+    employee_id = fields.Many2one('hr.employee', string='Nombre', required=True, help='Persona que revisó la documentación.')
+    revisado = fields.Boolean(string='Revisado', default=False)
