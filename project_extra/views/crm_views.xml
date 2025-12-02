@@ -336,7 +336,7 @@
                     </button>
                     <group string="Documentos Requeridos">
                         <field name="pt_doc_line_ids" nolabel="1">
-                            <list editable="bottom" delete="0">
+                            <list editable="bottom" delete="0" create="0">
                                 <field name="docto_id" string="Documento" readonly="1" options="{'no_open': True, 'no_create': True}"/>
                                 <field name="generado" string="¿Generado?"/>
                             </list>
@@ -344,7 +344,7 @@
                     </group>
                     <group string="Revisiones">
                         <field name="pt_revision_ids" nolabel="1">
-                            <list editable="bottom" delete="0" create="0">
+                            <list editable="bottom" delete="0">
                                 <field name="fecha_revision"/>
                                 <field name="employee_id" string="Revisor" options="{'no_create': True, 'no_edit': True}"/>
                                 <field name="revisado" widget="boolean_toggle"/>
