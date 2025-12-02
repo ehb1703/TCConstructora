@@ -23,13 +23,13 @@
                     <table align="center">
                         <tr>
                             <td>
-                                <a t-att-href="'%s/project_extra/bases/%s/authorize' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#28a745; color:#fff; border-radius:4px; text-decoration:none;font-size:12px;"> Autorizar </a>
+                                <a t-att-href="'%s/project_extra/convocatoria/%s/authorize' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#28a745; color:#fff; border-radius:4px; text-decoration:none; font-size:12px;">Autorizar</a>
                             </td>
                             <td>
-                                <a t-att-href="'%s/project_extra/bases/%s/decline' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#dc3545; color:#fff; border-radius:4px; text-decoration:none; font-size:12px;"> Declinar </a>
+                                <a t-att-href="'%s/project_extra/convocatoria/%s/decline' % (object.get_base_url(), object.id)" style="display:inline-block;padding:8px 14px;background:#dc3545;color:#fff;border-radius:4px;text-decoration:none;font-size:12px;">Declinar</a>
                             </td>
                             <td>
-                                <a t-att-href="'%s/web#id=%s&amp;model=crm.lead&amp;view_type=form' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#6c757d; color:#fff; border-radius:4px; text-decoration:none; font-size:12px;"> Ver </a>
+                                <a t-att-href="'%s/web#id=%s&amp;model=crm.lead&amp;view_type=form' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#6c757d; color:#fff; border-radius:4px; text-decoration:none;font-size:12px;">Ver</a>
                             </td>
                         </tr>
                     </table>
