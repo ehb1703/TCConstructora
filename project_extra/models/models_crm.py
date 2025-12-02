@@ -250,6 +250,9 @@ class CrmLead(models.Model):
             raise UserError(_('No se encontró la etapa CALIFICADO'))
 
         old_stage = self.stage_id
+        if old_stage.id != dest_stage.id:
+            self.write({'stage_id': dest_stage.id})
+
         self._log_stage_change(old_stage, dest_stage, False, 'Autorizado')
         self._post_html(_('Convocatoria autorizada.'), old_stage, dest_stage)
 
@@ -266,6 +269,9 @@ class CrmLead(models.Model):
             raise UserError('No se encontró la etapa DECLINADO')
 
         old_stage = self.stage_id
+        if old_stage.id != dest_stage.id:
+            self.write({'stage_id': dest_stage.id})
+
         self._log_stage_change(old_stage, dest_stage, False, 'Declinado')
         self._post_html(_('Declinada por %s.') % self.env.user.display_name, old_stage, dest_stage)
         
@@ -627,7 +633,7 @@ class CrmLead(models.Model):
     @api.onchange('junta_fecha', 'junta_fecha_limite_dudas')
     def _validate_junta_fields(self):
         for rec in self:
-            if rec.junta_fecha and rec.junta_fecha_limite_dudas and rec.junta_fecha > rec.junta_fecha_limite_dudas:
+            if rec.junta_fecha and rec.junta_fecha_limite_dudas and rec.junta_fecha < rec.junta_fecha_limite_dudas:
                 raise UserError(_('La fecha límite para enviar dudas no puede ser posterior a la fecha de la junta.'))
 
     def _send_junta_reminder(self, manual=False):
