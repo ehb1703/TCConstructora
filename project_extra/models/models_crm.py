@@ -390,7 +390,7 @@ class CrmLead(models.Model):
                 raise ValidationError('Falta cargar las partidas')
             
             count = len(self.concept_ids.filtered(lambda u: not u.concept_ex and u.col4 != ''))
-            if count != 1:
+            if count > 1:
                 raise ValidationError('Faltan cargar los conceptos de trabajo')
 
             count = len(self.oc_ids.filtered(lambda u: u.type_purchase == 'ins'))
@@ -1011,7 +1011,8 @@ class CrmLead(models.Model):
         if count == 0:
             raise UserError('Las partidas fueron cargadas correctamente, favor de continuar con la carga de conceptos')
         else:
-            self.carga_partidas(self.id, self.env.user.id)
+            self.env.cr.execute('SELECT carga_partidas(' + str(self.id)+ ', ' + str(self.env.user.id) + ')')
+            partidas = self.env.cr.dictfetchall()
 
     def action_genera_concept(self):
         count = len(self.budget_ids.filtered(lambda u: not u.budget_id))
@@ -1035,7 +1036,7 @@ class CrmLead(models.Model):
                 if not rec.concept_ex:
                     partida_id = self.env['crm.budget.line'].search([('lead_id','=',rec.lead_id.id), ('col1','=',rec.col1)])
                     if partida_id:
-                        partida = partida_id.id
+                        partida = partida_id.budget_id.id
 
                     if partida != 0 and rec.col1 != '':
                         concept_id = self.env['product.template'].search([('budget_id','=',rec.lead_id.id), ('default_code','=',rec.col1)])
@@ -1045,8 +1046,8 @@ class CrmLead(models.Model):
                             else:
                                 rec.write({'concept_ex': True, 'concept_id': concept_id.id})
                         else:
-                            statement = ('SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat, ' + cantidad + ' qty, ' + precio + 
-                                    '::float importe FROM crm_concept_line cil JOIN uom_uom uu ON lower(cil.' + unidad + ''') = lower(uu.name->>'en_US') 
+                            statement = ('SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat, ' + cantidad + ' qty, (CASE WHEN ' + precio + 
+                                    " = '' THEN '0.0' ELSE " + precio + " END)::float importe FROM crm_concept_line cil JOIN uom_uom uu ON lower(cil." + unidad + ''') = lower(uu.name->>'en_US') 
                                             JOIN product_category pc ON pc.NAME = 'All'
                                 WHERE cil.id = ''' + str(rec.id))
                             self.env.cr.execute(statement)
