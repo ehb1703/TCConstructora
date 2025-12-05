@@ -86,7 +86,7 @@ class CrmRevertStageWizard(models.TransientModel):
             lead.fecha_firma = False
             lead.contrato_documento = False
         
-        lead.write({'stage_id': self.target_stage_id.id})
+        lead.write({'stage_id': self.target_stage_id.id, 'stage_previous': old_stage.name})
 
         self.env['crm.revert.log'].sudo().create({
             'lead_id': lead.id,

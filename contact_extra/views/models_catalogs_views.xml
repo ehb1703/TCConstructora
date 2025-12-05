@@ -14,7 +14,7 @@
         <field name="arch" type="xml">
             <list string="Municipios">
                 <field name="codigo"/>
-                <field name="municipio"/>                   
+                <field name="municipio"/>
                 <field name="state_id"/>
                 <field name="active"/>
             </list>
@@ -31,7 +31,7 @@
                         <group>
                             <field name="codigo"/>
                             <field name="municipio"/>
-                            <field name="state_id" options="{'no_open': 1,'no_create':1,'no_create_edit':1}"/>
+                            <field name="state_id" options="{'no_open': 1,'no_create': 1,'no_create_edit': 1}"/>
                             <field name="active" invisible="1"/>
                         </group>
                     </group>
@@ -152,10 +152,56 @@
         </field>
     </record>
 
+    <record id="action_account_catalog_expense" model="ir.actions.act_window">
+        <field name="name">Catálogo de gastos</field>
+        <field name="res_model">account.catalog.expense</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_account_catalog_expense_list" model="ir.ui.view">
+        <field name="name">view.account.catalog.expense.list</field>
+        <field name="model">account.catalog.expense</field>
+        <field name="arch" type="xml">
+            <list string="Catálogo de gastos">
+                <field name="codigo_categoria"/>
+                <field name="nombre_categoria"/>
+                <field name="tipo_formato"/>
+                <field name="activo"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_account_catalog_expense_form" model="ir.ui.view">
+        <field name="name">view.account.catalog.expense.form</field>
+        <field name="model">account.catalog.expense</field>
+        <field name="arch" type="xml">
+            <form string="Catálogo de gastos">
+                <sheet>
+                    <group>
+                        <field name="codigo_categoria"/>
+                        <field name="nombre_categoria"/>
+                        <field name="tipo_formato"/>
+                    </group>
+                    <group>
+                        <field name="descripcion"/>
+                        <field name="descripcion_detallada"/>
+                    </group>
+                    <group>
+                        <field name="activo"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <menuitem id="menu_municipalities" name="Municipios" parent="contacts.menu_localisation" action="action_municipalities" sequence="4"/>
     <menuitem id="menu_catalogs_company" name="Catálogos" parent="contacts.res_partner_menu_config" sequence="6"/>
     <menuitem id="menu_type_taxpayer" name="Tipo de Contribuyente" parent="menu_catalogs_company" action="action_type_taxpayer" sequence="1"/>
     <menuitem id="menu_type_supplier" name="Tipo de Proveedor" parent="menu_catalogs_company" action="action_type_supplier" sequence="2"/>
     <menuitem id="menu_classification_supplier" name="Clasificación del Proveedor" parent="menu_catalogs_company" action="action_classification_supplier" sequence="3"/>
 
+    <!-- Menú nuevo en Contabilidad -->
+    <menuitem id="menu_catalogs_root" name="Catálogos" parent="accountant.menu_accounting" sequence="5">
+        <menuitem id="menu_catalog_expense" name="Catálogo de gastos" action="action_account_catalog_expense" sequence="10"/>
+    </menuitem>
 </odoo>
