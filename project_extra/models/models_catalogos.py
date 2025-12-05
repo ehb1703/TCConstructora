@@ -30,6 +30,16 @@ class projectType(models.Model):
         for rec in self:
             rec.display_name = f'{rec.code} / {rec.name}'
 
+    @api.model
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        args = args or []
+        if name:
+            domain = ['|', ('code', operator, name), ('name', operator, name)]
+            recs = self.search(domain)
+            recs.fetch(['display_name'])
+            return [(rec.id, rec.display_name) for rec in recs]
+        return super().name_search(name, args, operator, limit)
+
 
 class projectTechnicalCategory(models.Model):
     _name = 'project.technical.category'
@@ -100,6 +110,16 @@ class ZonaGeografica(models.Model):
         for rec in self:
             rec.display_name = f'{rec.code} / {rec.name}' if rec.code else rec.name
 
+    @api.model
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        args = args or []
+        if name:
+            domain = ['|', ('code', operator, name), ('name', operator, name)]
+            recs = self.search(domain)
+            recs.fetch(['display_name'])
+            return [(rec.id, rec.display_name) for rec in recs]
+        return super().name_search(name, args, operator, limit)
+
 
 class Especialidad(models.Model):
     _name = 'project.especialidad'
@@ -139,7 +159,7 @@ class CrmAnalyst(models.Model):
     name = fields.Char(string='Nombre completo', compute='_compute_name', store=False)
     employee_id = fields.Many2one('hr.employee', string='Empleado interno', tracking=True)
     partner_id = fields.Many2one('res.partner', string='Contacto externo', tracking=True)
-    especialidad_id = fields.Many2one('project.especialidad', string='Especialidad', tracking=True)
+    especialidad_id = fields.Many2many('project.especialidad', 'crm_analyst_esp', 'analyst_crm', string='Especialidad', tracking=True)
     years_experience = fields.Integer(string='Años de experiencia', tracking=True)
     quality_analysis = fields.Selection([('alto','Alto'),('medio','Medio'),('bajo','Bajo')], string='Calidad de análisis', tracking=True)
     quality_documental = fields.Selection([('alto','Alto'),('medio','Medio'),('bajo','Bajo')], string='Calidad documental', tracking=True)

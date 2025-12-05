@@ -125,7 +125,7 @@
                             <field name="employee_id" invisible="origen == 'externo'"/>
                             <field name="partner_id" invisible="origen == 'interno'"/>
                             <field name="name" readonly="1"/>
-                            <field name="especialidad_id"/>
+                            <field name="especialidad_id" widget="many2many_tags"/>
                             <field name="years_experience"/>
                         </group>
                         <group string="Evaluación">

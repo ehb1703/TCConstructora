@@ -5,6 +5,21 @@ from odoo.exceptions import ValidationError, UserError
 
 _logger = logging.getLogger(__name__)
 
+class CatalogoGastos(models.Model):
+    _name = 'account.catalog.expense'
+    _description = 'Catálogo de Gastos'
+    _rec_name = 'nombre_categoria'
+
+    tipo_formato = fields.Selection([('tipo1','Tipo 1'),('tipo2','Tipo 2')], string='Tipo / Formato')
+
+    descripcion = fields.Text('Descripción')
+    codigo_categoria = fields.Char('Código de categoría', required=True)
+    nombre_categoria = fields.Char('Nombre de categoría', required=True)
+    descripcion_detallada = fields.Text('Descripción detallada')
+    activo = fields.Boolean('Activo', default=True)
+
+    _sql_constraints = [('codigo_categoria_uniq','unique(codigo_categoria)','El código de categoría debe ser único.')]
+
 
 class cls_municipios(models.Model):
     _name = 'res.municipalities'

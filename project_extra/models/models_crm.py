@@ -50,6 +50,7 @@ class CrmLead(models.Model):
     no_licitacion = fields.Char(string='No. de Licitación')
     desc_licitacion = fields.Char(string='Descripción')
     stage_name = fields.Char(string='State name', compute='_compute_name_stage', store=False)
+    stage_previous = fields.Char(string='Etapa anterior')
     # Inscripción / Compra de bases
     bases_pay = fields.Boolean('Pagar bases', tracking=True)
     bases_supervisor_id = fields.Many2one('hr.employee', string='Supervisor general', tracking=True)
@@ -134,8 +135,10 @@ class CrmLead(models.Model):
     def _compute_botones(self):
         for rec in self:
             rec.in_calificado = False
-            if rec.stage_id.name in ('Nuevas Convocatorias', 'Declinado'):
-                if (rec.tipo_obra_ok and rec.dependencia_ok and rec.capital_ok):
+            if (rec.tipo_obra_ok and rec.dependencia_ok and rec.capital_ok):
+                if rec.stage_id.name == 'Nuevas Convocatorias':
+                    rec.in_calificado = True
+                if rec.stage_id.name == 'Declinado' and rec.stage_previous == 'Nuevas Convocatorias':
                     rec.in_calificado = True
 
     @api.depends('revert_log_ids')
@@ -149,27 +152,53 @@ class CrmLead(models.Model):
         for record in self:
             record.stage_name = record.stage_id.name
 
-    @api.depends('pe_doc_line_ids')  # Ahora depende de los documentos
+    @api.depends('pe_doc_line_ids', 'pt_doc_line_ids')
     def _compute_documents_count(self):
+        Document = self.env['documents.document']
         for lead in self:
-            lead.documents_count = lead.env['documents.document'].search_count([('name', '=', self.no_licitacion)])
+            try:
+                # Si Documents está disponible
+                if 'documents.document' in self.env:
+                    lic_name = lead.no_licitacion or lead.name or 'Sin nombre'
+                    root = Document.search([('name', '=', 'CRM'), ('type', '=', 'folder'), ('folder_id', '=', False)], limit=1)
+                    if not root:
+                        lead.documents_count = 0
+                        continue
+                    
+                    # Buscar carpeta de licitación
+                    lic_folder = Document.search([('name', '=', lic_name), ('type', '=', 'folder'), ('folder_id', '=', root.id)], limit=1)
+                    if not lic_folder:
+                        lead.documents_count = 0
+                        continue
+                    
+                    # Buscar subcarpetas
+                    tecnica_folder = Document.search([('name', '=', 'Tecnico'), ('type', '=', 'folder'), ('folder_id', '=', lic_folder.id)], limit=1)
+                    economica_folder = Document.search([('name', '=', 'Economico'), ('type', '=', 'folder'), ('folder_id', '=', lic_folder.id)], limit=1)
+                    
+                    # Contar documentos (no carpetas) en cada subcarpeta
+                    count = 0
+                    if tecnica_folder:
+                        count += Document.search_count([('folder_id', '=', tecnica_folder.id), ('type', '!=', 'folder')])
+                    if economica_folder:
+                        count += Document.search_count([('folder_id', '=', economica_folder.id), ('type', '!=', 'folder')])
+                    
+                    lead.documents_count = count
+                else:
+                    lead.documents_count = 0
+                    
+            except Exception as e:
+                _logger.error("Error contando documentos para lead %s: %s" % (lead.id, str(e)))
+                lead.documents_count = 0
 
     # ---------- Helpers ----------
     def _get_stage_by_name(self, name):
-        #Busca etapa por nombre EXACTO en el pipeline del lead (o global).
+        # Busca etapa por nombre EXACTO en el pipeline del lead (o global).
         self.ensure_one()
         Stage = self.env['crm.stage']
         domain = [('name', '=', name)]
         if self.team_id:
             domain = ['|', ('team_id', '=', self.team_id.id), ('team_id', '=', False)] + domain
         return Stage.search(domain, limit=1)
-
-    def _is_forward_or_same_stage(self, new_stage):
-        # Permite avanzar a etapas con secuencia mayor o igual. Bloquea retrocesos salvo contexto.
-        self.ensure_one()
-        if not self.stage_id or not new_stage:
-            return True
-        return (new_stage.sequence or 0) >= (self.stage_id.sequence or 0)
 
     def _ensure_stage_is_fallo(self):
         # Asegura que la etapa actual sea 'Fallo' (por nombre).
@@ -251,7 +280,7 @@ class CrmLead(models.Model):
 
         old_stage = self.stage_id
         if old_stage.id != dest_stage.id:
-            self.write({'stage_id': dest_stage.id})
+            self.write({'stage_id': dest_stage.id, 'stage_previous': old_stage.name})
 
         self._log_stage_change(old_stage, dest_stage, False, 'Autorizado')
         self._post_html(_('Convocatoria autorizada.'), old_stage, dest_stage)
@@ -270,42 +299,10 @@ class CrmLead(models.Model):
 
         old_stage = self.stage_id
         if old_stage.id != dest_stage.id:
-            self.write({'stage_id': dest_stage.id})
+            self.write({'stage_id': dest_stage.id, 'stage_previous': old_stage.name})
 
         self._log_stage_change(old_stage, dest_stage, False, 'Declinado')
         self._post_html(_('Declinada por %s.') % self.env.user.display_name, old_stage, dest_stage)
-        
-
-    def write(self, vals):
-        # Detectar cambio de "fallo_ganado" para disparar proceso automático
-        change_fallo = 'fallo_ganado' in vals
-        previous_fallo = {}
-        if change_fallo:
-            for lead in self:
-                previous_fallo[lead.id] = lead.fallo_ganado
-
-        # Cambios de documentos
-        change_pt_docs = 'ptdcto_ids' in vals
-        change_pe_docs = 'pedcto_ids' in vals
-
-        res = super(CrmLead, self).write(vals)
-
-        # Proceso automático de FALLO "Ganado"
-        if change_fallo:
-            for lead in self:
-                if not previous_fallo.get(lead.id) and lead.fallo_ganado:
-                    lead._send_fallo_notification(manual=False)
-                    lead.action_set_won_rainbowman()
-
-        # Sincronizar documentos de Propuesta Técnica
-        if change_pt_docs:
-            for lead in self:
-                lead._sync_pt_doc_lines()
-
-        if change_pe_docs:
-            for lead in self:
-                lead._sync_pe_doc_lines()
-        return res
 
     def _sync_pe_doc_lines(self):
         # Sincroniza la tabla de Propuesta Económica con los documentos seleccionados en pedcto_ids.
@@ -331,11 +328,6 @@ class CrmLead(models.Model):
         #Cuando cambian los documentos requeridos de propuesta económica, actualizamos la tabla.
         if self.id:
             self._sync_pe_doc_lines()
-
-    def action_set_lost(self, **kwargs):
-        for lead in self:
-            lead._ensure_stage_is_fallo()
-        return super(CrmLead, self).action_set_lost(**kwargs)
 
     def check_doctos(self, type):
         # Verifica que haya al menos 2 personas diferentes que hayan revisado los documentos.
@@ -413,6 +405,7 @@ class CrmLead(models.Model):
             raise ValidationError('Existe un error en el flujo de las etapas, favor de revisar las configuraciones')
 
         self._log_stage_change(self.stage_id, new_stage, reason.id, 'Avance de etapa')
+        self.stage_previous = self.stage_id.name
         self.stage_id = new_stage.id
 
 
@@ -518,7 +511,6 @@ class CrmLead(models.Model):
         # La ejecuta un usuario del grupo project_extra.group_conv_authorizer. Genera OC y notifica a Finanzas.
         self.ensure_one()
         oc = self.action_generar_orden()
-
         correos_list = self._get_authorizer_emails_from_group('purchase.group_purchase_user')
         template = self.env.ref('project_extra.mail_tmpl_bases_autorizar', raise_if_not_found=False)
 
@@ -530,32 +522,39 @@ class CrmLead(models.Model):
         try:
             correos = ', '.join(correos_list)
             email_values = {'model': 'purchase.order', 'email_to': correos}
-            template.send_mail(self.id, force_send=True, email_values=email_values)
+            template.send_mail(oc.id, force_send=True, email_values=email_values)
             self.bases_notification_sent = True
             self._post_html(_('Se envió correo a: ') + correos)
         except Exception:
             self._post_html(_('Error al enviar el correo'))
 
+        if self.stage_name == 'Declinado' and self.stage_previous == 'Inscripción/Compra de bases':
+            dest_stage = self._get_stage_by_name('Inscripción/Compra de bases')
+            self.write({'stage_id': dest_stage.id, 'stage_previous': self.stage_name})
+            self._log_stage_change(self.stage_id, dest_stage, False, 'Autorización de compra de bases')
+
+
     def action_decline_bases(self):
         self.ensure_one()
-
-        # Seguridad
         if not self.env.user.has_group('project_extra.group_conv_authorizer'):
             raise UserError(_('No tiene permisos para declinar la compra de bases.'))
 
-        # Publicar en el chatter
         self.message_post(body=_('La compra de bases ha sido <b>DECLINADA</b> por %s.') % self.env.user.display_name)
-
-        # Limpiar flags
         self.bases_pay = False
         self.bases_notification_sent = False
-
-        # Limpiar archivo si existía
         self.bases_doc = False
         self.bases_doc_name = False
 
-        # Opcional: marcar flag de declinada
-        # self.bases_declined = True
+        dest_stage = self._get_stage_by_name('Declinado')
+        if not dest_stage:
+            raise UserError('No se encontró la etapa DECLINADO')
+
+        old_stage = self.stage_id
+        if old_stage.id != dest_stage.id:
+            self.write({'stage_id': dest_stage.id, 'stage_previous': old_stage.name})
+
+        self._log_stage_change(old_stage, dest_stage, False, 'Declinado')
+        self._post_html(_('Declinada por %s.') % self.env.user.display_name, old_stage, dest_stage)
 
 
     def _get_emails(self):
@@ -1046,10 +1045,10 @@ class CrmLead(models.Model):
                             else:
                                 rec.write({'concept_ex': True, 'concept_id': concept_id.id})
                         else:
-                            statement = ('SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat, ' + cantidad + ' qty, (CASE WHEN ' + precio + 
-                                    " = '' THEN '0.0' ELSE " + precio + " END)::float importe FROM crm_concept_line cil JOIN uom_uom uu ON lower(cil." + unidad + ''') = lower(uu.name->>'en_US') 
-                                            JOIN product_category pc ON pc.NAME = 'All'
-                                WHERE cil.id = ''' + str(rec.id))
+                            statement = ('SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat, REPLACE(' + cantidad + ", ',', '') qty, (CASE WHEN " + 
+                                    precio + " = '' THEN '0.0' ELSE REPLACE(" + precio + """, ',', '') END)::float importe 
+                                FROM crm_concept_line cil JOIN uom_uom uu ON lower(cil.""" + unidad + 
+                                ") = lower(uu.name->>'en_US') JOIN product_category pc ON pc.NAME = 'All' WHERE cil.id = " + str(rec.id))
                             self.env.cr.execute(statement)
                             info = self.env.cr.dictfetchall()
                             if info:
@@ -1069,22 +1068,68 @@ class CrmLead(models.Model):
             record.concept_ids.unlink()
             record.budget_ids.unlink()
 
-    def action_open_attachments(self):
-        # Abrir Documentos (app Documentos) filtrado por esta oportunidad.
+    def _get_or_create_documents_folder(self, tipo):
+        """ Crea/obtiene la estructura de carpetas en Documents
+            CRM / <no_licitacion> / Tecnico o Economico """
         self.ensure_one()
-        action = self.env.ref('documents.document_action').read()[0]
-        action['domain'] = [('id', '=', self.documents_folder_id.id)]
+        Document = self.env['documents.document']
+        # Verificar si el módulo documents está disponible
+        if 'documents.document' not in self.env:
+            raise UserError(_('El módulo de Documentos no está disponible.\n Por favor, instale el módulo "documents" para usar esta funcionalidad.'))
         
-        ctx = dict(self.env.context or {})
-        ctx.update({'default_res_model': 'crm.lead', 'default_res_id': self.id,})
-        action['context'] = ctx
-        return action
+        # 1) Carpeta raíz "CRM"
+        root_folder = Document.search([('name', '=', 'CRM'), ('type', '=', 'folder'), ('folder_id', '=', False)], limit=1)
+        if not root_folder:
+            root_folder = Document.create({'name': 'CRM', 'type': 'folder', 'folder_id': False,})
+        
+        # 2) Carpeta de la licitación
+        lic_name = self.no_licitacion or self.name or 'Sin nombre'
+        lic_folder = Document.search([('name', '=', lic_name), ('type', '=', 'folder'), ('folder_id', '=', root_folder.id)], limit=1)
+        if not lic_folder:
+            lic_folder = Document.create({'name': lic_name, 'type': 'folder', 'folder_id': root_folder.id})
+        
+        # 3) Subcarpeta Técnico o Económico
+        sub_folder = Document.search([('name', '=', tipo), ('type', '=', 'folder'), ('folder_id', '=', lic_folder.id)], limit=1)
+        if not sub_folder:
+            sub_folder = Document.create({'name': tipo, 'type': 'folder', 'folder_id': lic_folder.id,})
+        
+        return sub_folder
 
+
+    def action_open_attachments(self):
+        # Abre documentos en la carpeta específica (Técnico o Económico)
+        self.ensure_one()
+        # Determinar si es técnica o económica según el contexto
+        tipo = self.env.context.get('folder_type', 'Tecnico')
+        
+        # Intentar usar Documents si está disponible
+        if 'documents.document' in self.env:
+            try:
+                folder = self._get_or_create_documents_folder(tipo)
+                # Buscar la acción de documents
+                action = self.env.ref('documents.document_action').read()[0]
+                
+                # Filtrar por la carpeta específica
+                action['domain'] = [('folder_id', '=', folder.id)]
+                action['context'] = {'default_folder_id': folder.id, 'default_res_model': 'crm.lead', 'default_res_id': self.id, 
+                    'searchpanel_default_folder_id': folder.id,}
+                action['name'] = 'Documentos - %s - %s' % (self.no_licitacion or self.name, tipo)
+                return action
+                
+            except Exception as e:
+                _logger.error("Error usando Documents: %s" % str(e))
+                raise UserError(_('Error al abrir documentos: %s') % str(e))
+        else:
+            raise UserError(_('El módulo de Documentos no está instalado.'))
 
     def action_genera_ordentrabajo(self):
         self.ensure_one()
         if self.fecha_firma > self.fecha_limite_firma:
             raise UserError(_('La fecha de firma no puede ser mayor a la fecha límite de firma.'))
+
+        count = len(self.order_ids.filtered(lambda u: u.state != 'cancel'))
+        if count != 0:
+            raise UserError('Ya existe una orden de trabajo.')
 
         oc_vals = self.get_work_default_values()
         oc_vals_2 = oc_vals[:]
@@ -1107,7 +1152,7 @@ class CrmLead(models.Model):
         for rec in self.concept_ids.filtered(lambda u: u.concept_ex):
             taxes = rec.concept_id.taxes_id._filter_taxes_by_company(self.company_id)
             product_id = self.env['product.product'].search([('product_tmpl_id','=',rec.concept_id.id)])
-            self.env.cr.execute('SELECT ' + cantidad + '::float qty FROM crm_concept_line cil WHERE cil.id = ' + str(rec.id))
+            self.env.cr.execute('SELECT REPLACE(' + cantidad + ", ',', '')::float qty FROM crm_concept_line cil WHERE cil.id = " + str(rec.id))
             statement = self.env.cr.dictfetchall()
             name = '[' + product_id.default_code + '] ' + product_id.name 
 
@@ -1120,7 +1165,7 @@ class CrmLead(models.Model):
         values = {'company_id': self.company_id.id, 'partner_id': self.partner_id.id, 'partner_invoice_id': self.partner_id.id, 
             'partner_shipping_id': self.partner_id.id, 'currency_id': self.company_id.currency_id.id, 'user_id': self.env.uid, 'name': sequence, 'state': 'sent',
             'origin': self.no_licitacion or self.name, 'invoice_status': 'to invoice', 'opportunity_id': self.id, 
-            'client_order_ref': 'Orden de trabajo ' + self.no_licitacion or self.name, 'order_line': order_lines}
+            'client_order_ref': self.no_licitacion or self.name, 'order_line': order_lines}
         orders.append(values)
         return orders
 
@@ -1129,12 +1174,48 @@ class CrmLead(models.Model):
         new_oc = oc_obj.create(oc_vals)
         return new_oc
 
+    def action_set_lost(self, **kwargs):
+        for lead in self:
+            lead._ensure_stage_is_fallo()
+        return super(CrmLead, self).action_set_lost(**kwargs)
+
+    def write(self, vals):
+        # Detectar cambio de "fallo_ganado" para disparar proceso automático
+        change_fallo = 'fallo_ganado' in vals
+        previous_fallo = {}
+        if change_fallo:
+            for lead in self:
+                previous_fallo[lead.id] = lead.fallo_ganado
+
+        # Cambios de documentos
+        change_pt_docs = 'ptdcto_ids' in vals
+        change_pe_docs = 'pedcto_ids' in vals
+
+        res = super(CrmLead, self).write(vals)
+
+        # Proceso automático de FALLO "Ganado"
+        if change_fallo:
+            for lead in self:
+                if not previous_fallo.get(lead.id) and lead.fallo_ganado:
+                    lead._send_fallo_notification(manual=False)
+                    lead.action_set_won_rainbowman()
+
+        # Sincronizar documentos de Propuesta Técnica
+        if change_pt_docs:
+            for lead in self:
+                lead._sync_pt_doc_lines()
+
+        if change_pe_docs:
+            for lead in self:
+                lead._sync_pe_doc_lines()
+        return res
+
 
 class crmInputsLine(models.Model):
     _name = 'crm.input.line'
     _description = 'Insumos'
     
-    lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportudidad', readonly=True)
+    lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportunidad', readonly=True)
     col1 = fields.Char(string='Columna 1')
     col2 = fields.Char(string='Columna 2')
     col3 = fields.Char(string='Columna 3')
@@ -1151,7 +1232,7 @@ class crmConceptLine(models.Model):
     _name = 'crm.concept.line'
     _description = 'Conceptos de trabajo'
     
-    lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportudidad', readonly=True)
+    lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportunidad', readonly=True)
     col1 = fields.Char(string='Columna 1')
     col2 = fields.Char(string='Columna 2')
     col3 = fields.Char(string='Columna 3')
@@ -1168,7 +1249,7 @@ class crmBudgetLine(models.Model):
     _name = 'crm.budget.line'
     _description = 'Partidas presupuestarias'
     
-    lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportudidad', readonly=True)
+    lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportunidad', readonly=True)
     col1 = fields.Char(string='Codigo')
     col2 = fields.Char(string='Descripción')
     budget_id = fields.Many2one(comodel_name='product.budget.item', string='Partida')
@@ -1208,10 +1289,64 @@ class CrmPropuestaEconomicaDoc(models.Model):
 class CrmPropuestaEconomicaRevision(models.Model):
     _name = 'crm.propuesta.economica.revision'
     _description = 'Revisión de documentos Propuesta Económica (CRM)'
-    _rec_name = 'employee_id'
-    _order = 'fecha_revision desc'
+    _order = 'fecha_revision desc, id desc'
     
     lead_id = fields.Many2one('crm.lead', string='Oportunidad', required=True, ondelete='cascade')
     fecha_revision = fields.Date(string='Fecha de revisión', default=fields.Date.context_today, required=True)
-    employee_id = fields.Many2one('hr.employee', string='Nombre', required=True, help='Persona que revisó la documentación.')
+    employee_ids = fields.Many2many('hr.employee', 'crm_pe_revision_employee_rel', 'revision_id', 'employee_id', string='Nombre', 
+        help='Personas que revisarán la documentación.')
     revisado = fields.Boolean(string='Revisado', default=False)
+    autorizado = fields.Boolean(string='Autorizado', default=False)
+    activo = fields.Boolean(string='Activo', default=True, help='Indica si esta revisión está activa', compute='_compute_activo', store=True)
+    
+    @api.depends('lead_id.pe_revision_ids', 'lead_id.pe_revision_ids.autorizado')
+    def _compute_activo(self):
+        """ Una revisión está activa si:
+            1. Es la más reciente sin autorizar, O
+            2. No hay ninguna autorizada aún """
+        for record in self:
+            # Obtener todas las revisiones de esta oportunidad ordenadas por fecha
+            todas_revisiones = record.lead_id.pe_revision_ids.sorted('fecha_revision', reverse=True)
+            if not todas_revisiones:
+                record.activo = False
+                continue
+            
+            hay_autorizada = any(rev.autorizado for rev in todas_revisiones)
+            if hay_autorizada:
+                # Si esta revisión ya está autorizada, ya no está activa
+                record.activo = record.autorizado
+            else:
+                # Si no hay ninguna autorizada, solo la más reciente está activa
+                record.activo = (record.id == todas_revisiones[0].id)
+
+
+    @api.onchange('revisado')
+    def _onchange_revisado(self):
+        # Cuando se desmarca revisado, también desmarcar autorizado
+        if not self.revisado and self.autorizado:
+            self.autorizado = False
+    
+    @api.constrains('autorizado', 'revisado')
+    def _check_autorizado(self):
+        # No se puede autorizar sin haber revisado primero
+        for record in self:
+            if record.autorizado and not record.revisado:
+                raise ValidationError(_('Debe marcar como "Revisado" antes de poder autorizar.'))
+    
+    def write(self, vals):
+        # Controlar el flujo de autorización
+        res = super(CrmPropuestaEconomicaRevision, self).write(vals)
+        for record in self:
+            # Si se marca como autorizado
+            if vals.get('autorizado') and record.revisado:
+                # Desactivar autorizaciones de revisiones anteriores
+                revisiones_anteriores = self.env['crm.propuesta.economica.revision'].search([('lead_id', '=', record.lead_id.id), ('id', '!=', record.id),
+                    ('fecha_revision', '<', record.fecha_revision)])
+                if revisiones_anteriores:
+                    revisiones_anteriores.write({'autorizado': False})
+                
+                # Activar la siguiente revisión (si existe y no está autorizada)
+                siguiente_revision = self.env['crm.propuesta.economica.revision'].search([('lead_id', '=', record.lead_id.id), ('id', '!=', record.id),
+                    ('fecha_revision', '>', record.fecha_revision), ('autorizado', '=', False)], order='fecha_revision asc', limit=1)
+                record.lead_id.pe_revision_ids._compute_activo()
+        return res
