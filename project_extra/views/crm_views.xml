@@ -67,7 +67,7 @@
                         <field name="especialidad_ids" widget="many2many_tags" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                         <field name="fecha_convocatoria"/>
                         <field name="fecha_limite_inscripcion"/>
-                        <field name="fecha_apertura"/>
+                        <field name="currency_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                         <field name="convocatoria_pdf_name" string="Nombre del Documento" invisible="True"/>
                         <field name="convocatoria_pdf" filename="convocatoria_pdf_name" string="Convocatoria" widget="binary"/>
                     </group>
@@ -99,14 +99,34 @@
                             </group>
                             <field name="bases_doc_name" string="Nombre del Documento" invisible="True"/>
                             <group>
-                                <field name="bases_pay" string="Pagar base" readonly="stage_name not in ('Inscripción/Compra de bases', 'Declinado')"/>
+                                <field name="bases_pay" string="Pagar bases" readonly="stage_name not in ('Inscripción/Compra de bases', 'Declinado')"/>
                             </group>
                             <group>
                                 <field name="bases_notification_sent" readonly="1"/>
                             </group>
                             <group colspan="2">
                                 <field name="bases_supervisor_id" readonly="stage_name != 'Inscripción/Compra de bases'"/>
-                                <field name="bases_cost" string="Importe" readonly="stage_name != 'Inscripción/Compra de bases'"/>
+                                <field name="fecha_apertura" string="Fecha de apertura" readonly="stage_name != 'Inscripción/Compra de bases'"/>
+                            </group>
+                            <group colspan="2" invisible="not bases_pay">
+                                <field name="bases_cost" string="Costo de las bases" readonly="stage_name != 'Inscripción/Compra de bases'"/>
+                            </group>
+                            <group colspan="2">
+                                <field name="bases_anticipo_porcentaje" readonly="stage_name != 'Inscripción/Compra de bases'"/>
+                                <field name="bases_abstinencia_anticipo" readonly="stage_name != 'Inscripción/Compra de bases'"/>
+                            </group>
+                            <group colspan="2">
+                                <field name="bases_modalidad_contrato_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}" readonly="stage_name != 'Inscripción/Compra de bases'"/>
+                            </group>
+                            <group colspan="2">
+                                <field name="bases_fecha_inicio_trabajos" readonly="stage_name != 'Inscripción/Compra de bases'"/>
+                                <field name="bases_fecha_terminacion_trabajos" readonly="stage_name != 'Inscripción/Compra de bases'"/>
+                            </group>
+                            <group colspan="2">
+                                <field name="bases_plazo_ejecucion" readonly="stage_name != 'Inscripción/Compra de bases'"/>
+                                <field name="bases_sancion_atraso" readonly="stage_name != 'Inscripción/Compra de bases'"/>
+                            </group>
+                            <group colspan="2">
                                 <field name="bases_doc" string="Bases" filename="bases_doc_name" widget="binary" readonly="stage_name != 'Inscripción/Compra de bases'"/>
                             </group>
                         </group>
@@ -128,7 +148,15 @@
                             </group>
                             <group colspan="2">
                                 <field name="visita_personas_ids" widget="many2many_tags" readonly="stage_name != 'Visita de Obra'" required="visita_obligatoria"/>
-                                <field name="visita_fecha" readonly="stage_name != 'Visita de Obra'"/>
+                            </group>
+                            <group colspan="2">
+                                <field name="visita_fecha" string="Fecha de visita" readonly="stage_name != 'Visita de Obra'"/>
+                                <field name="visita_hora" string="Hora de visita" widget="float_time" readonly="stage_name != 'Visita de Obra'"/>
+                            </group>
+                            <group colspan="2">
+                                <field name="visita_lugar_reunion" readonly="stage_name != 'Visita de Obra'"/>
+                            </group>
+                            <group colspan="2">
                                 <field name="visita_acta" filename="visita_acta_name" widget="binary" readonly="stage_name != 'Visita de Obra'"/>
                             </group>
                         </group>
@@ -136,6 +164,8 @@
                     <group string="Junta de Aclaración de Dudas">
                         <field name="junta_docto_dudas_name" invisible="1"/>
                         <field name="junta_acta_name" invisible="1"/>
+                        <field name="junta_notificacion_1_name" invisible="1"/>
+                        <field name="junta_notificacion_2_name" invisible="1"/>
                         <group>
                             <group>
                                 <field name="junta_obligatoria" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
@@ -160,9 +190,19 @@
                             </group>
                         </group>
                         <group>
-                            <group>
-                                <field name="junta_fecha" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
+                            <group colspan="2">
+                                <field name="junta_lugar_reunion" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
                             </group>
+                        </group>
+                        <group>
+                            <group>
+                                <field name="junta_fecha" string="Fecha de junta" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
+                            </group>
+                            <group>
+                                <field name="junta_hora" string="Hora de junta" widget="float_time" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
+                            </group>
+                        </group>
+                        <group>
                             <group>
                                 <field name="junta_fecha_limite_dudas" string="Fecha límite" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
                             </group>
@@ -175,6 +215,14 @@
                         <group>
                             <group colspan="2">
                                 <field name="junta_acta" filename="junta_acta_name" widget="binary" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group>
+                                <field name="junta_notificacion_1" filename="junta_notificacion_1_name" widget="binary" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
+                            </group>
+                            <group>
+                                <field name="junta_notificacion_2" filename="junta_notificacion_2_name" widget="binary" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
                             </group>
                         </group>
                     </group>
@@ -325,11 +373,11 @@
                                             <field name="revisado"/>
                                             <field name="autorizado" readonly="not revisado or not activo"/>
                                             <field name="activo" invisible="1"/>
-                                            <div invisible="not activo" class="alert alert-info">
+                                            <div invisible="not activo" class="alert alert-info text-center" role="alert">
                                                 <p><strong>Esta es la revisión activa actual.</strong></p>
                                                 <p>Primero marque como "Revisado", luego podrá marcar como "Autorizado".</p>
                                             </div>
-                                            <div invisible="activo or not autorizado" class="alert alert-success">
+                                            <div invisible="activo or not autorizado" role="alert" class="alert alert-success">
                                                 <p><strong>✓ Revisión autorizada</strong></p>
                                             </div>
                                         </group>
@@ -360,17 +408,22 @@
                             </group>
                             <group colspan="2" invisible="not apertura_obligatoria">
                                 <field name="apertura_personas_ids" widget="many2many_tags" readonly="stage_name != 'Junta de Apertura de Propuestas'" required="apertura_obligatoria"/>
+                            </group>
+                            <group colspan="2">
+                                <field name="apertura_lugar_reunion" readonly="stage_name != 'Junta de Apertura de Propuestas'"/>
+                            </group>
+                            <group colspan="2" invisible="not apertura_obligatoria">
                                 <field name="apertura_fecha" string="Fecha de junta" readonly="stage_name != 'Junta de Apertura de Propuestas'" required="apertura_obligatoria"/>
                                 <field name="apertura_acta" filename="apertura_acta_name" string="Acta de la junta" widget="binary" readonly="stage_name != 'Junta de Apertura de Propuestas'" required="apertura_obligatoria"/>
                             </group>
                         </group>
-                        <group string="Fallo">
+                        <group string="Junta de Fallo">
                             <group>
                                 <field name="fallo_ganado" readonly="stage_name != 'Fallo'"/>
                             </group>
                             <group>
                                 <list editable="bottom">
-                                    <button name="action_send_fallo_notification" type="object" icon="fa-envelope" string="Enviar" invisible="not fallo_ganado"/>
+                                    <button name="action_send_fallo_notification" type="object" icon="fa-envelope" string="Enviar" invisible="stage_name != 'Fallo'"/>
                                 </list>
                             </group>
                             <field name="fallo_acta_name" invisible="1"/>
@@ -381,8 +434,33 @@
                                 <field name="fallo_notif_manual_sent" readonly="1"/>
                             </group>
                             <group colspan="2">
-                                <field name="fallo_fecha_publicacion" string="Fecha de publicación" readonly="stage_name != 'Fallo'" required="stage_name == 'Fallo'"/>
-                                <field name="fallo_acta" filename="fallo_acta_name" string="Acta de fallo" readonly="stage_name != 'Fallo'" required="stage_name == 'Fallo'"/>
+                                <field name="fallo_personas_ids" widget="many2many_tags" readonly="stage_name != 'Fallo'"/>
+                            </group>
+                            <group colspan="2">
+                                <field name="fallo_lugar_reunion" readonly="stage_name != 'Fallo'"/>
+                            </group>
+                            <group>
+                                <field name="fallo_fecha" string="Fecha de junta" readonly="stage_name != 'Fallo'"/>
+                            </group>
+                            <group>
+                                <field name="fallo_hora" string="Hora de junta" widget="float_time" readonly="stage_name != 'Fallo'"/>
+                            </group>
+                            <group colspan="2">
+                                <field name="fallo_acta" filename="fallo_acta_name" string="Acta de fallo" readonly="stage_name != 'Fallo'"/>
+                            </group>
+                            <group colspan="2" invisible="not fallo_ganado">
+                                <separator string="Notificación a Directores"/>
+                            </group>
+                            <group invisible="not fallo_ganado">
+                                <list editable="bottom">
+                                    <button name="action_send_fallo_directores_notification" type="object" icon="fa-envelope" string="Enviar a Dirección"/>
+                                </list>
+                            </group>
+                            <group invisible="not fallo_ganado">
+                                <field name="fallo_notif_directores_auto_sent" readonly="1"/>
+                            </group>
+                            <group invisible="not fallo_ganado">
+                                <field name="fallo_notif_directores_manual_sent" readonly="1"/>
                             </group>
                         </group>
                         <group string="Ganado">
@@ -401,7 +479,7 @@
                     </group>
                 </page>
 
-                <page string="Ordenes de compra">
+                <page string="Órdenes de compra">
                     <field name="oc_ids" widget="one2many_list">
                         <list string="Ordenes de compra" delete="0" create="0" edit="0" context="{'default_lead_id': id}">
                             <field name="name"/>

@@ -18,7 +18,7 @@ class respartnerCurp(models.Model):
     typesupplier_id = fields.Many2one('partner.type.supplier', string='Tipo de Proveedor', tracking=True)
     classupplier_id = fields.Many2one('partner.classification.supplier', string='Clasificación del Proveedor', tracking=True)
     area_em = fields.Char(string='Zona Geográfica', tracking=True)
-    soporte_ids = fields.Many2many(comodel_name='ir.attachment', inverse_name='res_id', string="Documentos fiscales")
+    soporte_ids = fields.Many2many(comodel_name='ir.attachment', string="Documentos fiscales")
 
     @api.constrains('curp')
     def _check_curp(self):
@@ -56,7 +56,7 @@ class companyLegalRepresentative(models.Model):
     term_date = fields.Date(string='Vigencia del cargo')
     legal_powers = fields.Char(string='Facultades legales')
     notario = fields.Char(string='Instrumento legal que respalda')
-    soporte_ids = fields.Many2many(comodel_name='ir.attachment', inverse_name='res_id', string="Documentación soporte")
+    soporte_ids = fields.Many2many(comodel_name='ir.attachment', string="Documentación soporte")
     observaciones = fields.Char(string='Observaciones')
     state = fields.Selection(selection=[('activo','Activo'), ('sustituido','Sustituido'), ('revocado','Revocado')],
         string='Estado Actual', default='activo', tracking=True)
@@ -90,7 +90,7 @@ class companyPartners(models.Model):
     nacionalidad = fields.Char(string='Nacionalidad', compute='_compute_partners', readonly=True)
     porcentaje = fields.Float(string='porcentaje de participación')
     appointment_date = fields.Date(string='Fecha de nombramiento')
-    soporte_ids = fields.Many2many(comodel_name='ir.attachment', inverse_name='res_id', string="Documentación soporte")
+    soporte_ids = fields.Many2many(comodel_name='ir.attachment', string="Documentación soporte")
     observaciones = fields.Char(string='Observaciones')
     state = fields.Selection(selection=[('activo','Activo'), ('inactivo','Inactivo'), ('retirado','Retirado')],
         string='Estado Actual', default='activo', tracking=True)
@@ -130,7 +130,7 @@ class companyLegalProxy(models.Model):
     grant_date = fields.Date(string='Fecha de otorgamiento')
     term_date = fields.Date(string='Vigencia del poder')
     notario = fields.Char(string='Instrumento legal que respalda')
-    soporte_ids = fields.Many2many(comodel_name='ir.attachment', inverse_name='res_id', string="Documentación soporte")
+    soporte_ids = fields.Many2many(comodel_name='ir.attachment', string="Documentación soporte")
     observaciones = fields.Char(string='Observaciones')
     state = fields.Selection(selection=[('activo','Activo'), ('inactivo','Inactivo'), ('vencido','Vencido')],
         string='Estado Actual', default='activo', tracking=True)
@@ -164,7 +164,7 @@ class companyPublicRecord(models.Model):
             ('mod','Modificaciones estatutarias (cambio de domicilio, objeto social, capital)'), ('compra','Compra-venta de inmuebles'),
             ('fusion','Fusión, escisión o liquidación de sociedades'), ('cont', 'Inscripción de contratos de garantía (hipotecas, fideicomisos).')],
         string='Tipo de trámite', tracking=True)
-    docto_ids = fields.Many2many(comodel_name='ir.attachment', inverse_name='res_id', string="Actas")
+    docto_ids = fields.Many2many(comodel_name='ir.attachment', string="Actas")
     observaciones = fields.Char(string='Observaciones')
     active = fields.Boolean(string='Activo', default=True)
 
@@ -182,7 +182,7 @@ class companyAssembly(models.Model):
         selection=[('const','Constitución de la sociedad o asociación (asamblea constitutiva).'), ('aprob','Aprobación de estados financieros.'), 
             ('mod','Modificación de estatutos sociales.'), ('nomb','Nombramiento o remoción de administradores, comisarios o representantes.')],
         string='Tipo de trámite', tracking=True)
-    docto_ids = fields.Many2many(comodel_name='ir.attachment', inverse_name='res_id', string="Actas")
+    docto_ids = fields.Many2many(comodel_name='ir.attachment', string="Actas")
     observaciones = fields.Char(string='Observaciones')
     active = fields.Boolean(string='Activo', default=True)
 
@@ -201,7 +201,7 @@ class companyEmployerRegistration(models.Model):
         ('const','Constitución de una empresa con empleados.'), ('reg','Registro de sucursales o centros de trabajo adicionales.'),
         ('mod','Modificación de datos patronales (domicilio, razón social, régimen fiscal).')],
         string='Tipo de trámite', tracking=True)
-    docto_ids = fields.Many2many(comodel_name='ir.attachment', inverse_name='res_id', string="Actas")
+    docto_ids = fields.Many2many(comodel_name='ir.attachment', string="Actas")
     observaciones = fields.Char(string='Observaciones')
     active = fields.Boolean(string='Activo', default=True)
 

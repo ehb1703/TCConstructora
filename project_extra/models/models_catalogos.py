@@ -203,3 +203,34 @@ class crmStageTypeBills(models.Model):
     
     origen_ids = fields.Many2many('crm.lead.type', string='Tipo de venta permitido')
     email_ids = fields.Many2many('hr.employee', string='Distribución de correo')
+
+
+class ModalidadContrato(models.Model):
+    _name = 'project.modalidad.contrato'
+    _description = 'Modalidad de Contrato'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'name'
+    _order = 'code'
+
+    code = fields.Char(string='Codigo Modalidad', required=True, tracking=True, help='Identificador único para la modalidad (ej. M01, M02).')
+    name = fields.Char(string='Nombre de modalidad', required=True, tracking=True, help='Nombre descriptivo (ej. Concurso Simplificado Sumario).')
+    description = fields.Text(string='Descripción', tracking=True, help='Descripción detallada de la modalidad de contrato.')
+    fundamento_legal = fields.Text(string='Fundamento legal', tracking=True, 
+        help='Referencia al artículo o ley aplicable (ej. Ley de Obras Públicas y Servicios Relacionados).')
+    active = fields.Boolean(string='Activo', default=True, help='Control para depuración y actualización del catálogo.')
+
+    _sql_constraints = [('code_unique', 'unique(code)', 'El ID de modalidad debe ser único.'),]
+
+    @api.depends('code', 'name')
+    def _compute_display_name(self):
+        for rec in self:
+            rec.display_name = f'{rec.code} - {rec.name}' if rec.code else rec.name
+
+    @api.model
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        args = args or []
+        if name:
+            domain = ['|', ('code', operator, name), ('name', operator, name)]
+            recs = self.search(domain + args, limit=limit)
+            return [(rec.id, rec.display_name) for rec in recs]
+        return super().name_search(name, args, operator, limit)

@@ -11,12 +11,11 @@ class CatalogoGastos(models.Model):
     _rec_name = 'nombre_categoria'
 
     tipo_formato = fields.Selection([('tipo1','Tipo 1'),('tipo2','Tipo 2')], string='Tipo / Formato')
-
     descripcion = fields.Text('Descripción')
     codigo_categoria = fields.Char('Código de categoría', required=True)
     nombre_categoria = fields.Char('Nombre de categoría', required=True)
     descripcion_detallada = fields.Text('Descripción detallada')
-    activo = fields.Boolean('Activo', default=True)
+    active = fields.Boolean(string='Activo', default=True)
 
     _sql_constraints = [('codigo_categoria_uniq','unique(codigo_categoria)','El código de categoría debe ser único.')]
 
@@ -30,7 +29,7 @@ class cls_municipios(models.Model):
     codigo = fields.Char(string='Código del Municipio', tracking=True, required=True)
     municipio = fields.Char(string='Municipio', tracking=True, required=True)
     state_id = fields.Many2one('res.country.state', string='Estado', tracking=True, required=True)
-    active = fields.Boolean(String='Activo', default=True, tracking=True)
+    active = fields.Boolean(string='Activo', default=True, tracking=True)
     
     @api.constrains('municipio')
     def fnc_check_municipio(self):
@@ -59,7 +58,7 @@ class tipoContribuyente(models.Model):
     
     name = fields.Char(string='Tipo de Contribuyente')
     description = fields.Char(string='Descripción')
-    active = fields.Boolean(String='Activo', default=True, tracking=True)
+    active = fields.Boolean(string='Activo', default=True, tracking=True)
 
 
 class tipoProveedor(models.Model):
@@ -70,7 +69,7 @@ class tipoProveedor(models.Model):
     
     name = fields.Char(string='Tipo de Proveedor')
     description = fields.Char(string='Descripción')
-    active = fields.Boolean(String='Activo', default=True, tracking=True)
+    active = fields.Boolean(string='Activo', default=True, tracking=True)
 
 
 class clasificacionProveedor(models.Model):
@@ -81,4 +80,4 @@ class clasificacionProveedor(models.Model):
     
     name = fields.Char(string='Clasificación del Proveedor')
     description = fields.Char(string='Descripción')
-    active = fields.Boolean(String='Activo', default=True, tracking=True)    
+    active = fields.Boolean(string='Activo', default=True, tracking=True)    
