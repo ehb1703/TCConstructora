@@ -16,6 +16,7 @@ Personalización del modulo:
         'data/mail_template_crm.xml',
         'data/cron_visita.xml',
         'data/ir_sequence.xml',
+        'data/ir_actions_server.xml',
         'security/res_groups.xml',
         'security/ir.model.access.csv',
         'views/project_catalogs_views.xml',

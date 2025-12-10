@@ -166,7 +166,6 @@
                 <field name="codigo_categoria"/>
                 <field name="nombre_categoria"/>
                 <field name="tipo_formato"/>
-                <field name="activo"/>
             </list>
         </field>
     </record>
@@ -185,9 +184,6 @@
                     <group>
                         <field name="descripcion"/>
                         <field name="descripcion_detallada"/>
-                    </group>
-                    <group>
-                        <field name="activo"/>
                     </group>
                 </sheet>
             </form>

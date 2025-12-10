@@ -17,4 +17,21 @@
             </form>
         </field>
     </record>
+
+    <record id="view_order_conf_type" model="ir.ui.view">
+        <field name="name">view.order.conf.type</field>
+        <field name="model">purchase.confirm.order</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="type_election"/>
+                    <field name="ids_order" widget="many2many_tags" readonly="1"/>
+                </group>
+                <footer>
+                    <button string="Confirmar" name="realizar_conf" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-default" special="cancel"/>
+                </footer>
+           </form>
+        </field>
+    </record>
 </odoo>

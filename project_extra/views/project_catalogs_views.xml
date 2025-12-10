@@ -243,6 +243,51 @@
         </field>
     </record>
 
+    <!-- Modalidad de Contrato -->
+    <record id="action_modalidad_contrato" model="ir.actions.act_window">
+        <field name="name">Modalidad de Contrato</field>
+        <field name="res_model">project.modalidad.contrato</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_modalidad_contrato_tree" model="ir.ui.view">
+        <field name="name">project.modalidad.contrato.list</field>
+        <field name="model">project.modalidad.contrato</field>
+        <field name="arch" type="xml">
+            <list string="Modalidades de Contrato">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="fundamento_legal"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_modalidad_contrato_form" model="ir.ui.view">
+        <field name="name">project.modalidad.contrato.form</field>
+        <field name="model">project.modalidad.contrato</field>
+        <field name="arch" type="xml">
+            <form string="Modalidad de Contrato">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description"/>
+                    </group>
+                    <group>
+                        <field name="fundamento_legal"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
     <menuitem id="menu_catalog_project" name="Catálogos" parent="project.menu_main_pm" sequence="200" groups="project.group_project_user,group_project_catalog">
         <menuitem id="menu_project_type" name="Tipo de Obra" action="action_project_type" sequence="1"/>
         <menuitem id="menu_project_docsrequeridos" name="Documentos" action="action_project_docsrequeridos" sequence="2"/>
@@ -250,6 +295,7 @@
         <menuitem id="menu_tipos_zona" name="Tipos de Zona" action="action_tipo_zona" sequence="4"/>
         <menuitem id="menu_zonas_geo" name="Zonas Geográficas" action="action_zona_geografica" sequence="5"/> 
         <menuitem id="menu_especialidad" name="Especialidades" action="action_especialidad" sequence="6"/>
+        <menuitem id="menu_modalidad_contrato" name="Modalidad de Contrato" action="action_modalidad_contrato" sequence="7"/>
     </menuitem>
 
 </odoo>

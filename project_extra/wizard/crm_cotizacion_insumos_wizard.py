@@ -64,3 +64,36 @@ class CrmCotizacionInsumoseWizard(models.TransientModel):
 
         for rec in self.supplier_ids:
             oc = self.action_generar_orden(rec)
+
+
+class WizardCotizacionConfirmar(models.TransientModel):
+    _name = 'purchase.confirm.order'
+
+    def _get_orders(self):
+        if self._context.get('orders'):
+            orders_obj = self.env['purchase.order']
+            orders = orders_obj.browse(self._context.get('orders', False))
+            return orders
+
+    ids_order = fields.Many2many('purchase.order', 'orden_confirmar', default=_get_orders)
+    type_election = fields.Selection(selection=[('precio','Precio Unitario Menor')], string='Tipo de elección')
+
+    def realizar_conf(self):
+        order = ''
+        precio = 0
+        for rec in self.ids_order:
+            order += str(rec.id) + ','
+
+        order = order[:-1]
+        if order != '':
+            if self.type_election == 'precio':
+                self.env.cr.execute('''UPDATE purchase_order_line pol SET ACTIVE = False 
+                    FROM (SELECT pol.id FROM (SELECT product_id, MIN(price_unit) price_unit, COUNT(*) num FROM purchase_order_line pol WHERE active IS TRUE 
+                                AND pol.order_id in (''' + order + ') GROUP BY 1) as t1 JOIN purchase_order_line pol ON pol.order_id IN (' + order + 
+                            ') AND pol.active IS TRUE AND t1.product_id = pol.product_id AND t1.price_unit != pol.price_unit ) as t2 WHERE pol.ID = t2.id;')
+
+                for rec in self.ids_order:
+                    rec.button_confirm()
+                    rec._amount_all()
+        
+        return True

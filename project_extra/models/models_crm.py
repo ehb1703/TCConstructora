@@ -47,17 +47,25 @@ class CrmLead(models.Model):
     oc_ids = fields.One2many('purchase.order', 'lead_id', string='Ordenes de compra relacionada')
     revert_log_ids = fields.One2many('crm.revert.log', 'lead_id', string='Bitácora de reversiones', readonly=True)
     revert_log_count = fields.Integer(compute='_compute_revert_log_count', string='Reversiones')
-    no_licitacion = fields.Char(string='No. de Licitación')
+    no_licitacion = fields.Char(string='No. de Procedimiento')
     desc_licitacion = fields.Char(string='Descripción')
+    currency_id = fields.Many2one('res.currency', string='Moneda', tracking=True)
     stage_name = fields.Char(string='State name', compute='_compute_name_stage', store=False)
     stage_previous = fields.Char(string='Etapa anterior')
     # Inscripción / Compra de bases
     bases_pay = fields.Boolean('Pagar bases', tracking=True)
     bases_supervisor_id = fields.Many2one('hr.employee', string='Supervisor general', tracking=True)
-    bases_cost = fields.Float(string='Costo', tracking=True)
+    bases_cost = fields.Float(string='Costo de las bases', tracking=True)
     bases_doc = fields.Binary(string='Docto. Bases', attachment=True)
     bases_doc_name = fields.Char(string='Nombre del documento')
     bases_notification_sent = fields.Boolean(string='Notificación de bases enviada', default=False)
+    bases_anticipo_porcentaje = fields.Integer(string='% de anticipo', tracking=True)
+    bases_abstinencia_anticipo = fields.Boolean(string='Abstinencia de anticipo', tracking=True)
+    bases_modalidad_contrato_id = fields.Many2one('project.modalidad.contrato', string='Modalidad de contrato', tracking=True)
+    bases_fecha_inicio_trabajos = fields.Date(string='Fecha estimada para inicio de trabajos', tracking=True)
+    bases_fecha_terminacion_trabajos = fields.Date(string='Fecha estimada para terminación de trabajos', tracking=True)
+    bases_plazo_ejecucion = fields.Integer(string='Plazo de ejecución', tracking=True, help='Plazo de ejecución en días')
+    bases_sancion_atraso = fields.Boolean(string='Sanción por atraso', tracking=True, help='Si no se cumple el tiempo estipulado se generan sanciones')
     ptdcto_ids = fields.Many2many('project.docsrequeridos', 'propuesta_tecnica_doctos_rel', 'tecnica_id', 'docto_id', string='Documentos requeridos',
         domain="[('model_id', '=', 'crm.lead'), ('etapa','=','tecnica')]")
     pedcto_ids = fields.Many2many('project.docsrequeridos', 'propuesta_economica_doctos_rel', 'economica_id', 'docto_id', string='Documentos requeridos',
@@ -66,6 +74,8 @@ class CrmLead(models.Model):
     visita_obligatoria = fields.Boolean(string='Visita obligatoria')
     visita_personas_ids = fields.Many2many('hr.employee', 'crm_lead_visita_employee_rel', 'lead_id', 'employee_id', string='Personas asignadas')
     visita_fecha = fields.Date(string='Fecha de visita')
+    visita_hora = fields.Float(string='Hora de visita', help='Hora en formato 12 horas')
+    visita_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la visita de obra')
     visita_acta = fields.Binary(string='Acta de visita', attachment=True)
     visita_acta_name = fields.Char(string='Nombre acta de visita')
     visita_notif_auto_sent = fields.Boolean(string='Notif. automática enviada', default=False)
@@ -74,6 +84,8 @@ class CrmLead(models.Model):
     junta_obligatoria = fields.Boolean(string='Asistencia obligatoria')
     junta_personas_ids = fields.Many2many('hr.employee','crm_lead_junta_employee_rel','lead_id','employee_id',string='Personas asignadas')
     junta_fecha = fields.Date(string='Fecha de junta')
+    junta_hora = fields.Float(string='Hora de junta', help='Hora en formato 12 horas')
+    junta_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la junta de aclaración de dudas')
     junta_fecha_limite_dudas = fields.Date(string='Fecha límite para envío de dudas')
     junta_docto_dudas = fields.Binary(string='Docto. de dudas', attachment=True)
     junta_docto_dudas_name = fields.Char(string='Nombre docto. de dudas')
@@ -81,6 +93,10 @@ class CrmLead(models.Model):
     junta_acta_name = fields.Char(string='Nombre acta de la junta')
     junta_notif_auto_sent = fields.Boolean(string='Notif. automática junta enviada', default=False)
     junta_notif_manual_sent = fields.Boolean(string='Notif. manual junta enviada', default=False)
+    junta_notificacion_1 = fields.Binary(string='Notificación 1', attachment=True)
+    junta_notificacion_1_name = fields.Char(string='Nombre notificación 1')
+    junta_notificacion_2 = fields.Binary(string='Notificación 2', attachment=True)
+    junta_notificacion_2_name = fields.Char(string='Nombre notificación 2')
     # Asignación de responsable
     tecnico_documental_id = fields.Many2one('hr.employee', 'Técnico/documental', tracking=True)
     analista_id = fields.Many2one('crm.analyst', 'Analista', tracking=True)
@@ -99,15 +115,21 @@ class CrmLead(models.Model):
     apertura_obligatoria = fields.Boolean('Asistencia obligatoria')
     apertura_personas_ids = fields.Many2many('hr.employee', 'crm_lead_apertura_employee_rel', 'lead_id', 'employee_id', 'Personas asignadas')
     apertura_fecha = fields.Date('Fecha de junta')
+    apertura_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la junta de apertura de propuestas')
     apertura_acta = fields.Binary('Acta de la junta', attachment=True)
     apertura_acta_name = fields.Char('Nombre acta de la junta')
     apertura_notif_auto_sent = fields.Boolean('Notif. automática enviada', default=False)
     apertura_notif_manual_sent = fields.Boolean('Notif. manual junta enviada', default=False)
-    # Fallo
+    # Junta de Fallo
+    fallo_personas_ids = fields.Many2many('hr.employee', 'crm_lead_fallo_employee_rel', 'lead_id', 'employee_id', string='Personas asignadas')
+    fallo_fecha = fields.Date(string='Fecha de junta')
+    fallo_hora = fields.Float(string='Hora de junta', help='Hora en formato 12 horas')
+    fallo_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la junta de pronunciamiento del fallo')
     fallo_ganado = fields.Boolean(string='Ganado')
     fallo_notif_auto_sent = fields.Boolean(string='Notif. automática enviada', default=False)
     fallo_notif_manual_sent = fields.Boolean(string='Notif. manual junta enviada', default=False)
-    fallo_fecha_publicacion = fields.Date(string='Fecha de publicación')
+    fallo_notif_directores_auto_sent = fields.Boolean(string='Notif. automática dirección enviada', default=False)
+    fallo_notif_directores_manual_sent = fields.Boolean(string='Notif. manual dirección enviada', default=False)
     fallo_acta = fields.Binary(string='Acta de fallo', attachment=True)
     fallo_acta_name = fields.Char(string='Nombre acta de fallo')
     # Ganado
@@ -346,10 +368,11 @@ class CrmLead(models.Model):
         for lead in self:
             if type == 'tecnica':
                 revisadas = lead.pt_revision_ids.filtered(lambda r: r.revisado)
+                empleados = set(revisadas.mapped('employee_id.id'))
             else:
                 revisadas = lead.pe_revision_ids.filtered(lambda r: r.revisado)
+                empleados = set(revisadas.mapped('employee_ids.id'))
             
-            empleados = set(revisadas.mapped('employee_id.id'))
             if len(empleados) < 2:
                 raise UserError(_('Debe haber al menos dos revisiones hechas por personas distintas para continuar.'))
 
@@ -737,6 +760,36 @@ class CrmLead(models.Model):
         # Usamos el helper genérico para enviar el correo
         self._send_fallo_notification(manual=True)
 
+    def action_send_fallo_directores_notification(self):
+        # Botón manual para enviar notificación de FALLO GANADO a directores.
+        self.ensure_one()
+
+        if not self.fallo_ganado:
+            raise UserError(_('Debe marcar la casilla "Ganado" antes de enviar la notificación a directores.'))
+
+        # Obtener correos de directores
+        correos_list = self._get_authorizer_emails_from_group('project_extra.group_conv_authorizer')
+        template = self.env.ref('project_extra.fallo_ganado_mail_tmpl_directores', raise_if_not_found=False)
+
+        if not template:
+            self._post_html(_('No se encontró la plantilla de correo para notificar a directores.'))
+            raise UserError(_('No se encontró la plantilla de correo para notificar a directores.'))
+
+        if not correos_list:
+            self._post_html(_('No hay directores configurados con correo electrónico.'))
+            raise UserError(_('No hay directores configurados con correo electrónico.'))
+
+        try:
+            correos = ', '.join(correos_list)
+            email_values = {'model': 'crm.lead', 'email_to': correos}
+            template.send_mail(self.id, force_send=True, email_values=email_values)
+            self.write({'fallo_notif_directores_manual_sent': True})
+            self._post_html(_('Notificación de fallo ganado enviada a directores: ') + correos)
+        except Exception as e:
+            _logger.error("Error al enviar notificación de fallo a directores: %s", str(e))
+            self._post_html(_('Error al enviar el correo a directores'))
+            raise UserError(_('Error al enviar el correo a directores: %s') % str(e))
+
         
     @api.model
     def cron_send_visita_reminders(self):
@@ -1121,6 +1174,7 @@ class CrmLead(models.Model):
                 raise UserError(_('Error al abrir documentos: %s') % str(e))
         else:
             raise UserError(_('El módulo de Documentos no está instalado.'))
+
 
     def action_genera_ordentrabajo(self):
         self.ensure_one()

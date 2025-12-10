@@ -14,7 +14,7 @@ class projectObra(models.Model):
     city_id = fields.Many2one('res.municipalities', string='Municipio')
     street = fields.Char(string='Street')
     between_streets = fields.Char(string='Entre Calles')
-    col = fields.Char(strign='Colonia')
+    col = fields.Char(string='Colonia')
     zip = fields.Char(string='Zip')
     partner_latitude = fields.Float(string='Geo Latitude', digits=(10, 7), default=0.0)
     partner_longitude = fields.Float(string='Geo Longitude', digits=(10, 7), default=0.0)
@@ -89,7 +89,7 @@ class projectObra(models.Model):
             if stage_new.name == 'En progreso':
                 for x in self.documentos_ids.filtered(lambda t: t.requerido):
                     if x.requerido:
-                        if not x.filename or x.filename == '':
+                        if not x.generado:
                             raise ValidationError('Existen archivos requeridos sin cargar. Favor de realizar la acción antes de continuar.')
         
         super(projectObra, self).write(vals)
@@ -112,5 +112,4 @@ class projectDocumentacion(models.Model):
     project_id = fields.Many2one('project.project', string='Proyecto')
     docto_id = fields.Many2one('project.docsrequeridos')
     requerido = fields.Boolean(string='Requerido')
-    archivo = fields.Binary(string='Documento', attachment=True)
-    filename = fields.Char(string='Filename')
+    generado = fields.Boolean(string='Generado')
