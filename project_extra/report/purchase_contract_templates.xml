@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>          
+    <data>
+        <template id="report_purchase_contract">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                        <div class="page">
+                            <div class="row" style="text-align: justify;">
+                                <t t-set="representante" t-value="o.env['company.legal.representative'].search([('company_id','=',o.company_id.id)], limit=1)"/>
+                                <p><strong>CONTRATO DE OBRA A PRECIO UNITARIO</strong> QUE CELEBRAN, POR UNA PARTE LA EMPRESA <strong><span t-field="o.company_id.name"/></strong> REPRESENTADA EN ESTE ACTO POR EL <strong><span t-field="representante.representante_id.title.name"/> <span t-field="representante.representante_id.name"/></strong> A QUIEN EN LOS SUCESIVO SE LE DENOMINARÁ <strong>“EL CONTRATANTE”</strong> Y POR LA OTRA, <strong><span t-field="o.vendor_id.name"/></strong>, REPRESENTADA EN ESTE ACTO POR EL <strong><span t-field="o.vendor_id.responsable_id.function"/> <span t-field="o.vendor_id.responsable_id.title.name"/> <span t-field="o.vendor_id.responsable_id.name"/></strong>, A QUIEN EN LO SUCESIVO SE LE DENOMINARÁ “EL CONTRATISTA”, Y QUIENES SE SUJETAN AL TENOR DE LAS SIGUIENTES DECLARACIONES Y CLÁUSULAS.
+                                <br/><br/>
+                                <strong>PRIMERA – OBJETO. </strong> El Contratista se compromete a realizar los servicios de <strong><span t-field="o.description"/></strong> conforme a lo solicitado por El Contratante. en el inmueble ubicado en la <strong><span t-field="o.vendor_id.street"/> <span t-field="o.vendor_id.street2"/> MUNICIPIO DE <span t-field="o.vendor_id.city"/>, <span t-field="o.vendor_id.state_id.name"/>, <span t-field="o.vendor_id.country_id.name"/>, CODIGO POSTAL <span t-field="o.vendor_id.zip"/>.</strong> Los trabajos específicos y los plazos de ejecución se adecuarán al programa de trabajo y a los requerimientos particulares especificados por El contratante.
+                                <br/><br/>
+                                <strong>SEGUNDA – DURACION.</strong> Este contrato tendrá una duración hasta el término de la ejecución de los trabajos estipulados en la cotización correspondiente, a partir de la fecha de firma.
+                                <br/><br/>
+                                <strong>TERCERA – PAGOS.</strong> El Contratante pagará al Contratista por los servicios prestados de acuerdo a los precios establecidos en el ANEXO 1.1 de este contrato.
+                                <br/><br/>
+                                El procedimiento para el cobro semanal deberá reunir los siguientes requisitos:
+                                <br/><br/>
+                                “EL CONTRATISTA” elaborará su estimación especificando claramente los <span t-field="o.doctos_delivered"/> de los trabajos ejecutados en la misma:
+                                <br/><br/>
+                                A)  Se le retendrá el <span t-field="o.retencion"/>% de cada estimación que servirá para crear un Fondo que estará en Garantía de calidad de los trabajos. Esta retención será pagada a “EL CONTRATISTA” al termino total de todas las actividades que la misma realice en el proyecto.
+                                <br/><br/>
+                                B)  “EL CONTRATISTA” deberá recabar la firma de conformidad de “EL CONTRATANTE” en lo relativo a: volúmenes, calidad y avances de “LOS TRABAJOS”.
+                                <br/><br/>
+                                C)  “EL CONTRATISTA” presentará su estimación debidamente requisitada en el domicilio de “LOS TRABAJOS” los días <span t-field="o.schedule"/>
+                                <br/><br/>
+                                D)  En caso de existir volúmenes o trabajos adicionales “EL CONTRATANTE” deberá dar su autorización previa por escrito de los mismos y su costo para que “EL CONTRATISTA” presente en una estimación de extraordinarios estos conceptos y se pasen a trámite ordinario de pago. 
+                                <br/><br/>
+                                E)  “EL CONTRATANTE” designará a un representante en campo al cual le dará facultades plenas para autorizar las estimaciones ordinarias, excedentes y conceptos extraordinarios por “LOS TRABAJOS” contratados en este instrumento.
+                                <br/><br/>
+                                F)  Los alcances, precios y volúmenes presentados en el ANEXO 1.1 estarán sujetos a conciliación y revisión de “EL CONTRATANTE”, “EL CONTRATANTE” pagará a “EL CONTRATISTA” en base a los volúmenes ejecutados, mismos que estarán validados por el representante en campo y una vez conciliados los precios unitarios, todas las modificaciones al ANEXO 1.1 deberán anexarse como parte  del mismo siendo la última versión la que tome validez.  
+                                <br/><br/>
+                                <strong>CUARTA – RESPONSABILIDAD DE “EL CONTRATISTA” FRENTE A TERCEROS. “EL CONTRATISTA”</strong> será quien contrate con terceros por su propia cuenta y será responsable de cualquier relación jurídica o de facto con ellos, obligándose en este acto a sacar en paz y a salvo a <strong>“EL CONTRATANTE”</strong> de cualquier multa, reclamación, demanda, denuncia o queja, gasto y en general cualquier pago que se pudiera derivar en su contra con motivo del incumplimiento de las obligaciones consignadas en el presente Contrato.
+                                <br/><br/>
+                                <strong>QUINTA – CALIDAD Y CORRECTA EJECUCION. “EL CONTRATISTA”</strong> reconoce y se obliga en este acto a responder durante un término de <span t-field="o.warranty_period"/> contados a partir de la aceptación de los trabajos mediante el acta entrega-recepción, por los defectos que pudiera tener la obra una vez terminada e imputables a la calidad y correcta ejecución. 
+                                <br/><br/>
+                                <strong>SEXTA – IMPLEMENTOS DE SEGURIDAD. “EL CONTRATISTA”</strong> se obliga a que todo su personal que labore dentro de las instalaciones use el equipo de protección personal conforme a NOM- según la actividad que realice en la ejecución de los trabajos, así como implementar en sitio las medidas necesarias para contener la seguridad industrial.
+                                <br/><br/>
+                                <strong>SÉPTIMA – CUMPLIMIENTO DE REGLAMENTOS. “EL CONTRATISTA”</strong> se compromete y obliga a sujetarse a todos los reglamentos de las autoridades competentes en materia de construcción, control ambiental, seguridad, uso de la vía pública y cualquier otro relacionado a su actividad.
+                                <br/><br/>
+                                <strong>OCTAVA – DE LA VERIFICACION. “EL CONTRATANTE”</strong> tendrá todas las facultades de verificar, cuando considere necesario, si <strong>“LOS TRABAJOS”</strong> materia del presente contrato se están llevando por parte de <strong>“EL CONTRATISTA”</strong> en tiempo acordado y con la calidad acordada.
+                                <br/><br/>
+                                <strong>NOVENA – NATURALEZA DEL CONTRATO Y DE LA RELACION ENTRE LAS PARTES.</strong> Las partes señalan que el presente contrato es de naturaleza civil y queda expresamente pactado que lo establecido en la cláusula anterior no implicará subordinación de <strong>“EL CONTRATISTA”</strong> respecto a <strong>“EL CONTRATANTE”</strong> ya que la relación entre ambas es de una contratación directa para <strong>“EL CONTRATISTA”</strong> y <strong>“EL CONTRATANTE”</strong> reconocen en este acto, que no existe ni existirá relación laboral, ni de cualquier otra naturaleza entre el personal de <strong>“EL CONTRATISTA”</strong> y el de <strong>“EL CONTRATANTE”</strong>, empleado para la realización de la prestación de “LOS TRABAJOS” ya que ambas partes son totalmente independientes en el manejo de sus relaciones laborales.
+                                <br/><br/>
+                                <strong>“EL CONTRATISTA”</strong> y <strong>“EL CONTRATANTE”</strong> reconocen y se garantizan en forma recíproca que cuentan con elementos propios y suficientes para hacer frente a las obligaciones a su cargo y a las que deriven de la relación contractual de trabajo que cada una de ellas tiene con sus funcionarios, empleados y trabajadores, por lo que en el caso de que cualquiera de los trabajadores o empleados de <strong>“EL CONTRATISTA”</strong> presente reclamación en contra de <strong>“EL CONTRATANTE”</strong>, en materia laboral, cada parte responderá de todas y cada una de las reclamaciones que se presenten por sus trabajadores o empleados en contra de la otra y la mantendrá en paz y a salvo, previo aviso y posterior acuerdo de cualquier pago, incluyendo indemnizaciones, que la parte afectada efectúe por este concepto.
+                                <br/><br/>
+                                <strong>“EL CONTRATISTA”</strong>, como ha quedado pactado, asumirá todas las obligaciones y derechos que se deriven de la relación contractual de trabajo con sus funcionarios, empleados y trabajadores con los que <strong>“EL CONTRATANTE”</strong> no tiene, ni tendrá relación alguna de trabajo o de cualquier otra naturaleza, ni obligación o responsabilidad fundada o derivada de la Ley Federal del Trabajo, de la Ley del Seguro Social, incluyendo todo lo relacionado con el Seguro de Retiro, y de la Ley del Instituto del Fondo Nacional de la Vivienda para los Trabajadores, o de cualquier otra ley o reglamento, de los contratos de trabajo, individuales y colectivos, celebrados o que celebre <strong>“EL CONTRATISTA”</strong> con su personal.
+                                <br/><br/>
+                                Por lo anterior, <strong>“EL CONTRATISTA”</strong> releva a <strong>“EL CONTRATANTE”</strong>, de toda responsabilidad solidaria o no, que pueda derivarse de las Leyes Federal del Trabajo, del Seguro Social y del Instituto del Fondo Nacional de la Vivienda para los Trabajadores y sus reglamentos, toda vez que, bajo formal protesta de decir verdad, tanto <strong>“EL CONTRATISTA”</strong> como <strong>“EL CONTRATANTE”</strong> manifiestan contar con elementos propios suficientes para cumplir con las obligaciones provenientes de las relaciones con el personal a su servicio, particularmente en el caso de <strong>“EL CONTRATISTA”</strong>, en relación con el personal que labora para ella, obligándose a resarcir a <strong>“EL CONTRATANTE”</strong> de cualquier gasto estrictamente indispensable que se vieran precisados a efectuar fundadamente  con motivo de o en relación con las relaciones contractuales de trabajo de cada una de las partes con el personal a su servicio y siempre y cuando hubiere mediado comunicación por escrito de la parte afectada a la parte responsable dentro de los 3 (tres) días naturales siguientes a aquel en que tenga conocimiento de cualquier demanda o reclamación de ésta naturaleza entablada en su contra.
+                                <br/><br/>
+                                Ambas partes convienen en que <strong>“EL CONTRATISTA”</strong> queda en libertad de dedicarse por cuenta propia o ajena a realizar cualquier actividad inherente a su ocupación habitual, diversa a la que se obliga a realizar para <strong>“EL CONTRATANTE”</strong> en virtud del presente instrumento en la forma y términos en que lo considere más conveniente, así como a prestar servicios similares a los que mediante este contrato se obliga y a prestarle a cualquier persona física o moral ajena al presente contrato.
+                                <br/><br/>
+                                Que será obligación de la <strong>“EL CONTRATISTA”</strong> realizar un contrato colectivo de trabajo ante un sindicato debidamente registrado y reconocido por las leyes, normas y reglamentos para el efecto, con la finalidad de registrar la obra y mantenerla a salvo de cualquier asunto o conflicto referente a la administración sindical del proyecto por la etapa de construcción y alcance de este contrato.
+                                <br/><br/>
+                                <strong>DÉCIMA – TERMINACIÓN ANTICIPADA. “EL CONTRATANTE”</strong> podrá dar por terminado el presente contrato en cualquier tiempo, siempre y cuando <strong>“EL CONTRATISTA”</strong> incumpla con alguna de sus obligaciones materia de este contrato. Obligándose además <strong>“EL CONTRATANTE”</strong> con <strong>“EL CONTRATISTA”</strong> a pagar <strong>“LOS TRABAJOS”</strong> que efectivamente hayan sido concluidos hasta que el momento de terminación anticipada suceda.
+                                No obstante, lo anterior, <strong>“EL CONTRATISTA”</strong> se obliga a dar oportunamente todos los informes relativos a <strong>“LOS TRABAJOS”</strong> a la sociedad o persona que le sustituya en el inmueble mencionado; obligación que tendrá una duración de 60 (sesenta) días naturales a partir de la fecha en que termine de prestar su servicio.
+                                <br/><br/>
+                                <strong>DÉCIMA PRIMERA – DE LA RESCISIÓN.</strong> Este contrato podrá ser rescindido, y por ello ambas partes tendrán la facultad de dar por terminado el contrato sin que medie resolución judicial previa, en los siguientes casos:
+                                <br/><br/>
+                                A) El encontrarse alguna de las partes en estado de insolvencia, aún sin la necesidad de ser declarada judicialmente.
+                                <br/><br/>
+                                B) Cuando alguna de las partes se encuentre en incumplimiento de cualesquiera de las obligaciones contraídas por el presente contrato.
+                                <br/><br/>
+                                C) En las demás que señale la Ley de la materia o en su defecto el Código Civil de aplicación supletoria al caso concreto. 
+                                <br/><br/>
+                                <strong>DÉCIMA SEGUNDA – DE LAS MODIFICACIONES AL CONTRATO.</strong> Ambas partes expresamente acuerdan que cualquier modificación a las obligaciones, derechos o actividades que se derivan del presente contrato, deberán ser motivo de convenio por escrito entre las mismas, el cual deberá anexarse al presente en carácter de <strong>CONVENIO MODIFICATORIO</strong> al mismo, agregándose al ANEXO 1.1 obligatoriamente, estableciéndose que las modificaciones a este acuerdo de voluntades que en su caso lleguen a pactarse, no implicarán novación al mismo, conservando éste toda su fuerza y valor legales en todo aquello que no sea objeto de las mencionadas modificaciones.
+                                <br/><br/>
+                                <strong>DÉCIMA TERCERA – DEL PRINCIPIO DE CONSERVACIÓN DE LOS CONTRATOS.</strong> En observancia al principio de conservación de los contratos, las partes están de acuerdo en que, si llegare a declararse judicialmente la nulidad de alguna de las cláusulas del presente contrato, las demás seguirán surtiendo sus plenos efectos jurídicos. 
+                                <br/><br/>
+                                <strong>DÉCIMA CUARTA – AUSENCIA DE DOLO.</strong> Ambas partes manifiestan que en la elaboración del presente contrato no existe dolo o mala fe ni ningún otro vicio del consentimiento que pudiera invalidarlo en parte o en su totalidad.
+                                Enteradas ambas partes del contenido y alcance de todas y cada una de las cláusulas, así como de los derechos que se adquieren y de las obligaciones que contraen, lo firman de conformidad por duplicado, en la ciudad de Guadalajara, Jalisco, el día <strong><span t-esc="o.signature_date.strftime('%d de %B del año %Y')"/>.</strong>
+                                <br/><br/>
+                                <table width="100%" border="0">
+                                    <colgroup>
+                                        <col width="45%"/>
+                                        <col width="10%"/>
+                                        <col width="45%"/>
+                                    </colgroup>
+                                    <tbody>
+                                        <tr>
+                                            <td style="text-align: center;">EL CONTRATANTE</td>
+                                            <td/>
+                                            <td style="text-align: center;">EL CONTRATISTA</td>
+                                        </tr>
+                                        <tr><td colspan="3"/></tr>
+                                        <tr><td colspan="3"/></tr>
+                                        <tr><td colspan="3"/></tr>
+                                        <tr><td colspan="3"/></tr>
+                                        <tr><td colspan="3"/></tr>
+                                        <tr>
+                                            <td style="text-align: center;">___________________________________</td>
+                                            <td/>
+                                            <td style="text-align: center;">___________________________________</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center;"><span t-field="representante.representante_id.title.name"/> <span t-field="representante.representante_id.name"/></td>
+                                            <td/>
+                                            <td style="text-align: center;"><span t-field="o.vendor_id.responsable_id.title.name"/> <span t-field="o.vendor_id.responsable_id.name"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center;"><span t-field="representante.cargo"/></td>
+                                            <td/>
+                                            <td style="text-align: center;">Representante Legal</td>
+                                        </tr>
+                                        <tr><td colspan="3"/></tr>
+                                        <tr><td colspan="3"/></tr>
+                                        <tr>
+                                            <td style="text-align: center;">TESTIGO</td>
+                                            <td/>
+                                            <td style="text-align: center;">TESTIGO</td>
+                                        </tr>
+                                        <tr><td colspan="3"/></tr>
+                                        <tr><td colspan="3"/></tr>
+                                        <tr><td colspan="3"/></tr>
+                                        <tr><td colspan="3"/></tr>
+                                        <tr><td colspan="3"/></tr>
+                                        <tr>
+                                            <td style="text-align: center;">___________________________________</td>
+                                            <td/>
+                                            <td style="text-align: center;">___________________________________</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center;">PERSONA 1</td>
+                                            <td/>
+                                            <td style="text-align: center;">PERSONA 2</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <br/><br/>
+                                ANEXO 1.1 FORMA PARTE DE ESTE CONTRATO
+                                </p>
+                            </div>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>

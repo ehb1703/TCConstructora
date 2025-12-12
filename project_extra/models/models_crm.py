@@ -64,8 +64,10 @@ class CrmLead(models.Model):
     bases_modalidad_contrato_id = fields.Many2one('project.modalidad.contrato', string='Modalidad de contrato', tracking=True)
     bases_fecha_inicio_trabajos = fields.Date(string='Fecha estimada para inicio de trabajos', tracking=True)
     bases_fecha_terminacion_trabajos = fields.Date(string='Fecha estimada para terminación de trabajos', tracking=True)
-    bases_plazo_ejecucion = fields.Integer(string='Plazo de ejecución', tracking=True, help='Plazo de ejecución en días')
+    bases_plazo_ejecucion = fields.Integer(string='Plazo de ejecución', tracking=True, help='Plazo de ejecución en días naturales')
     bases_sancion_atraso = fields.Boolean(string='Sanción por atraso', tracking=True, help='Si no se cumple el tiempo estipulado se generan sanciones')
+    bases_ret_5_millar = fields.Boolean(string='Ret. 5 al millar', tracking=True)
+    bases_ret_2_millar = fields.Boolean(string='Ret. 2 al millar', tracking=True)
     ptdcto_ids = fields.Many2many('project.docsrequeridos', 'propuesta_tecnica_doctos_rel', 'tecnica_id', 'docto_id', string='Documentos requeridos',
         domain="[('model_id', '=', 'crm.lead'), ('etapa','=','tecnica')]")
     pedcto_ids = fields.Many2many('project.docsrequeridos', 'propuesta_economica_doctos_rel', 'economica_id', 'docto_id', string='Documentos requeridos',
@@ -73,8 +75,7 @@ class CrmLead(models.Model):
     # Visita de obra
     visita_obligatoria = fields.Boolean(string='Visita obligatoria')
     visita_personas_ids = fields.Many2many('hr.employee', 'crm_lead_visita_employee_rel', 'lead_id', 'employee_id', string='Personas asignadas')
-    visita_fecha = fields.Date(string='Fecha de visita')
-    visita_hora = fields.Float(string='Hora de visita', help='Hora en formato 12 horas')
+    visita_fecha = fields.Datetime(string='Fecha y hora de visita')
     visita_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la visita de obra')
     visita_acta = fields.Binary(string='Acta de visita', attachment=True)
     visita_acta_name = fields.Char(string='Nombre acta de visita')
@@ -83,8 +84,7 @@ class CrmLead(models.Model):
     # Junta de Aclaración de dudas
     junta_obligatoria = fields.Boolean(string='Asistencia obligatoria')
     junta_personas_ids = fields.Many2many('hr.employee','crm_lead_junta_employee_rel','lead_id','employee_id',string='Personas asignadas')
-    junta_fecha = fields.Date(string='Fecha de junta')
-    junta_hora = fields.Float(string='Hora de junta', help='Hora en formato 12 horas')
+    junta_fecha = fields.Datetime(string='Fecha y hora de junta')
     junta_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la junta de aclaración de dudas')
     junta_fecha_limite_dudas = fields.Date(string='Fecha límite para envío de dudas')
     junta_docto_dudas = fields.Binary(string='Docto. de dudas', attachment=True)
@@ -122,8 +122,7 @@ class CrmLead(models.Model):
     apertura_notif_manual_sent = fields.Boolean('Notif. manual junta enviada', default=False)
     # Junta de Fallo
     fallo_personas_ids = fields.Many2many('hr.employee', 'crm_lead_fallo_employee_rel', 'lead_id', 'employee_id', string='Personas asignadas')
-    fallo_fecha = fields.Date(string='Fecha de junta')
-    fallo_hora = fields.Float(string='Hora de junta', help='Hora en formato 12 horas')
+    fallo_fecha = fields.Datetime(string='Fecha y hora de junta')
     fallo_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la junta de pronunciamiento del fallo')
     fallo_ganado = fields.Boolean(string='Ganado')
     fallo_notif_auto_sent = fields.Boolean(string='Notif. automática enviada', default=False)
@@ -139,9 +138,10 @@ class CrmLead(models.Model):
     contrato_documento = fields.Binary('Contrato', attachment=True)
     contrato_documento_name = fields.Char('Nombre del contrato')
     #Propuesta Técnica
-    documents_folder_id = fields.Many2one('documents.document', string="Folder", copy=False,
-        domain="[('type', '=', 'folder'), ('shortcut_document_id', '=', False), '|', ('company_id', '=', False), ('company_id', '=', company_id)]",)
+    documents_folder_id = fields.Many2one('documents.document', string="Folder", copy=False,domain="[('type', '=', 'folder'), ('shortcut_document_id', '=', False), '|', ('company_id', '=', False), ('company_id', '=', company_id)]",)
     documents_count = fields.Integer('Documentos', compute='_compute_documents_count', readonly=True)
+    documents_count_tecnica = fields.Integer('Docs Técnica', compute='_compute_documents_count', readonly=True)
+    documents_count_economica = fields.Integer('Docs Económica', compute='_compute_documents_count', readonly=True)
     pt_doc_line_ids = fields.One2many('crm.propuesta.tecnica.doc', 'lead_id', string='Documentos Propuesta Técnica')
     pt_revision_ids = fields.One2many('crm.propuesta.tecnica.revision', 'lead_id', string='Revisiones Propuesta Técnica')
     pe_doc_line_ids = fields.One2many('crm.propuesta.economica.doc', 'lead_id', string='Documentos Propuesta Económica')
@@ -179,38 +179,49 @@ class CrmLead(models.Model):
         Document = self.env['documents.document']
         for lead in self:
             try:
-                # Si Documents está disponible
-                if 'documents.document' in self.env:
-                    lic_name = lead.no_licitacion or lead.name or 'Sin nombre'
-                    root = Document.search([('name', '=', 'CRM'), ('type', '=', 'folder'), ('folder_id', '=', False)], limit=1)
-                    if not root:
-                        lead.documents_count = 0
-                        continue
-                    
-                    # Buscar carpeta de licitación
-                    lic_folder = Document.search([('name', '=', lic_name), ('type', '=', 'folder'), ('folder_id', '=', root.id)], limit=1)
-                    if not lic_folder:
-                        lead.documents_count = 0
-                        continue
-                    
-                    # Buscar subcarpetas
-                    tecnica_folder = Document.search([('name', '=', 'Tecnico'), ('type', '=', 'folder'), ('folder_id', '=', lic_folder.id)], limit=1)
-                    economica_folder = Document.search([('name', '=', 'Economico'), ('type', '=', 'folder'), ('folder_id', '=', lic_folder.id)], limit=1)
-                    
-                    # Contar documentos (no carpetas) en cada subcarpeta
-                    count = 0
-                    if tecnica_folder:
-                        count += Document.search_count([('folder_id', '=', tecnica_folder.id), ('type', '!=', 'folder')])
-                    if economica_folder:
-                        count += Document.search_count([('folder_id', '=', economica_folder.id), ('type', '!=', 'folder')])
-                    
-                    lead.documents_count = count
-                else:
+                if 'documents.document' not in self.env:
                     lead.documents_count = 0
-                    
+                    lead.documents_count_tecnica = 0
+                    lead.documents_count_economica = 0
+                    continue
+                
+                lic_name = lead.no_licitacion or lead.name or 'Sin nombre'
+                root = Document.search([('name', '=', 'CRM'), ('type', '=', 'folder'), ('folder_id', '=', False)], limit=1)
+                if not root:
+                    lead.documents_count = 0
+                    lead.documents_count_tecnica = 0
+                    lead.documents_count_economica = 0
+                    continue
+                
+                lic_folder = Document.search([('name', '=', lic_name), ('type', '=', 'folder'), ('folder_id', '=', root.id)], limit=1)
+                if not lic_folder:
+                    lead.documents_count = 0
+                    lead.documents_count_tecnica = 0
+                    lead.documents_count_economica = 0
+                    continue
+                
+                tecnica_folder = Document.search([('name', '=', 'Tecnico'), ('type', '=', 'folder'), ('folder_id', '=', lic_folder.id)], limit=1)
+                economica_folder = Document.search([('name', '=', 'Economico'), ('type', '=', 'folder'), ('folder_id', '=', lic_folder.id)], limit=1)
+                
+                # Contar documentos SEPARADOS por carpeta
+                count_tecnica = 0
+                count_economica = 0
+                
+                if tecnica_folder:
+                    count_tecnica = Document.search_count([('folder_id', '=', tecnica_folder.id), ('type', '!=', 'folder')])
+                if economica_folder:
+                    count_economica = Document.search_count([('folder_id', '=', economica_folder.id), ('type', '!=', 'folder')])
+                
+                lead.documents_count_tecnica = count_tecnica
+                lead.documents_count_economica = count_economica
+                lead.documents_count = count_tecnica + count_economica
+                
             except Exception as e:
                 _logger.error("Error contando documentos para lead %s: %s" % (lead.id, str(e)))
                 lead.documents_count = 0
+                lead.documents_count_tecnica = 0
+                lead.documents_count_economica = 0
+
 
     # ---------- Helpers ----------
     def _get_stage_by_name(self, name):
@@ -223,14 +234,14 @@ class CrmLead(models.Model):
         return Stage.search(domain, limit=1)
 
     def _ensure_stage_is_fallo(self):
-        # Asegura que la etapa actual sea 'Fallo' (por nombre).
+        # Asegura que la etapa actual sea 'Junta de Fallo' (por nombre).
         self.ensure_one()
         if self.env.context.get('allow_lost_any_stage'):
             return
 
         stage_name = (self.stage_id.name or '').strip().lower()
-        if stage_name != 'fallo':
-            raise UserError(_('Solo puede marcar Perdido en la etapa FALLO.'))
+        if stage_name != 'junta de fallo':
+            raise UserError(_('Solo puede marcar Perdido en la etapa JUNTA DE FALLO.'))
 
 
     def _get_authorizer_emails_from_group(self, grupo):
@@ -387,6 +398,8 @@ class CrmLead(models.Model):
             else:
                 if not self.bases_doc:
                     raise ValidationError('Falta cargar las Bases correspondientes')
+            if not self.bases_abstinencia_anticipo and self.bases_anticipo_porcentaje == 0:
+                raise ValidationError('Falta agregar el % de anticipo')
 
         if self.stage_name == 'Visita de Obra':
             if self.visita_obligatoria and not self.visita_acta:
@@ -736,8 +749,8 @@ class CrmLead(models.Model):
             raise UserError(_('No se encontró la plantilla de correo para fallo GANADO.'))
 
         for lead in self:
-            # Si quieres forzar que solo se mande en etapa FALLO:
-            if lead.stage_name != 'Fallo':
+            # Si quieres forzar que solo se mande en etapa JUNTA DE FALLO:
+            if lead.stage_name != 'Junta de Fallo':
                 continue
 
             email_values = {}

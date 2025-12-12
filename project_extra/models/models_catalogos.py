@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -234,3 +234,70 @@ class ModalidadContrato(models.Model):
             recs = self.search(domain + args, limit=limit)
             return [(rec.id, rec.display_name) for rec in recs]
         return super().name_search(name, args, operator, limit)
+
+
+class TipoInsumo(models.Model):
+    _name = 'product.tipo.insumo'
+    _description = 'Tipo de Insumo'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'nombre'
+    _order = 'codigo'
+    
+    codigo = fields.Char(string='Código', required=True, tracking=True, help='Código estandarizado para el tipo de insumo')
+    nombre = fields.Char(string='Nombre', required=True, tracking=True, help='Nombre del tipo de insumo')
+    descripcion = fields.Text(string='Descripción', tracking=True, help='Detalle del tipo de insumo y alcance')
+    active = fields.Boolean(string='Activo', default=True, tracking=True)
+    fecha_creacion = fields.Datetime(string='Fecha de creación', default=fields.Datetime.now, readonly=True, tracking=True)
+    insumo_ids = fields.One2many('product.template', 'tipo_insumo_id', string='Insumos', help='Insumos vinculados a este tipo')
+    insumo_count = fields.Integer(string='Cantidad de insumos', compute='_compute_insumo_count', store=True)
+    
+    _sql_constraints = [('codigo_uniq', 'unique(codigo)', 'El código del tipo de insumo debe ser único.'),]
+    
+    @api.depends('insumo_ids')
+    def _compute_insumo_count(self):
+        for record in self:
+            record.insumo_count = len(record.insumo_ids)
+    
+    def action_view_insumos(self):
+        self.ensure_one()
+        return {
+            'name': 'Insumos',
+            'type': 'ir.actions.act_window',
+            'res_model': 'product.template',
+            'view_mode': 'list,form',
+            'domain': [('tipo_insumo_id', '=', self.id)],
+            'context': {'default_tipo_insumo_id': self.id}}
+    
+    @api.constrains('nombre')
+    def _check_nombre(self):
+        for record in self:
+            if record.nombre:
+                nombre_limpio = record.nombre.strip()
+                if len(nombre_limpio) == 0:
+                    raise ValidationError('El nombre del tipo de insumo no puede estar vacío.')
+                duplicado = self.search([('nombre', '=ilike', nombre_limpio), ('id', '!=', record.id)])
+                if duplicado:
+                    raise ValidationError(f"Ya existe un tipo de insumo con el nombre '{nombre_limpio}'")
+    
+    @api.onchange('nombre')
+    def onchange_nombre(self):
+        if self.nombre:
+            nombre_limpio = self.nombre.strip()
+            if len(nombre_limpio) == 0:
+                warning = {'title': 'Advertencia', 'message': 'El nombre del tipo de insumo es incorrecto, favor de verificar'}
+                return {'warning': warning}
+            self.nombre = nombre_limpio.upper()
+    
+    @api.onchange('codigo')
+    def onchange_codigo(self):
+        if self.codigo:
+            codigo_limpio = self.codigo.strip().upper()
+            self.codigo = codigo_limpio
+
+class supplyProductTemplate(models.Model):
+    _inherit = 'product.template'
+    
+    type_supply = fields.Selection(selection=[('int','Interna'), ('ext','Externa')],
+        string='Tipo de Aprovisionamiento', default='ext')
+    budget_id = fields.Many2one('product.budget.item', string='Partida Presupestaria')
+    tipo_insumo_id = fields.Many2one('product.tipo.insumo', string='Tipo de insumo', tracking=True, help='Clasificación del insumo para procesos de compra')            

@@ -11,6 +11,7 @@ catalog_crm_lead_type,catalog_crm_lead_type,model_crm_lead_type,group_project_ca
 catalog_revert_reason_user,catalog_revert_reason_user,model_crm_revert_reason,group_project_catalog,1,1,1,0
 catalog_crm_analyst,catalog_crm_analyst,model_crm_analyst,group_project_catalog,1,1,1,0
 catalog_modalidad_contrato,catalog_modalidad_contrato,model_project_modalidad_contrato,group_project_catalog,1,1,1,0
+catalog_tipo_insumo,catalog_tipo_insumo,model_product_tipo_insumo,group_project_catalog,1,1,1,0
 
 user_project_type,user_project_type,model_project_type,project.group_project_user,1,0,0,0
 user_project_residents,user_project_residents,model_project_residents,project.group_project_user,1,0,0,0
@@ -23,6 +24,7 @@ user_project_especialidad,user_project_especialidad,model_project_especialidad,p
 user_revert_reason_user,user_revert_reason_user,model_crm_revert_reason,project.group_project_user,1,0,0,0
 user_crm_analyst,user_crm_analyst,model_crm_analyst,project.group_project_user,1,0,0,0
 user_modalidad_contrato,user_modalidad_contrato,model_project_modalidad_contrato,project.group_project_user,1,0,0,0
+user_tipo_insumo,user_tipo_insumo,model_product_tipo_insumo,project.group_project_user,1,0,0,0
 
 sales_crm_lead_type,catalog_crm_lead_type,model_crm_lead_type,sales_team.group_sale_manager,1,1,1,0
 sales_crm_analyst,sales_crm_analyst,model_crm_analyst,sales_team.group_sale_manager,1,1,1,0
@@ -37,5 +39,7 @@ access_crm_propuesta_tecnica_doc,access_crm_propuesta_tecnica_doc,model_crm_prop
 access_crm_propuesta_tecnica_revision,access_crm_propuesta_tecnica_revision,model_crm_propuesta_tecnica_revision,,1,1,1,1
 access_crm_propuesta_economica_doc,crm_propuesta_economica_doc,model_crm_propuesta_economica_doc,base.group_user,1,1,1,1
 access_crm_propuesta_economica_revision,crm_propuesta_economica_revision,model_crm_propuesta_economica_revision,base.group_user,1,1,1,1
+access_tipo_insumo_account_user,access_tipo_insumo_account_user,model_product_tipo_insumo,account.group_account_user,1,1,1,0
+access_tipo_insumo_account_manager,access_tipo_insumo_account_manager,model_product_tipo_insumo,account.group_account_manager,1,1,1,1
 
 access_purchase_confirm_order,purchase_confirm_order,model_purchase_confirm_order,,1,1,1,1

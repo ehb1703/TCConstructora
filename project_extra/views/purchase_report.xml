@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="action_purchase_contract_templates" model="ir.actions.report">
+            <field name="name">Contrato</field>
+            <field name="model">purchase.requisition</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">project_extra.report_purchase_contract</field>
+            <field name="report_file">project_extra.report_purchase_contract</field>
+        </record>
+
+    </data>
+</odoo>

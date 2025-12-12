@@ -19,7 +19,7 @@ class projectObra(models.Model):
     partner_latitude = fields.Float(string='Geo Latitude', digits=(10, 7), default=0.0)
     partner_longitude = fields.Float(string='Geo Longitude', digits=(10, 7), default=0.0)
     date_localization = fields.Date(string='Geolocation Date')
-    licitacion = fields.Char(string='Licitación')
+    licitacion = fields.Char(string='No. de Proceso')
     num_contrato = fields.Char(string='Número de contrato')
     documentos_ids =  fields.Many2many('project.documentation', string='Documentos')
     authorized_budget = fields.Float(string='Presupuesto Autorizado')
