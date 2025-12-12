@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Extra Proyectos',
-    'version': '1.0',
+    'version': '1.1',
     'summary': 'Extra de proyectos',
     'sequence': 151,
     'description': """
@@ -24,8 +24,10 @@ Personalización del modulo:
         'views/crm_catalog_views.xml',
         'views/crm_views.xml',
         'views/purchase_views.xml',
+        'views/purchase_report.xml',
         'wizard/crm_revert_stage_views.xml',
         'wizard/crm_cotizacion_insumos_views.xml',
+        'report/purchase_contract_templates.xml',
     ],        
     'license': 'LGPL-3',
     'installable': True,

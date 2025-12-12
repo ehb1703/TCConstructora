@@ -9,7 +9,7 @@ class purchaseOrderInherit(models.Model):
     _inherit = 'purchase.order'
 
     lead_id = fields.Many2one('crm.lead', string='Oportunidad')
-    type_purchase = fields.Selection(selection=[('bases','Bases de Licitación'), ('ins', 'Insumos')],
+    type_purchase = fields.Selection(selection=[('bases','Bases de Licitación'), ('ins', 'Insumos'), ('esp', 'Trabajos especiales')],
             string='Tipo de movimiento')
 
     def action_comparativo(self):
@@ -44,3 +44,17 @@ class purchaseOrderLineInherit(models.Model):
     _inherit = 'purchase.order.line'
 
     active = fields.Boolean(string='Activo', default=True, tracking=True)
+
+
+class purchaseRequisitionInherit(models.Model):
+    _inherit = 'purchase.requisition'
+
+    description = fields.Char(string='Descripción')
+    doctos_delivered = fields.Char(string='Documentos a entregar')
+    retencion = fields.Float(string='% de retención')
+    schedule = fields.Char(string='Horario de entrega')
+    warranty_period = fields.Char(string='Periodo de garantía')
+    signature_date = fields.Date(string='Fecha de firma del contrato')
+
+    def action_purchase_contract(self):
+        return self.env.ref('project_extra.action_purchase_contract_templates').report_action(self)

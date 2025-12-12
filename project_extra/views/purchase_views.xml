@@ -21,5 +21,32 @@
             </xpath>
         </field>
     </record>
-    
+
+    <record id="view_purchase_requisition_report_from" model="ir.ui.view">
+        <field name="name">view.purchase.requisition.report.from</field>
+        <field name="model">purchase.requisition</field>
+        <field name="inherit_id" ref="purchase_requisition.view_purchase_requisition_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group" position="after">
+                <group>
+                    <field name="description"/>
+                    <field name="doctos_delivered"/>
+                </group>
+                <group>
+                    <group>
+                        <field name="retencion"/>
+                        <field name="schedule"/>
+                    </group>
+                    <group>
+                        <field name="warranty_period"/>
+                        <field name="signature_date"/>
+                    </group>
+                </group>
+            </xpath>
+            <xpath expr="//header/button[@name='action_cancel']" position="after">
+                <button name="action_purchase_contract" type="object" string="Contrato" class="btn-secondary"/>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>

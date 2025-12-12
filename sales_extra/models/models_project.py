@@ -14,7 +14,8 @@ class saleOrderLineInherit(models.Model):
     concept_ids = fields.One2many('sale.concept.line', 'sale_id', string='Conceptos de trabajo')
 
     def action_load_price(self):
-        docto = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',self.opportunity_id.id), ('name','ilike','E02')])
+        docto = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',self.opportunity_id.id), '|', ('name','ilike','E02'), 
+            ('name','ilike','Economico 2')])
         if not docto:
             raise ValidationError('El documento E02 no se encuentra cargado, favor de agregar el precio unitario manualmente.')
 
@@ -70,7 +71,7 @@ class saleOrderLineInherit(models.Model):
             values.update(self._timesheet_create_project_account_vals(self.order_id.project_id))
             if self.order_id.opportunity_id:
                 vals = {'licitacion': self.order_id.opportunity_id.no_licitacion, 'type_id': self.order_id.opportunity_id.tipo_obra_id.id,
-                    'num_contrato': self.order_id.opportunity_id.contrato_documento_name, 'dependencia': self.order_id.partner_emisor_id.name}
+                    'num_contrato': self.order_id.opportunity_id.contrato_documento_name, 'dependencia': self.order_id.opportunity_id.partner_emisor_id.name}
                 values.update(vals)
             project = self.env['project.project'].create(values)
             project.cargar_docs()

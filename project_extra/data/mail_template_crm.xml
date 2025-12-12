@@ -111,8 +111,7 @@
                     <p>Este es un recordatorio de la <b>visita de obra</b> programada.</p>
                     <ul>
                         <li><b>Convocatoria: </b><t t-out="object.name or ''"/></li>
-                        <li><b>Fecha de visita: </b><t t-if="object.visita_fecha"><t t-out="object.visita_fecha"/></t></li>
-                        <li><b>Hora de visita: </b><t t-if="object.visita_hora"><t t-out="'%02d:%02d' % (int(object.visita_hora), int((object.visita_hora % 1) * 60))"/></t></li>
+                        <li><b>Fecha y hora de visita: </b><t t-if="object.visita_fecha"><t t-out="object.visita_fecha"/></t></li>
                         <li><b>Lugar de reunión: </b><t t-if="object.visita_lugar_reunion"><t t-out="object.visita_lugar_reunion"/></t></li>
                         <li><b>Personas asignadas: </b><t t-if="object.visita_personas_ids"><t t-out="', '.join(object.visita_personas_ids.mapped('name'))"/></t></li>
                     </ul>
@@ -136,8 +135,7 @@
                     <p>Buen día,</p>
                     <p>Se les recuerda la <b>junta de aclaración de dudas</b> de la convocatoria <b><t t-out="object.name or ''"/></b>.</p>
                     <ul>
-                        <li><b>Fecha de la junta: </b><t t-if="object.junta_fecha"><t t-out="object.junta_fecha"/></t></li>
-                        <li><b>Hora de la junta: </b><t t-if="object.junta_hora"><t t-out="'%02d:%02d' % (int(object.junta_hora), int((object.junta_hora % 1) * 60))"/></t></li>
+                        <li><b>Fecha y hora de la junta: </b><t t-if="object.junta_fecha"><t t-out="object.junta_fecha"/></t></li>
                         <li><b>Lugar de reunión: </b><t t-if="object.junta_lugar_reunion"><t t-out="object.junta_lugar_reunion"/></t></li>
                     </ul>
                     <p>
@@ -203,8 +201,7 @@
                         Se informa que la licitación correspondiente a la convocatoria <b><t t-out="object.name or ''"/></b> ha sido marcada como <b>GANADA</b> en el sistema.
                     </p>
                     <ul>
-                        <li><b>Fecha de la junta: </b><t t-if="object.fallo_fecha"><t t-out="object.fallo_fecha"/></t></li>
-                        <li><b>Hora de la junta: </b><t t-if="object.fallo_hora"><t t-out="'%02d:%02d' % (int(object.fallo_hora), int((object.fallo_hora % 1) * 60))"/></t></li>
+                        <li><b>Fecha y hora de la junta: </b><t t-if="object.fallo_fecha"><t t-out="object.fallo_fecha"/></t></li>
                         <li><b>Lugar de reunión: </b><t t-if="object.fallo_lugar_reunion"><t t-out="object.fallo_lugar_reunion"/></t></li>
                     </ul>
                     <p>

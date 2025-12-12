@@ -32,9 +32,12 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base_vat.view_partner_base_vat_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='function']" position="before">
+                <field name="responsable_id" invisible="not is_company" domain="[('is_company', '=', False)]"/>
+            </xpath>
             <xpath expr="//field[@name='vat']" position="after">
                 <field name="curp" invisible="is_company"/>
-                <field name="nacionalidad"/>
+                <field name="nacionalidad" string="Nacionalidad"/>
             </xpath>
         </field>
     </record>
