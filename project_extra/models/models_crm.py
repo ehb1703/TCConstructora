@@ -1104,7 +1104,7 @@ class CrmLead(models.Model):
                         partida = partida_id.budget_id.id
 
                     if partida != 0 and rec.col1 != '' and rec.col1 != partida_id.budget_id.code:
-                        concept_id = self.env['product.template'].search([('budget_id','=',PARTIDA), ('default_code','=',rec.col1)])
+                        concept_id = self.env['product.template'].search([('budget_id','=',partida), ('default_code','=',rec.col1)])
                         if concept_id:
                             if concept_id.property_account_income_id:
                                 rec.write({'concept_ex': True, 'concept_id': concept_id.id, 'account_ex': True})
@@ -1417,4 +1417,5 @@ class CrmPropuestaEconomicaRevision(models.Model):
                     ('fecha_revision', '>', record.fecha_revision), ('autorizado', '=', False)], order='fecha_revision asc', limit=1)
                 record.lead_id.pe_revision_ids._compute_activo()
         return res
+
 
