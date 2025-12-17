@@ -12,8 +12,8 @@
                         <span>Ubicación</span>
                         <div class="o_address_format">
                             <field name="country_id" class="o_address_country" placeholder="País" options="{'no_open':True, 'no_create':True}"/>
-                            <field name="state_id" class="o_address_state" placeholder="Estado" options="{'no_open':True}" domain="[('country_id','=',country_id)]"/>
-                            <field name="city_id" placeholder="Ciudad" class="o_address_city" domain="[('state_id','=',state_id)]"/>
+                            <field name="state_id" class="o_address_state" placeholder="Estado" options="{'no_open':True, 'no_create':True}}" domain="[('country_id','=',country_id)]"/>
+                            <field name="city_id" placeholder="Ciudad" class="o_address_city" domain="[('state_id','=',state_id)]" options="{'no_open':True, 'no_create':True}"/>
                             <field name="street" placeholder="Calle..." class="o_address_street"/>
                             <field name="between_streets" placeholder="Entre Calles..." class="o_address_street"/>
                             <field name="col" placeholder="Colonia..." class="o_address_street"/>

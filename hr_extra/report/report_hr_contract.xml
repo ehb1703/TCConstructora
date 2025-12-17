@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <data>
+        <template id="report_hrcontract_template">
+            <t t-set="o" t-value="o.with_context(lang=o.employee_id.address_id.lang)"/>
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <div width="100%" style="text-align: justify;">
+                        <p><strong>CONTRATO INDIVIDUAL DE TRABAJO POR PERIODO DE PRUEBA DE TRES MESES</strong> QUE CELEBRAN POR UNA PERSONA MORAL DENOMINADA <strong>PROYECTA IN S.A DE C.V</strong> REPRESENTADA EN ESTE ACTO POR <strong>LA SRA. OSCAR MISSAEL GONZALEZ CORTEZ</strong> (EN LO SUCESIVO “EL PATRÓN”), Y POR LA OTRA EL <strong>C. MUNGUIA BENITO ANTONIO</strong> (EN LO SUCESIVO EL “EMPLEADO”), (CONJUNTAMENTE EL PATRÓN Y EL EMPLEADO EN LO SUCESIVO LAS “PARTES”), AL TENOR DE LAS SIGUIENTES DECLARACIONES Y CLÁUSULAS:
+                        <br/><br/>
+                        <strong style="text-align: center;">D E C L A R A C I O N E S:</strong>
+                        <br/><br/>
+                        <strong>I.</strong> Declara el <strong>PATRÓN</strong>:
+                        <br/><br/>
+                        <strong>A).-</strong> Ser una persona moral y tener su domicilio en , Calle Lazaro Cardenas Num. Ext. 12 Asentamiento Humano, Cofradía del Rosario Gomez Farias Jalisco CP.49120.
+                        <br/><br/>
+                        <strong>B).-</strong> Que requiere los servicios de una persona que tenga la capacidad, experiencia y aptitudes para desempeñar el puesto de <strong>AYUDANTE GENERAL</strong>.
+                        <br/><br/>
+                        <strong>II.</strong> Declara el <strong>EMPLEADO</strong>:
+                        <br/><br/>
+                        <strong>A).-</strong> Ser de nacionalidad MEXICANO, tener <strong>59</strong> años de edad, ser del sexo <strong>MASCULINO</strong>, CURP <strong>A661028HJCNNN08</strong>, y tener su domicilio en <strong>Calle 8 #2246 D 14, Calle matamoros N.45 Col.Centro Gomez Farias Jal. CP 49120</strong>.
+                        <strong>B).-</strong> Que cuenta con la capacidad, experiencia, preparación, conocimientos y aptitudes necesarias para desempeñar el puesto a que se refiere la cláusula marcada con el número 1.- del presente contrato y está dispuesto a prestar sus servicios a favor de El Patrón.
+                        <br/><br/>
+                        Con base a las anteriores declaraciones, las Partes pactan las siguientes:
+                        <br/><br/>
+                        <strong style="text-align: center;">C L Á U S U L A S:</strong>
+                        <br/><br/>
+                        <strong>1.  PUESTO<br/><br/>1.1.</strong> El Empleado deberá prestar sus servicios en el puesto <strong>AYUDANTE GENERAL</strong> con la intensidad, cuidado y esmero apropiado y en la forma y términos convenidos en el presente Contrato y su anexo. Por lo que inicia con fecha del <strong>01 de septiembre del 2025</strong> y culminara el <strong>01 de DICIEMBRE del 2025</strong>, sin responsabilidad para el Patrón.
+                        <br/><br/>
+                        <strong>1.2.</strong> Así mismo, el Empleado deberá de desempeñar todas las actividades similares, accesorias y conexas al puesto referido en el punto anterior, y que se le encomienden. Con motivo del presente Contrato, el Empleado acepta cumplir las obligaciones y responsabilidades de trabajo que de manera enunciativa más no limitativa se encuentran establecidas en el anexo “A” que contiene la <strong>DESCRIPCIÓN DE PUESTO Y RESPONSABILIDADES</strong> que suscriban las partes.
+                        <br/><br/>
+                        <strong>1.3.</strong> El Empleado desempeñará sus labores en el establecimiento ubicado en Calle Lazaro Cardenas Num. Ext. 12 Asentamiento Humano, Cofradía del Rosario Gomez Farias Jalisco CP.49120. o en cualquiera de las sucursales con las que El Patrón cuenta o llegue a tener en un futuro en el Estado de Jalisco o en cualquier otra entidad federativa de la República Mexicana.
+                        <br/><br/>
+                        <strong>1.4.</strong> En todos los casos, el Empleado, cuando así se le solicite, deberá mantener informada a El Patrón acerca del desarrollo y estado de su actividad.
+                        <br/><br/>
+                        <strong>1.5.</strong> De igual forma y tomando en cuenta la naturaleza de las funciones que desempeñará el Empleado, el nivel de complejidad de las mismas y el grado de preparación que se requiere para su correcto desempeño ambas partes reconocen que el puesto que desempeñará El Empleado es de naturaleza técnica y altamente especializada.
+                        <br/><br/>
+                        <strong>1.6.</strong> El Empleado está obligado a acatar las órdenes, circulares, Reglamento Interior de Trabajo y disposiciones que dicte El Patrón y todos los ordenamientos legales que le sean aplicables, incluyendo los marcados en el Reglamento Federal de Seguridad e Higiene y Medio Ambiente en el Trabajo y las Normas Oficiales Mexicanas de la secretaria del Trabajo y Previsión Social en esta materia. El Empleado se compromete a cumplir con lo establecido en los artículos 134 y 135 de la Ley Federal del Trabajo.
+                        <br/><br/>
+                        <strong>2. SALARIO<br/><br/>2.1.</strong> El EMPLEADO percibirá un salario diario de <strong>$292.55</strong> menos las deducciones aplicables por concepto de impuestos y cualesquiera otras que correspondan en términos de lo establecido por el artículo 110 de la LFT.
+                        <br/><br/>
+                        <strong>2.2.</strong> El salario que el EMPLEADO tenga derecho a percibir le será pagado quincenalmente los días 15 y ultimo de cada mes.
+                        <br/><br/>
+                        <strong>2.3.</strong> La Compañía emitirá semanalmente en forma electrónica los recibos de salario y prestaciones que le sean pagados a El EMPLEADO, mismos que irán debidamente timbrados en los términos previstos por la legislación fiscal.
+                        <br/><br/>
+                        <strong>2.4.</strong> En caso de que La Compañía lo requiera, El Empleado estará obligado a firmar los recibos de salario correspondientes.
+                        <br/><br/>
+                        <strong>2.5.</strong> El EMPLEADO autoriza a la COMPAÑÍA para que descuente de sus salarios y prestaciones los conceptos señalados por el artículo 110 de la Ley Federal del Trabajo, en la forma y términos contenidos en ese dispositivo legal. Las Partes convienen desde este momento que el descuento que podrá hacer la COMPAÑÍA será del 30% del excedente del salario mínimo.
+                        <br/><br/>
+                        <strong>2.6.</strong> De conformidad a lo establecido por el artículo 101 de la LFT EL EMPLEADO en este acto otorga su consentimiento para que el pago de sus salarios y prestaciones que tenga derecho a percibir, le sean pagados mediante deposito o transferencia electrónica de dinero a la cuenta bancaria que El EMPLEADO tiene abierta a su nombre y cuyos datos de número e institución bancaria ha comunicado a La Compañía.
+                        <br/><br/>
+                        <strong>2.7.</strong> Queda pactado por las Partes que en el salario Quincenal del Empleado se encuentra incluido el pago de los días de descanso semanal (séptimos días) y de descanso obligatorio (festivos) que se generen en el período que se cubra.
+                        <br/><br/>
+                        <strong>2.8.</strong> Las Partes convienen que el patrón entregará al empleado el Comprobante Fiscal Digital (CFDI) de recibo de pago de salario en forma electrónica, mediante correo electrónico que se hará llegar al empleado en la cuenta de correo electrónico que éste designe a través de la suscripción del Formato de Designación de Cuenta de Correo Electrónico correspondiente.
+                        <br/><br/>
+                        <strong>2.9.</strong> Las Partes convienen que el CFDI de recibo de pago de salario que contenga los requisitos fiscales del caso y que se haga llegar al Empleado en formato electrónico, sustituye al recibo de pago de salario impreso en papel. El contenido del CFDI de nómina que la Compañía haga llegar al Empleado vía electrónica, podrá ser verificado por el Empleado en portal de Internet del Servicio de Administración Tributaria de la Secretaría de Hacienda y Crédito Público.
+                        <br/><br/>
+                        <strong>3.  AGUINALDO<br/><br/>3.1. </strong>El EMPLEADO tendrá derecho al pago de un aguinaldo, calculado sobre una base anual de 15 (quince) días de salario, el cual le será cubierto a más tardar el día 20 del mes de diciembre de cada año.
+                        <br/><br/>
+                        <strong>3.2.</strong> En caso de que el Empleado no labore la anualidad completa, el aguinaldo le será pagado a El Empleado en forma proporcional al tiempo trabajado.
+                        <br/><br/>
+                        <strong>3.3.</strong> De igual forma, en caso de que El Patrón decida dar por terminado el presente contrato al término del periodo de prueba, el aguinaldo le será pagado al Empleado en forma proporcional al tiempo laborado, ello precisamente al término del periodo de prueba.
+                        <br/><br/>
+                        <strong>4. JORNADA Y HORARIO DE LABORES<br/><br/>4.1.</strong> La duración de la jornada de labores acordada por las partes y en la que El Empleado deberá concurrir a laborar es de 48 (cuarenta y ocho) horas en jornada diurna, 45 (cuarenta y cinco) horas en jornada mixta y 42 (cuarenta y dos) horas en jornada nocturna.
+                        <br/><br/>
+                        <strong>4.2.</strong> El día de descanso semanal del Empleado será el domingo, con goce de salario íntegro.
+                        <br/><br/>
+                        <strong>4.3.</strong> Las partes acuerdan que El Patrón, en cualquier tiempo, podrá cambiar la distribución de la jornada de trabajo, la hora de entrada, la de suspensión, la de reanudación y la de conclusión de las labores, incluso en turno mixto, de conformidad a las necesidades de éste y de acuerdo con los servicios que deba prestar para sus clientes.
+                        <br/><br/>
+                        <strong>4.4.</strong> El Empleado deberá registrar diariamente su asistencia a la hora de inicio, suspensión, reanudación y conclusión de las labores, en el sistema de asistencia que El Patrón designe.
+                        <br/><br/>
+                        <strong>4.5.</strong> El día de descanso semanal le será asignado y podrá ser cambiado por El Patrón, de acuerdo a las necesidades del servicio.
+                        <br/><br/>
+                        <strong>4.6.</strong> En caso de que El Empleado deba laborar en día domingo, le será pagada una prima dominical equivalente al 25% (veinticinco por ciento) del salario ordinario del domingo.
+                        <br/><br/>
+                        <strong>4.7.</strong> Queda expresamente pactado que el Empleado tiene prohibido laborar en tiempo extraordinario y cuando por circunstancias extraordinarias así se requiera, para que pueda laborarlo, deberá recabar autorización previa por escrito firmada por El Patrón. Sin dicha autorización por escrito el Empleado no podrá laborar en tiempo extraordinario.
+                        <br/><br/>
+                        <strong>4.8.</strong> Las ausencias al trabajo solo podrán ser justificadas cuando El Empleado exhiba y entregue a El Patrón un certificado de incapacidad temporal que le haya sido expedido en forma previa por el Instituto Mexicano del Seguro Social. El certificado deberá ser entregado por El Empleado a El Patrón a más tardar al día siguiente hábil al de la fecha de su expedición.
+                        <br/><br/>
+                        <strong>5. VACACIONES Y PRIMA VACACIONAL<br/><br/>5.1.</strong> El EMPLEADO recibirá el pago de vacaciones en los términos mínimos establecidos por el artículo 76 de la Ley Federal del Trabajo y una prima vacacional equivalente al 25% (veinticinco por ciento) del salario de las vacaciones.
+                        <br/><br/>
+                        <strong>5.2.</strong> En caso de que el Empleado no labore la anualidad completa, las vacaciones y prima vacacional le serán pagadas a El Empleado en forma proporcional al tiempo laborado.
+                        <br/><br/>
+                        <strong>5.3.</strong> De igual forma, en caso de que El Patrón decida dar por terminado el presente contrato al término del periodo de prueba, las vacaciones y prima vacacional le serán pagados al Empleado en forma proporcional al tiempo laborado, ello precisamente al término del periodo de prueba.
+                        <br/><br/>
+                        <strong>6. HERRAMIENTAS<br/><br/>6.1.</strong> El Patrón proporcionará al Empleado todo el material y equipo que requiera para el desarrollo de su trabajo. El Empleado está obligado a cuidarlos y darles un correcto uso, así como a entregarlos a El Patrón cuando ésta así se lo requiera.
+                        <br/><br/>
+                        <strong>6.2.</strong> El Patrón podrá cambiar en cualquier momento la herramienta que previamente haya asignado al Empleado.
+                        <br/><br/>
+                        <strong>6.3.</strong> En caso de que El Patrón proporcione al Empleado herramientas tecnológicas, tales como computadora, tableta electrónica o teléfono celular, o le asigne una cuenta de correo electrónico, o les permita el acceso a sus sistemas informáticos mediante la asignación de un nombre de usuario y una contraseña, El Empleado se obliga a utilizar tales herramientas exclusivamente para el trabajo no teniendo permitido El Empleado utilizarlas para fines personales.
+                        <br/><br/>
+                        <strong>6.4.</strong> El uso de las herramientas de trabajo listadas en el punto anterior, que le llegue a proporcionar El Patrón al Empleado, no puede generar en el Empleado ningún derecho ni expectativa de privacidad, quedando El Patrón en todo momento facultada para monitorear el uso de las referidas herramientas.
+                        <br/><br/>
+                        <strong>6.5.</strong> La información almacenada personalmente por el Empleado en las herramientas referidas en el apartado <strong>6.3.</strong> del presente contrato y que le hayan sido proporcionadas por El Patrón, no será considerada como información o comunicaciones privadas del Empleado debido al hecho de que las referidas herramientas no tienen por objeto su uso para efectos personales.
+                        <br/><br/>
+                        <strong>6.6.</strong> El Patrón tiene el derecho de cambiar o de reasignar, en cualquier momento, las herramientas de trabajo que previamente le hayan sido proporcionadas o asignadas al Empleado.
+                        <br/><br/>
+                        <strong>6.7.</strong> Queda prohibido al Empleado comunicar a terceros, sus claves, contraseñas, nombres de usuario, llaves, códigos o cualquier mecanismo por el que el Empleado pueda acceder a las herramientas electrónicas, programas de cómputo, archivos o sistemas electrónicos de El Patrón. También tiene prohibido el Empleado permitir que terceros utilicen sus herramientas de trabajo.
+                        <br/><br/>
+                        <strong>6.8.</strong> Las comunicaciones electrónicas que emanen de cualquiera de las herramientas proporcionadas por El Patrón al Empleado, se considerarán hechas por el Empleado, ya que tiene estrictamente prohibido prestar tales herramientas a cualquier tercero o permitir que alguna persona ajena al Empleado haga uso de tales herramientas.
+                        <br/><br/>
+                        <strong>6.9.</strong> De igual forma, cuando se asignen al Empleado algún nombre de usuario y contraseña que le permitan acceder a programas de cómputo, archivos o sistemas electrónicos de El Patrón, se considerará que el acceso y registro de información la hizo personalmente el Empleado, si para ingresar a tales sistemas de cómputo, archivos o sistemas electrónicos se utilizó el nombre de usuario y contraseña del Empleado.
+                        <br/><br/>
+                        <strong>6.10.</strong> Todos los sistemas de comunicaciones electrónicas y telefónicas, así como todas las comunicaciones e información transmitidas, recibidas o almacenadas en los sistemas de cómputo, herramientas y equipos proporcionados por El Patrón al Empleado (correo electrónico o cualquier programa informático propiedad de El Patrón) o en cualquier otro medio de almacenaje, son propiedad exclusiva de El Patrón.
+                        <br/><br/>
+                        <strong>6.11.</strong> El Empleado tiene prohibido utilizar códigos e ingresar archivos o comunicaciones almacenadas en los equipos o sistemas de cómputo con la finalidad de copiarlos y sustraerlos, salvo que haya recibido una autorización previa y por escrito de parte de algún apoderado que tenga facultades de administración.
+                        <br/><br/>
+                        <strong>6.12.</strong> Todos los códigos de acceso a sistemas o equipos de cómputo o a los sistemas de voz y datos, son propiedad de El Patrón. Los que se asignen al Empleado son personales e intransferibles. El Empleado no podrá hacer uso de los códigos asignados a un tercero ni transmitir el que le haya sido asignado.
+                        <br/><br/>
+                        <strong>6.13.</strong> El uso inadecuado de los sistemas y equipos de cómputo que son proporcionados por El Patrón al Empleado como herramienta de trabajo, está estrictamente prohibido y no será tolerado. Algunas conductas consideradas como “uso inadecuado” son, pero no se limitan a, la transmisión de correos cadena, el almacenaje de música, fotografías (especialmente pornografía), bromas y chistes o uso de redes sociales tales. Solo en el caso de que el uso de cualquiera de tales programas de redes sociales, sea indispensable para el trabajo, El Empleado podrá hacer uso de ellas, previa autorización por escrito del Gerente de Informática de El Patrón.
+                        <br/><br/>
+                        <strong>6.14.</strong> Queda estrictamente prohibido a El Empleado instalar en las herramientas electrónicas de comunicación que les sean asignadas, programas que no les sean expresamente permitidos o de los que se carezca la licencia correspondiente. El incumplimiento de esta obligación será considerado como una desobediencia del trabajador en relación al trabajo contratado.
+                        <br/><br/>
+                        <strong>7.  CONFIDENCIALIDAD<br/><br/>7.1. </strong>Como parte de sus actividades el Empleado tendrá acceso, recibirá, conocerá o tendrá acceso a información confidencial, secretos industriales y secretos comerciales (en lo sucesivo "La Información Confidencial") de El Patrón, de sus matrices, subsidiarias, filiales, divisiones, clientes, y/o de alguna otra entidad o persona relacionada con El Patrón.
+                        <br/><br/>
+                        <strong>7.2.</strong> Dentro de la información confidencial a la cual El Empleado tendrá acceso con motivo de la prestación de los servicios de trabajo para El Patrón se incluye pero no  se limita a: información de clientes o clientes potenciales; datos de contacto, empleados clave, cotizaciones, pedidos, descuentos, planes de pagos, ventas, mercadeo y planes de negocios; investigaciones y técnicas; información de oferta; información sobre los hábitos de compra o preferencias de los clientes o clientes potenciales; precios, información de utilidades y costos; información de proveedores; ganancias, promociones, márgenes de utilidad, eventos para clientes, los cuales constituyen para El Patrón una ventaja comercial y competitiva respecto de sus competidores.  Esa información es estrictamente confidencial pues El Patrón ha invertido en mecanismos que permitan conservar la confidencialidad de la información y hacerla inaccesible a terceros ajenos a El Patrón.
+                        <br/><br/>
+                        <strong>7.3.</strong> El presente contrato de trabajo constituye la prevención de confidencialidad a que se refiere el artículo 85 de la Ley de la Propiedad Industrial.
+                        <br/><br/>
+                        <strong>7.4.</strong> Por lo tanto, el Empleado se obliga <strong>(I)</strong> a utilizar La Información Confidencial única y exclusivamente para el trabajo contratado, <strong>(II)</strong> a no utilizarla en beneficio propio o de terceros y <strong>(III)</strong> a no divulgarla bajo ninguna circunstancia.
+                        <br/><br/>
+                        <strong>7.5.</strong> La violación por parte del Empleado a su obligación de confidencia y de no uso para beneficio personal o en beneficio de terceros de La Información Confidencial, será considerado como responsable de actos de revelación, apoderamiento y uso no autorizado de secretos industriales y será acreedor a las multas, sanciones penales,  y/o responsabilidad civil respecto de la reparación del daño material o la indemnización por daños y perjuicios, de conformidad con lo previsto en la Ley de Propiedad Industrial, la Ley Federal de Derechos de Autor y de los Códigos Penales de la República Mexicana.
+                        <br/><br/>
+                        <strong>7.6.</strong> Cuando por cualquier motivo se termine la relación de trabajo, El Empleado deberá entregar y devolver a El Patrón toda la documentación que en original o copia permanezca o esté relacionada con negocios de El Patrón, y que se encuentre en poder del Empleado o estén bajo su control en forma directa o indirecta.
+                        <br/><br/>
+                        <strong>8. CAPACITACIÓN Y ADIESTRAMIENTO<br/><br/>8.1.</strong> El Patrón se obliga a proporcionar al Empleado capacitación y adiestramiento en los términos de los planes y programas establecidos o que se establezca en El Patrón de conformidad a lo dispuesto por el Título Cuarto, Capítulo III Bis, Artículo 153-A de la Ley Federal del Trabajo. Así mismo, el Empleado se obliga a recibir dicha capacitación y adiestramiento.
+                        <br/><br/>
+                        <strong>8.2.</strong> De igual forma y por el puesto que desempeña el Empleado se obliga a proporcionar capacitación y adiestramiento al personal a su cargo, en los términos que indique El Patrón o en los términos que prevengan los planes y programas.
+                        <br/><br/>
+                        <strong>9. EXÁMENES MÉDICOS Y SEGURIDAD E HIGIENE<br/><br/>9.1.</strong> Si el Empleado cuenta con una prescripción médica que indique la necesidad del uso de una sustancia permitida, antes de comenzar sus servicios deberá informar a El Patrón el hecho y entregar tal certificado expedido por un médico autorizado. La omisión del Empleado de notificar a El Patrón que está bajo tratamiento médico que requiere el uso de tales sustancias controladas, puede resultar en la terminación de la relación de trabajo sin responsabilidad para El Patrón.
+                        <br/><br/>
+                        <strong>9.2.</strong> El Empleado conviene en someterse a los reconocimientos médicos de ingreso o periódicos que ordene El Patrón, en los términos de las fracciones II y X del artículo 134 de la Ley Federal del Trabajo, los cuales pueden incluir exámenes para detectar el uso de drogas o el nivel de alcohol.
+                        <br/><br/>
+                        <strong>9.3.</strong> El resultado de los reconocimientos médicos que se practiquen a El Empleado será dado a conocer a éste y la información será tratada como datos personales sensibles. El costo de los exámenes, así como los honorarios médicos serán con cargo exclusivo a El Patrón.
+                        <br/><br/>
+                        <strong>9.4.</strong> El Empleado se obliga a observar todas las medidas de seguridad e higiene que sean indicados por El Patrón o por la Comisión Mixta correspondiente, con el objeto de evitar accidentes. De igual forma se obliga a utilizar el equipo de protección y seguridad que sea necesario para el desempeño de las labores y que sea otorgado por El Patrón.
+                        <br/><br/>
+                        <strong>9.5.</strong> El Empleado se obliga a no introducir a ninguna persona ajena a la empresa al camión que tiene asignado para el desempeño de sus funciones, ni bebidas embriagantes, ni estupefacientes ni drogas de ninguna índole.
+                        <br/><br/>
+                        <strong>9.6.</strong> Queda estrictamente prohibido que El Empleado se lleve a su domicilio o a cualquier otro domicilio ajeno a la empresa, el camión que tiene asignado para el desempeño de sus labores, por lo que se obliga a recogerlo en el centro de trabajo al inicio de sus labore, y a entregarlo al termino de las mismas.
+                        <br/><br/>
+                        <strong>9.7.</strong> El Empleado se obliga a circular en la unidad que tiene asignada por las vialidades permitidas por las leyes y reglamentos viales, por lo que para el indebido caso de que por su descuido, negligencia o irresponsabilidad, incumpla con las leyes y reglamentos en referencia que ameriten alguna sanción o infracción, el empleado se obliga a cumplir y/o pagar en su caso, las sanciones e infracciones que contemplen las leyes y reglamentos viales, así como a reparar los daños ocasionados en los bienes y patrimonio de la empresa.
+                        <br/><br/>
+                        <strong>10. NO DISCRIMINACIÓN<br/><br/>10.1.</strong> El Patrón respeta plenamente la dignidad humana de los trabajadores a su servicio; no tolera discriminación por origen étnico o nacional, género, edad, discapacidad, condición social, condiciones de salud, religión, condición migratoria, opiniones, preferencias sexuales o estado civil; tampoco permite conductas que impliquen un trato desigual por cuestión de género.
+                        <br/><br/>
+                        <strong>10.2.</strong> En virtud de lo anterior queda prohibido al Empleado (I) incurrir en, o (II) permitir que otros incurran en actos inmorales o de hostigamiento y/o acoso sexual contra cualquier persona en el establecimiento o lugar de trabajo o incurrir en actos de discriminación de cualquier tipo.
+                        <br/><br/>
+                        <strong>11. DESIGNACIÓN DE BENEFICIARIOS<br/><br/>11.1.</strong> Para los efectos de lo previsto por la fracción X del artículo 25 de la Ley Federal del Trabajo, el trabajador designa como beneficiarios a las personas que se indica a continuación:
+                        <br/><br/>
+                        NOMBRE
+                        PARENTESCO
+                        PORCENTAJE
+                        <br/><br/>
+                        <strong>12. DATOS PERSONALES Y AVISO DE PRIVACIDAD<br/><br/>12.1.</strong> En cumplimiento a la Ley Federal de Protección de Datos Personales en Posesión de Particulares se expide el presente Aviso de Privacidad con la finalidad de informar al El Trabajador el uso que El Patrón dará a los datos personales que ha recabado del Empleado y los que llegue a recabar en el curso de la relación de trabajo, tales como domicilio, edad, religión, estado civil, condición de salud, correo electrónico, números telefónicos, cuentas bancarias, nombre de cónyuge, hijos, beneficiarios, documentos de su identidad, calidad migratoria y nacionalidad, registro federal de contribuyentes, Clave Única de Registro de Población y número de seguridad social, entre otros.
+                        <br/><br/>
+                        <strong>12.2.</strong> Los datos personales y personales sensibles del Empelado serán utilizados por El Patrón exclusivamente para las finalidades de la relación de trabajo y para efectos de cumplimiento de obligaciones en materia fiscal y de seguridad social y no serán transferidos a ningún tercero ajeno a ella, salvo para el cumplimiento de las obligaciones legales ante las autoridades competentes tales como Instituto Mexicano del Seguro Social, Instituto del Fondo Nacional para la Vivienda de los Trabadores, Instituto Nacional del Fondo de Consumo para los Trabajadores, las autoridades tributarias, así como las autoridades judiciales.
+                        <br/><br/>
+                        <strong>12.3.</strong> El Trabajador puede <strong>(I)</strong> acceder, rectificar, cancelar, oponerse, limitar y revocar el uso o divulgación de sus datos personales y datos personales sensibles y <strong>(II)</strong> contactar a El Patrón en caso de que tenga alguna duda en relación al aviso de privacidad contenido en esta cláusula, podrá presentar su solicitud por escrito personalmente en el domicilio de El Patrón dirigida al Encargado de Datos Personales el cual ha sido designado como encargado de la privacidad en El Patrón.
+                        <br/><br/>
+                        <strong>12.4.</strong> El aviso de privacidad contenido en el presente contrato puede sufrir modificaciones, cambios o actualizaciones que serán informados al Empleado vía correo electrónico y que éste podrá consultar en la página de Internet de El Patrón.
+                        <br/><br/>
+                        <strong>13. ACUERDO COMPLETO<br/><br/>13.1.</strong> Este contrato contiene el acuerdo completo celebrado entre las partes las que convienen en someterse a los términos y condiciones aquí estipuladas.
+                        <br/><br/>
+                        <strong>13.2.</strong> Para todo aquello que no haya sido motivo de pacto expreso por las partes en este contrato, las mismas se obligan en los términos mínimos establecidos por la Ley Federal del Trabajo.
+                        <br/><br/>
+                        <strong>L E Í D O</strong> que fue el presente Contrato y enteradas las Partes de su contenido y del alcance de las obligaciones que contraen, lo firman por duplicado en CALLE MORELOS No.220 Col. LOMAS DEL BATAN, ZAPOPAN JALISCO, CP 45190, el 01 de septiembre del 2025.</p>
+                        <br/><br/>
+                    </div>
+                    <table class="table-border">
+                        <colgroup>
+                            <col width="45%"/>
+                            <col width="10%"/>
+                            <col width="45%"/>
+                        </colgroup>
+                        <tbody>
+                            <tr>
+                                <td style="text-align: center; border: inset 0pt;">POR EL PATRÓN</td>
+                                <td/>
+                                <td style="text-align: center; border: inset 0pt;">EL EMPLEADO</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; border: inset 0pt;"><br/><br/><br/>___________________________________</td>
+                                <td/>
+                                <td style="text-align: center; border: inset 0pt;"><br/><br/><br/>___________________________________</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; border: inset 0pt;">Nombre patron</td>
+                                <td/>
+                                <td style="text-align: center; border: inset 0pt;">Nombre empleado</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; border: inset 0pt; font-weigth: bold;">Empresa</td>
+                                <td/>
+                                <td style="text-align: center; border: inset 0pt; font-weigth: bold;">Puesto</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </template>
+
+        <template id="hr_extra.report_hr_contract">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="hr_extra.report_hrcontract_template" t-lang="o.employee_id.address_id.lang"/>
+                </t>
+            </t>
+        </template>
+
+        <template id="hr_extra.report_hrcontract_obra">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="hr_extra.report_hrcontractobra_template" t-lang="o.employee_id.address_id.lang"/>
+                </t>
+            </t>
+        </template>
+    </data>
+
+</odoo>

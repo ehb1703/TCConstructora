@@ -73,14 +73,15 @@ class CrmLead(models.Model):
     pedcto_ids = fields.Many2many('project.docsrequeridos', 'propuesta_economica_doctos_rel', 'economica_id', 'docto_id', string='Documentos requeridos',
         domain="[('model_id', '=', 'crm.lead'), ('etapa','=','economica')]")
     # Visita de obra
-    visita_obligatoria = fields.Boolean(string='Visita obligatoria')
+    visita_obligatoria = fields.Boolean(string='Asistencia obligatoria')
     visita_personas_ids = fields.Many2many('hr.employee', 'crm_lead_visita_employee_rel', 'lead_id', 'employee_id', string='Personas asignadas')
     visita_fecha = fields.Datetime(string='Fecha y hora de visita')
+    visita_fecha_limite = fields.Date(string='Fecha límite')
     visita_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la visita de obra')
     visita_acta = fields.Binary(string='Acta de visita', attachment=True)
     visita_acta_name = fields.Char(string='Nombre acta de visita')
-    visita_notif_auto_sent = fields.Boolean(string='Notif. automática enviada', default=False)
-    visita_notif_manual_sent = fields.Boolean(string='Notif. manual enviada', default=False)
+    visita_notif_auto_sent = fields.Boolean(string='Notif. Automática enviada', default=False)
+    visita_notif_manual_sent = fields.Boolean(string='Notif. Manual enviada', default=False)
     # Junta de Aclaración de dudas
     junta_obligatoria = fields.Boolean(string='Asistencia obligatoria')
     junta_personas_ids = fields.Many2many('hr.employee','crm_lead_junta_employee_rel','lead_id','employee_id',string='Personas asignadas')
@@ -91,8 +92,8 @@ class CrmLead(models.Model):
     junta_docto_dudas_name = fields.Char(string='Nombre docto. de dudas')
     junta_acta = fields.Binary(string='Acta de la junta', attachment=True)
     junta_acta_name = fields.Char(string='Nombre acta de la junta')
-    junta_notif_auto_sent = fields.Boolean(string='Notif. automática junta enviada', default=False)
-    junta_notif_manual_sent = fields.Boolean(string='Notif. manual junta enviada', default=False)
+    junta_notif_auto_sent = fields.Boolean(string='Notif. Automática enviada', default=False)
+    junta_notif_manual_sent = fields.Boolean(string='Notif. Manual enviada', default=False)
     junta_notificacion_1 = fields.Binary(string='Notificación 1', attachment=True)
     junta_notificacion_1_name = fields.Char(string='Nombre notificación 1')
     junta_notificacion_2 = fields.Binary(string='Notificación 2', attachment=True)
@@ -101,7 +102,7 @@ class CrmLead(models.Model):
     tecnico_documental_id = fields.Many2one('hr.employee', 'Técnico/documental', tracking=True)
     analista_id = fields.Many2one('crm.analyst', 'Analista', tracking=True)
     economico_operativo_id = fields.Many2one('hr.employee', 'Económico/operativo', tracking=True)
-    junta_dudas_notif_auto_sent = fields.Boolean(string='Notif. automática fecha límite dudas enviada',default=False,)
+    junta_dudas_notif_auto_sent = fields.Boolean(string='Notif. Automática fecha límite dudas enviada', default=False)
     # Conceptos de obra
     concept_ids = fields.One2many('crm.concept.line', 'lead_id', string='Conceptos de trabajo')
     budget_ids = fields.One2many('crm.budget.line', 'lead_id', string='Partidas presupestales')
@@ -114,21 +115,24 @@ class CrmLead(models.Model):
     # Junta de Apertura de Propuestas
     apertura_obligatoria = fields.Boolean('Asistencia obligatoria')
     apertura_personas_ids = fields.Many2many('hr.employee', 'crm_lead_apertura_employee_rel', 'lead_id', 'employee_id', 'Personas asignadas')
-    apertura_fecha = fields.Date('Fecha de junta')
+    apertura_fecha = fields.Datetime('Fecha y hora de junta')
+    apertura_fecha_limite = fields.Date('Fecha límite')
     apertura_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la junta de apertura de propuestas')
     apertura_acta = fields.Binary('Acta de la junta', attachment=True)
     apertura_acta_name = fields.Char('Nombre acta de la junta')
-    apertura_notif_auto_sent = fields.Boolean('Notif. automática enviada', default=False)
-    apertura_notif_manual_sent = fields.Boolean('Notif. manual junta enviada', default=False)
+    apertura_notif_auto_sent = fields.Boolean('Notif. Automática enviada', default=False)
+    apertura_notif_manual_sent = fields.Boolean('Notif. Manual enviada', default=False)
     # Junta de Fallo
+    fallo_obligatoria = fields.Boolean(string='Asistencia obligatoria')
     fallo_personas_ids = fields.Many2many('hr.employee', 'crm_lead_fallo_employee_rel', 'lead_id', 'employee_id', string='Personas asignadas')
     fallo_fecha = fields.Datetime(string='Fecha y hora de junta')
+    fallo_fecha_limite = fields.Date(string='Fecha límite')
     fallo_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la junta de pronunciamiento del fallo')
     fallo_ganado = fields.Boolean(string='Ganado')
-    fallo_notif_auto_sent = fields.Boolean(string='Notif. automática enviada', default=False)
-    fallo_notif_manual_sent = fields.Boolean(string='Notif. manual junta enviada', default=False)
-    fallo_notif_directores_auto_sent = fields.Boolean(string='Notif. automática dirección enviada', default=False)
-    fallo_notif_directores_manual_sent = fields.Boolean(string='Notif. manual dirección enviada', default=False)
+    fallo_notif_auto_sent = fields.Boolean(string='Notif. Automática enviada', default=False)
+    fallo_notif_manual_sent = fields.Boolean(string='Notif. Manual enviada', default=False)
+    fallo_notif_directores_auto_sent = fields.Boolean(string='Notif. Automática dirección enviada', default=False)
+    fallo_notif_directores_manual_sent = fields.Boolean(string='Notif. Manual dirección enviada', default=False)
     fallo_acta = fields.Binary(string='Acta de fallo', attachment=True)
     fallo_acta_name = fields.Char(string='Nombre acta de fallo')
     # Ganado
@@ -146,6 +150,12 @@ class CrmLead(models.Model):
     pt_revision_ids = fields.One2many('crm.propuesta.tecnica.revision', 'lead_id', string='Revisiones Propuesta Técnica')
     pe_doc_line_ids = fields.One2many('crm.propuesta.economica.doc', 'lead_id', string='Documentos Propuesta Económica')
     pe_revision_ids = fields.One2many('crm.propuesta.economica.revision', 'lead_id', string='Revisiones Propuesta Económica')
+    pe_autorizado = fields.Boolean(string='PE Autorizada', compute='_compute_pe_autorizado', store=False, help='Indica si hay alguna revisión autorizada en Propuesta Económica')
+
+    @api.depends('pe_revision_ids', 'pe_revision_ids.autorizado')
+    def _compute_pe_autorizado(self):
+        for lead in self:
+            lead.pe_autorizado = any(rev.autorizado for rev in lead.pe_revision_ids)
 
     @api.onchange('origen_id')
     def _compute_bases(self):
@@ -400,13 +410,15 @@ class CrmLead(models.Model):
                     raise ValidationError('Falta cargar las Bases correspondientes')
             if not self.bases_abstinencia_anticipo and self.bases_anticipo_porcentaje == 0:
                 raise ValidationError('Falta agregar el % de anticipo')
+            if self.bases_anticipo_porcentaje > 100:
+                raise ValidationError('% de anticipo no valido')
 
         if self.stage_name == 'Visita de Obra':
-            if self.visita_obligatoria and not self.visita_acta:
+            if not self.visita_acta:
                 raise ValidationError('Falta cargar el Acta de la Visita')
 
         if self.stage_name == 'Junta de Aclaración de Dudas':
-            if self.junta_obligatoria and not self.junta_acta:
+            if not self.junta_acta:
                 raise ValidationError('Falta cargar el Acta de la Junta de Aclaración de Dudas.')
 
         if self.stage_name == 'Cotización de insumos y trabajos especiales':
@@ -431,7 +443,16 @@ class CrmLead(models.Model):
 
         if self.stage_name == 'Propuesta Económica':
             self.check_doctos('economica')
-            self.check_revisions('economica')
+            if not self.pe_revision_ids.filtered(lambda r: r.autorizado):
+                raise ValidationError('Debe tener al menos una revisión AUTORIZADA en Propuesta Económica para avanzar de etapa.')
+
+        if self.stage_name == 'Junta de Apertura de Propuestas':
+            if not self.apertura_acta:
+                raise ValidationError('Falta cargar el Acta de la Junta de Apertura de Propuestas.')
+
+        if self.stage_name == 'Junta de Fallo':
+            if not self.fallo_acta:
+                raise ValidationError('Falta cargar el Acta de Fallo.')
 
         sequence = self.stage_id.sequence
         reason = self.env['crm.revert.reason'].search([('name','=','Avance')])
@@ -609,6 +630,8 @@ class CrmLead(models.Model):
             correos = self.visita_personas_ids
         elif self.stage_name == 'Junta de Aclaración de Dudas':
             correos = self.junta_personas_ids
+        elif self.stage_name == 'Junta de Fallo':
+            correos = self.fallo_personas_ids
         else:
             correos = self.apertura_personas_ids
 
@@ -638,8 +661,10 @@ class CrmLead(models.Model):
         correos = ', '.join(correos_list)
 
         for lead in self:
-            if not lead.visita_obligatoria or not lead.visita_fecha:
-                continue
+            if not lead.visita_fecha:
+                raise UserError(_('Debe capturar la fecha de la visita de obra.'))
+            if not lead.visita_personas_ids:
+                raise UserError(_('Debe asignar al menos una persona para la Visita de Obra.'))
 
             email_values = {'email_to': correos,}
             template.send_mail(lead.id, force_send=True, email_values=email_values)
@@ -655,6 +680,8 @@ class CrmLead(models.Model):
         self.ensure_one()
         if not self.visita_fecha:
             raise UserError('Debe capturar la fecha de visita.')
+        if not self.visita_personas_ids:
+            raise UserError(_('Debe asignar al menos una persona para la Visita de Obra.'))
         self._send_visita_reminder(manual=True)
 
     # Funciones de actualización de los campos relacionados con la junta
@@ -677,10 +704,10 @@ class CrmLead(models.Model):
             raise UserError(_('No se encontró la plantilla de correo para recordatorio de la Junta de Aclaración de Dudas.'))
 
         for lead in self:
-            if not lead.junta_obligatoria:
-                continue
             if not lead.junta_fecha:
                 raise UserError(_('Debe capturar la fecha de la junta de aclaración de dudas.'))
+            if not lead.junta_personas_ids:
+                raise UserError(_('Debe asignar al menos una persona para la Junta de Aclaración de Dudas.'))
 
             email_to = ', '.join(lead._get_emails())
             email_values = {'email_to': email_to}
@@ -698,6 +725,8 @@ class CrmLead(models.Model):
         self.ensure_one()
         if not self.junta_fecha:
             raise UserError(_('Debe capturar la fecha de la Junta de Aclaración de Dudas.'))
+        if not self.junta_personas_ids:
+            raise UserError(_('Debe asignar al menos una persona para la Junta de Aclaración de Dudas.'))
         self._send_junta_reminder(manual=True)
 
     def _send_junta_dudas_deadline_reminder(self):
@@ -722,9 +751,10 @@ class CrmLead(models.Model):
             raise UserError(_('No se encontró la plantilla de correo para recordatorio de junta de apertura de propuestas.'))
 
         for lead in self:
-            # Solo enviar si es obligatoria y tiene fecha
-            if not (lead.apertura_obligatoria and lead.apertura_fecha):
-                continue
+            if not lead.apertura_fecha:
+                raise UserError(_('Debe capturar la fecha de la junta de apertura de propuestas.'))
+            if not lead.apertura_personas_ids:
+                raise UserError(_('Debe asignar al menos una persona para la Junta de Apertura de Propuestas.'))
 
             correos = ', '.join(lead._get_emails())
             template.send_mail(lead.id, force_send=True, email_values={'email_to': correos})
@@ -753,8 +783,8 @@ class CrmLead(models.Model):
             if lead.stage_name != 'Junta de Fallo':
                 continue
 
-            email_values = {}
-            template.send_mail(lead.id, force_send=True, email_values=email_values)
+            correos = ', '.join(lead._get_emails())
+            template.send_mail(lead.id, force_send=True, email_values={'email_to': correos})
             if manual:
                 lead.fallo_notif_manual_sent = True
             else:
@@ -764,9 +794,7 @@ class CrmLead(models.Model):
 
             
     def action_send_fallo_notification(self):
-        # Botón manual para enviar notificación de FALLO GANADO.
         self.ensure_one()
-
         if not self.fallo_ganado:
             raise UserError(_('Debe marcar la casilla "Ganado" antes de enviar la notificación.'))
 
@@ -1417,5 +1445,3 @@ class CrmPropuestaEconomicaRevision(models.Model):
                     ('fecha_revision', '>', record.fecha_revision), ('autorizado', '=', False)], order='fecha_revision asc', limit=1)
                 record.lead_id.pe_revision_ids._compute_activo()
         return res
-
-

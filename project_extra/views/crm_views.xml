@@ -119,9 +119,9 @@
                                 <field name="bases_modalidad_contrato_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}" readonly="stage_name != 'Inscripción/Compra de bases'"/>
                             </group>
                             <group colspan="2">
-                                <label for="bases_fecha_inicio_trabajos" string="Fecha estimada de trabajos"/>
+                                <label for="bases_fecha_inicio_trabajos" string="Fecha estimada de trabajos (Inicio/Termino)"/>
                                 <div class="o_row">
-                                    <field name="bases_fecha_inicio_trabajos" readonly="stage_name != 'Inscripción/Compra de bases'" class="oe_inline" nolabel="1"/><span class="oe_inline"> - </span><field name="bases_fecha_terminacion_trabajos" readonly="stage_name != 'Inscripción/Compra de bases'" class="oe_inline" nolabel="1"/>
+                                    <span class="oe_inline">Del  </span><field name="bases_fecha_inicio_trabajos" readonly="stage_name != 'Inscripción/Compra de bases'" class="oe_inline" nolabel="1"/><span class="oe_inline"> al </span><field name="bases_fecha_terminacion_trabajos" readonly="stage_name != 'Inscripción/Compra de bases'" class="oe_inline" nolabel="1"/>
                                 </div>                                
                             </group>
                             <group colspan="2">
@@ -160,9 +160,8 @@
                             </group>
                             <group colspan="2">
                                 <field name="visita_personas_ids" widget="many2many_tags" readonly="stage_name != 'Visita de Obra'" required="visita_obligatoria"/>
-                            </group>
-                            <group colspan="2">
                                 <field name="visita_fecha" string="Fecha y hora de visita" readonly="stage_name != 'Visita de Obra'"/>
+				<field name="visita_fecha_limite" readonly="stage_name != 'Visita de Obra'" required="visita_obligatoria and stage_name == 'Visita de Obra'"/>
                             </group>
                             <group colspan="2">
                                 <field name="visita_lugar_reunion" readonly="stage_name != 'Visita de Obra'"/>
@@ -197,7 +196,7 @@
                         </group>
                         <group>
                             <group colspan="2">
-                                <field name="junta_personas_ids" widget="many2many_tags" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
+                                <field name="junta_personas_ids" widget="many2many_tags" readonly="stage_name != 'Junta de Aclaración de Dudas'" required="junta_obligatoria and stage_name == 'Junta de Aclaración de Dudas'"/>
                             </group>
                         </group>
                         <group>
@@ -207,10 +206,10 @@
                         </group>
                         <group>
                             <group>
-                                <field name="junta_fecha" string="Fecha y hora de junta" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
+                                <field name="junta_fecha" string="Fecha y hora de junta" readonly="stage_name != 'Junta de Aclaración de Dudas'" required="junta_obligatoria and stage_name == 'Junta de Aclaración de Dudas'"/>
                             </group>
                             <group>
-                                <field name="junta_fecha_limite_dudas" string="Fecha límite" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
+                                <field name="junta_fecha_limite_dudas" string="Fecha límite" readonly="stage_name != 'Junta de Aclaración de Dudas'" required="junta_obligatoria and stage_name == 'Junta de Aclaración de Dudas'"/>
                             </group>
                         </group>
                         <group>
@@ -390,11 +389,14 @@
                                     </form>
                                 </field>
                             </group>
+                            <div class="alert alert-success" role="alert" invisible="not pe_autorizado">
+                                <strong>✓ Propuesta Económica AUTORIZADA</strong> - No se pueden añadir más líneas de revisión.
+                            </div>
                         </page>
                     </notebook>
                 </page>
 
-                <page string="Ult etapas">
+                <page string="Ult. Etapas">
                     <group>
                         <group string="Junta de Apertura de Propuestas">
                             <group>
@@ -414,25 +416,32 @@
                             </group>
                             <group colspan="2" invisible="not apertura_obligatoria">
                                 <field name="apertura_personas_ids" widget="many2many_tags" readonly="stage_name != 'Junta de Apertura de Propuestas'" required="apertura_obligatoria"/>
-                            </group>
-                            <group colspan="2">
                                 <field name="apertura_lugar_reunion" readonly="stage_name != 'Junta de Apertura de Propuestas'"/>
-                            </group>
-                            <group colspan="2" invisible="not apertura_obligatoria">
-                                <field name="apertura_fecha" string="Fecha de junta" readonly="stage_name != 'Junta de Apertura de Propuestas'" required="apertura_obligatoria"/>
+                                <field name="apertura_fecha" string="Fecha y hora de junta" readonly="stage_name != 'Junta de Apertura de Propuestas'" required="apertura_obligatoria"/>
                                 <field name="apertura_acta" filename="apertura_acta_name" string="Acta de la junta" widget="binary" readonly="stage_name != 'Junta de Apertura de Propuestas'" required="apertura_obligatoria"/>
                             </group>
                         </group>
                         <group string="Junta de Fallo">
-                            <group>
-                                <field name="fallo_ganado" readonly="stage_name != 'Junta de Fallo'"/>
+                            <field name="fallo_acta_name" invisible="1"/>
+                             <group>
+                                <field name="fallo_obligatoria" readonly="stage_name != 'Junta de Fallo'"/>
                             </group>
                             <group>
                                 <list editable="bottom">
                                     <button name="action_send_fallo_notification" type="object" icon="fa-envelope" string="Enviar" invisible="stage_name != 'Junta de Fallo'"/>
                                 </list>
                             </group>
-                            <field name="fallo_acta_name" invisible="1"/>
+                            <group>
+                                <field name="fallo_fecha" string="Fecha y hora de junta" readonly="stage_name != 'Junta de Fallo'" required="fallo_obligatoria and stage_name == 'Junta de Fallo'"/>
+                            </group>
+                            <group>
+                                <field name="fallo_fecha_limite" readonly="stage_name != 'Junta de Fallo'" required="fallo_obligatoria and stage_name == 'Junta de Fallo'"/>
+                            </group>
+                            <group colspan="2">
+                                <field name="fallo_lugar_reunion" readonly="stage_name != 'Junta de Fallo'"/>
+                                <field name="fallo_personas_ids" widget="many2many_tags" readonly="stage_name != 'Junta de Fallo'" required="fallo_obligatoria and stage_name == 'Junta de Fallo'"/>
+                                <field name="fallo_acta" filename="fallo_acta_name" string="Acta de fallo" readonly="stage_name != 'Junta de Fallo'"/>
+                            </group>
                             <group>
                                 <field name="fallo_notif_auto_sent" readonly="1"/>
                             </group>
@@ -440,20 +449,9 @@
                                 <field name="fallo_notif_manual_sent" readonly="1"/>
                             </group>
                             <group colspan="2">
-                                <field name="fallo_personas_ids" widget="many2many_tags" readonly="stage_name != 'Junta de Fallo'"/>
-                            </group>
-                            <group colspan="2">
-                                <field name="fallo_lugar_reunion" readonly="stage_name != 'Junta de Fallo'"/>
-                            </group>
-                            <group colspan="2">
-                                <field name="fallo_fecha" string="Fecha y hora de junta" readonly="stage_name != 'Junta de Fallo'"/>
-                            </group>
-                            <group colspan="2">
-                                <field name="fallo_acta" filename="fallo_acta_name" string="Acta de fallo" readonly="stage_name != 'Junta de Fallo'"/>
-                            </group>
-                            <group colspan="2" invisible="not fallo_ganado">
-                                <separator string="Notificación a Directores"/>
-                            </group>
+                                <field name="fallo_ganado" readonly="stage_name != 'Junta de Fallo' or fallo_acta_name == False"/>
+                            </group>                            
+                            <group invisible="not fallo_ganado"/>
                             <group invisible="not fallo_ganado">
                                 <list editable="bottom">
                                     <button name="action_send_fallo_directores_notification" type="object" icon="fa-envelope" string="Enviar a Dirección"/>

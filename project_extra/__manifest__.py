@@ -24,7 +24,6 @@ Personalización del modulo:
         'views/crm_catalog_views.xml',
         'views/crm_views.xml',
         'views/purchase_views.xml',
-        'views/purchase_report.xml',
         'wizard/crm_revert_stage_views.xml',
         'wizard/crm_cotizacion_insumos_views.xml',
         'report/purchase_contract_templates.xml',

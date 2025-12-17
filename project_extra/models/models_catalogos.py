@@ -294,10 +294,14 @@ class TipoInsumo(models.Model):
             codigo_limpio = self.codigo.strip().upper()
             self.codigo = codigo_limpio
 
-class supplyProductTemplate(models.Model):
+
+class ProductTemplateInsumo(models.Model):
     _inherit = 'product.template'
     
-    type_supply = fields.Selection(selection=[('int','Interna'), ('ext','Externa')],
-        string='Tipo de Aprovisionamiento', default='ext')
-    budget_id = fields.Many2one('product.budget.item', string='Partida Presupestaria')
     tipo_insumo_id = fields.Many2one('product.tipo.insumo', string='Tipo de insumo', tracking=True, help='Clasificación del insumo para procesos de compra')            
+
+class ResPartnerTipoInsumo(models.Model):
+    _inherit = 'res.partner'
+    
+    tipo_insumo_ids = fields.Many2many('product.tipo.insumo', 'res_partner_tipo_insumo_rel', 'partner_id', 'tipo_insumo_id', string='Tipos de insumo',
+        help='Tipos de insumo que provee este proveedor')
