@@ -49,12 +49,9 @@ class purchaseOrderLineInherit(models.Model):
 class purchaseRequisitionInherit(models.Model):
     _inherit = 'purchase.requisition'
 
-    description = fields.Char(string='Descripción')
+    description_contract = fields.Char(string='Descripción')
     doctos_delivered = fields.Char(string='Documentos a entregar')
     retencion = fields.Float(string='% de retención')
     schedule = fields.Char(string='Horario de entrega')
     warranty_period = fields.Char(string='Periodo de garantía')
     signature_date = fields.Date(string='Fecha de firma del contrato')
-
-    def action_purchase_contract(self):
-        return self.env.ref('project_extra.action_purchase_contract_templates').report_action(self)

@@ -9,35 +9,6 @@ _logger = logging.getLogger(__name__)
 class DocumentsDocument(models.Model):
     _inherit = 'documents.document'
 
-    lead_id = fields.Many2one('crm.lead', compute='_compute_lead_id', search='_search_lead_id', export_string_translation=False)
-    lead_ids = fields.One2many('crm.lead', 'documents_folder_id', string='CRM') # for folders
-    
-    @api.depends('res_id', 'res_model')
-    def _compute_lead_id(self):
-        for record in self:
-            if record.res_model == 'crm.lead':
-                record.lead_id = self.env['crm.lead'].browse(record.res_id)
-            else:
-                record.lead_id = False
-
-    @api.model
-    def _search_lead_id(self, operator, value):
-        if operator in ('=', '!=') and isinstance(value, bool): # needs to be the first condition as True and False are instances of int
-            if not value:
-                operator = operator == '=' and '!=' or '='
-            comparator = operator == '=' and '|' or '&'
-            return [comparator, ('res_model', operator, 'crm.lead')]
-        elif operator in ('=', '!=', 'in', 'not in') and (isinstance(value, int) or isinstance(value, list)):
-            return [('res_model', '=', 'crm.lead'), ('res_id', operator, value)]
-        elif operator in ('ilike', 'not ilike', '=', '!=') and isinstance(value, str):
-            query_lead = self.env['crm.lead']._search([(self.env['crm.lead']._rec_name, operator, value)])
-            return [('id', 'in', SQL('''(WITH helper as (%s)
-                SELECT document.id
-                FROM documents_document document LEFT JOIN crm_lead lead ON lead.id = document.res_id AND document.res_model = 'crm.lead')''', 
-                query_lead.subselect()))]
-        else:
-            raise ValidationError(_('Invalid lead search'))
-
     @api.model_create_multi
     def create(self, vals_list):
         # Crear los documentos primero
@@ -60,14 +31,34 @@ class DocumentsDocument(models.Model):
     def write(self, vals):
         # Override write para vincular cuando se mueve un documento a carpeta CRM
         res = super(DocumentsDocument, self).write(vals)
-        
-        # Si se cambió la carpeta, intentar vincular
-        if 'folder_id' in vals:
+        if 'folder_id' in vals or 'attachment_id' in vals:
             for doc in self:
-                if doc.type != 'folder' and doc.folder_id:
+                if doc.type != 'folder':
                     self._auto_vincular_crm_lead(doc)
-        
         return res
+
+
+    def _get_folder_hierarchy(self, documento):
+        """ Obtiene la jerarquía de carpetas de un documento.
+        Returns: tuple (carpeta_actual, carpeta_padre, carpeta_abuelo) o (None, None, None) """
+        try:
+            # Obtener la carpeta del documento
+            folder = documento.folder_id if hasattr(documento, 'folder_id') else None
+            if not folder:
+                return None, None, None
+            
+            # Obtener carpeta padre (licitación)
+            parent_folder = folder.folder_id if hasattr(folder, 'folder_id') else None
+            if not parent_folder:
+                return folder, None, None
+            
+            # Obtener carpeta abuelo (CRM)
+            grandparent_folder = parent_folder.folder_id if hasattr(parent_folder, 'folder_id') else None
+            return folder, parent_folder, grandparent_folder
+            
+        except Exception as e:
+            _logger.error("Error obteniendo jerarquía de carpetas: %s", str(e))
+            return None, None, None
 
 
     def _auto_vincular_crm_lead(self, documento):
@@ -77,39 +68,31 @@ class DocumentsDocument(models.Model):
         Returns:
             bool: True si se vinculó exitosamente, False en caso contrario """
         try:
-            # Si ya está vinculado, no hacer nada
-            if documento.res_model and documento.res_id:
-                _logger.info("   ℹ️  Ya está vinculado: %s (ID: %s)", documento.res_model, documento.res_id)
+            if documento.res_model == 'crm.lead' and documento.res_id:
                 return False
             
-            folder = documento.folder_id
+            folder, lic_folder, crm_folder = self._get_folder_hierarchy(documento)
             if not folder:
                 return False
             
             # Verificar si está en carpeta Tecnico o Economico
-            if folder.name not in ['Tecnico', 'Economico']:
+            folder_name = (folder.name or '').strip()
+            if folder_name not in ['Tecnico', 'Economico']:
                 return False
-            
-            # Obtener carpeta padre (carpeta de licitación)
-            lic_folder = folder.folder_id
             if not lic_folder:
                 return False
-            
-            # Obtener carpeta abuelo (debe ser CRM)
-            crm_folder = lic_folder.folder_id
             if not crm_folder:
                 return False
                 
-            if crm_folder.name != 'CRM':
+            crm_folder_name = (crm_folder.name or '').strip()
+            if crm_folder_name != 'CRM':
                 return False
             
             # Buscar el lead que corresponde a esta carpeta
             Lead = self.env['crm.lead'].sudo()
-            lic_name = lic_folder.name
-            
+            lic_name = (lic_folder.name or '').strip()
             # Buscar por no_licitacion o por name
             lead = Lead.search(['|', ('no_licitacion', '=', lic_name), ('name', '=', lic_name)], limit=1)
-            
             if not lead:
                 return False
             

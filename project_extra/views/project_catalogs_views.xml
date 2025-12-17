@@ -346,6 +346,19 @@
         </field>
     </record>
 
+    <!-- Vista para agregar tipos de insumo en contactos (proveedores) -->
+    <record id="view_partner_tipo_insumo_form" model="ir.ui.view">
+        <field name="name">res.partner.tipo.insumo.form</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="account.view_partner_property_form"/>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='classupplier_id']" position="after">
+                <field name="tipo_insumo_ids" widget="many2many_tags" invisible="not is_supplier" options="{'no_create': True, 'no_open': True}"/>
+            </xpath>
+        </field>
+    </record>
+
     <menuitem id="menu_catalog_project" name="Catálogos" parent="project.menu_main_pm" sequence="200" groups="project.group_project_user,group_project_catalog">
         <menuitem id="menu_project_type" name="Tipo de Obra" action="action_project_type" sequence="1"/>
         <menuitem id="menu_project_docsrequeridos" name="Documentos" action="action_project_docsrequeridos" sequence="2"/>
@@ -355,5 +368,8 @@
         <menuitem id="menu_especialidad" name="Especialidades" action="action_especialidad" sequence="6"/>
         <menuitem id="menu_modalidad_contrato" name="Modalidad de Contrato" action="action_modalidad_contrato" sequence="7"/>
     </menuitem>
+
+    <!-- Menú Tipos de insumo en Compras → Productos -->
+    <menuitem id="menu_tipo_insumo_compras" name="Tipos de insumo" parent="purchase.menu_purchase_products" action="action_tipo_insumo" sequence="1" groups="purchase.group_purchase_user,purchase.group_purchase_manager"/>
 
 </odoo>

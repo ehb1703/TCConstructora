@@ -29,7 +29,7 @@
         <field name="arch" type="xml">
             <xpath expr="//sheet/group" position="after">
                 <group>
-                    <field name="description"/>
+                    <field name="description_contract"/>
                     <field name="doctos_delivered"/>
                 </group>
                 <group>
@@ -42,9 +42,6 @@
                         <field name="signature_date"/>
                     </group>
                 </group>
-            </xpath>
-            <xpath expr="//header/button[@name='action_cancel']" position="after">
-                <button name="action_purchase_contract" type="object" string="Contrato" class="btn-secondary"/>
             </xpath>
         </field>
     </record>

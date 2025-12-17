@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_hr_contract" model="ir.actions.report">
+        <field name="name">Documento del contrato</field>
+        <field name="model">hr.contract</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hr_extra.report_hr_contract</field>
+        <field name="report_file">hr_extra.report_hr_contract</field>
+        <field name="print_report_name">'Contrato - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_hr_contract"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_hrcontract_obra" model="ir.actions.report">
+        <field name="name">Documento del contrato</field>
+        <field name="model">hr.contract</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hr_extra.report_hrcontract_obra</field>
+        <field name="report_file">hr_extra.report_hrcontract_obra</field>
+        <field name="print_report_name">'Contrato - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_hr_contract"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>
