@@ -7,8 +7,10 @@
         <field name="arch" type="xml">
             <form string="Generar cotizaciones de insumos">
                 <group>
+                    <field name="supplier_domain" invisible="1"/>
                     <field name="lead_id" readonly="1"/>
-                    <field name="supplier_ids" widget="many2many_tags"/>
+                    <field name="tipoinsumo_id"/>
+                    <field name="supplier_ids" widget="many2many_tags" domain="supplier_domain"/>
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Confirmar" class="btn-primary"/>
