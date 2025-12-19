@@ -13,7 +13,6 @@ class DocumentsDocument(models.Model):
     def create(self, vals_list):
         # Crear los documentos primero
         documents = super(DocumentsDocument, self).create(vals_list)
-        
         # Procesar cada documento creado
         for doc in documents:
             # Solo procesar si es un archivo (no carpeta) y está en una carpeta
@@ -24,7 +23,6 @@ class DocumentsDocument(models.Model):
                 continue
             
             resultado = self._auto_vincular_crm_lead(doc)
-            
         return documents
 
 
@@ -36,7 +34,6 @@ class DocumentsDocument(models.Model):
                 if doc.type != 'folder':
                     self._auto_vincular_crm_lead(doc)
         return res
-
 
     def _get_folder_hierarchy(self, documento):
         """ Obtiene la jerarquía de carpetas de un documento.

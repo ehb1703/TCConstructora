@@ -135,7 +135,7 @@
                     <p>Buen día,</p>
                     <p>Se les recuerda la <b>junta de aclaración de dudas</b> de la convocatoria <b><t t-out="object.name or ''"/></b>.</p>
                     <ul>
-                        <li><b>Fecha y hora de la junta: </b><t t-if="object.junta_fecha"><t t-out="object.junta_fecha"/></t></li>
+                        <li><b>Fecha y hora de la junta: </b><t t-if="object.junta_fecha"><t t-out="format_datetime(object.junta_fecha, dt_format='long')">day, month dd, yyyy - hh:mm:ss (GMT)</t></t></li>
                         <li><b>Lugar de reunión: </b><t t-if="object.junta_lugar_reunion"><t t-out="object.junta_lugar_reunion"/></t></li>
                     </ul>
                     <p>
@@ -175,7 +175,7 @@
                         Se les recuerda la <b>junta de apertura de propuestas</b> de la convocatoria <b><t t-out="object.name or ''"/></b>.
                     </p>
                     <ul>
-                        <li><b>Fecha de la junta: </b><t t-if="object.apertura_fecha"><t t-out="object.apertura_fecha"/></t></li>
+                        <li><b>Fecha de la junta: </b><t t-if="object.apertura_fecha"><t t-out="format_datetime(object.apertura_fecha, dt_format='long')">day, month dd, yyyy - hh:mm:ss (GMT)</t></t></li>
                         <li><b>Lugar de reunión: </b><t t-if="object.apertura_lugar_reunion"><t t-out="object.apertura_lugar_reunion"/></t></li>
                     </ul>
                     <p>
@@ -201,7 +201,7 @@
                         Se informa que la licitación correspondiente a la convocatoria <b><t t-out="object.name or ''"/></b> ha sido marcada como <b>GANADA</b> en el sistema.
                     </p>
                     <ul>
-                        <li><b>Fecha y hora de la junta: </b><t t-if="object.fallo_fecha"><t t-out="object.fallo_fecha"/></t></li>
+                        <li><b>Fecha y hora de la junta: </b><t t-if="object.fallo_fecha"><t t-out="format_datetime(object.fallo_fecha, dt_format='long')">day, month dd, yyyy - hh:mm:ss (GMT)</t></t></li>
                         <li><b>Lugar de reunión: </b><t t-if="object.fallo_lugar_reunion"><t t-out="object.fallo_lugar_reunion"/></t></li>
                     </ul>
                     <p>

@@ -9,6 +9,8 @@ import os
 import tempfile
 import openpyxl
 import binascii
+import base64
+import io
 
 _logger = logging.getLogger(__name__)
 
@@ -76,7 +78,6 @@ class CrmLead(models.Model):
     visita_obligatoria = fields.Boolean(string='Asistencia obligatoria')
     visita_personas_ids = fields.Many2many('hr.employee', 'crm_lead_visita_employee_rel', 'lead_id', 'employee_id', string='Personas asignadas')
     visita_fecha = fields.Datetime(string='Fecha y hora de visita')
-    visita_fecha_limite = fields.Date(string='Fecha límite')
     visita_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la visita de obra')
     visita_acta = fields.Binary(string='Acta de visita', attachment=True)
     visita_acta_name = fields.Char(string='Nombre acta de visita')
@@ -106,8 +107,7 @@ class CrmLead(models.Model):
     # Conceptos de obra
     concept_ids = fields.One2many('crm.concept.line', 'lead_id', string='Conceptos de trabajo')
     budget_ids = fields.One2many('crm.budget.line', 'lead_id', string='Partidas presupestales')
-    concept_file = fields.Binary(string='Archivo', attachment=True)
-    concept_filename = fields.Char(string='Nombre del archivo', tracking=True)
+    combo_ids = fields.One2many('crm.combo.line', 'lead_id', string='combo_ids')
     # Insumos
     input_ids = fields.One2many('crm.input.line', 'lead_id', string='Insumos')
     input_file = fields.Binary(string='Archivo', attachment=True)
@@ -126,8 +126,8 @@ class CrmLead(models.Model):
     fallo_obligatoria = fields.Boolean(string='Asistencia obligatoria')
     fallo_personas_ids = fields.Many2many('hr.employee', 'crm_lead_fallo_employee_rel', 'lead_id', 'employee_id', string='Personas asignadas')
     fallo_fecha = fields.Datetime(string='Fecha y hora de junta')
-    fallo_fecha_limite = fields.Date(string='Fecha límite')
     fallo_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la junta de pronunciamiento del fallo')
+    fallo_fecha_adjudicacion = fields.Date(string='Fecha de adjudicación')
     fallo_ganado = fields.Boolean(string='Ganado')
     fallo_notif_auto_sent = fields.Boolean(string='Notif. Automática enviada', default=False)
     fallo_notif_manual_sent = fields.Boolean(string='Notif. Manual enviada', default=False)
@@ -141,6 +141,12 @@ class CrmLead(models.Model):
     contrato_firmado = fields.Boolean('Contrato firmado')
     contrato_documento = fields.Binary('Contrato', attachment=True)
     contrato_documento_name = fields.Char('Nombre del contrato')
+    importe_contratado = fields.Float('Importe contratado', tracking=True)
+    importe_anticipo = fields.Float('Importe anticipo', compute='_compute_importe_anticipo', store=True, readonly=True)
+    rupc_siop = fields.Char('RUPC. SIOP', size=50)
+    no_estimaciones = fields.Integer('No. De estimaciones')
+    es_siop = fields.Boolean('Es SIOP', compute='_compute_es_siop', store=False)
+    project_id = fields.Many2one('project.project', string='Proyecto', readonly=True, copy=False)
     #Propuesta Técnica
     documents_folder_id = fields.Many2one('documents.document', string="Folder", copy=False,domain="[('type', '=', 'folder'), ('shortcut_document_id', '=', False), '|', ('company_id', '=', False), ('company_id', '=', company_id)]",)
     documents_count = fields.Integer('Documentos', compute='_compute_documents_count', readonly=True)
@@ -156,6 +162,22 @@ class CrmLead(models.Model):
     def _compute_pe_autorizado(self):
         for lead in self:
             lead.pe_autorizado = any(rev.autorizado for rev in lead.pe_revision_ids)
+
+    @api.depends('importe_contratado', 'bases_anticipo_porcentaje', 'bases_abstinencia_anticipo')
+    def _compute_importe_anticipo(self):
+        for lead in self:
+            if lead.bases_abstinencia_anticipo or not lead.bases_anticipo_porcentaje:
+                lead.importe_anticipo = 0.0
+            else:
+                lead.importe_anticipo = lead.importe_contratado * (lead.bases_anticipo_porcentaje / 100.0)
+
+    @api.depends('no_licitacion')
+    def _compute_es_siop(self):
+        for lead in self:
+            if lead.no_licitacion and len(lead.no_licitacion) >= 4:
+                lead.es_siop = lead.no_licitacion[:4].upper() == 'SIOP'
+            else:
+                lead.es_siop = False
 
     @api.onchange('origen_id')
     def _compute_bases(self):
@@ -422,16 +444,8 @@ class CrmLead(models.Model):
                 raise ValidationError('Falta cargar el Acta de la Junta de Aclaración de Dudas.')
 
         if self.stage_name == 'Cotización de insumos y trabajos especiales':
-            if not self.budget_ids or not self.concept_ids or not self.input_ids:
+            if not self.input_ids:
                 raise ValidationError('Falta cargar información de los conceptos de trabajo y/o insumos')
-
-            count = len(self.budget_ids.filtered(lambda u: not u.budget_id))
-            if count != 0:
-                raise ValidationError('Falta cargar las partidas')
-            
-            count = len(self.concept_ids.filtered(lambda u: not u.concept_ex and u.col4 != ''))
-            if count > 1:
-                raise ValidationError('Faltan cargar los conceptos de trabajo')
 
             count = len(self.oc_ids.filtered(lambda u: u.type_purchase == 'ins'))
             if self.input_ids and count == 0:
@@ -695,7 +709,7 @@ class CrmLead(models.Model):
     @api.onchange('junta_fecha', 'junta_fecha_limite_dudas')
     def _validate_junta_fields(self):
         for rec in self:
-            if rec.junta_fecha and rec.junta_fecha_limite_dudas and rec.junta_fecha < rec.junta_fecha_limite_dudas:
+            if rec.junta_fecha and rec.junta_fecha_limite_dudas and rec.junta_fecha.date() < rec.junta_fecha_limite_dudas:
                 raise UserError(_('La fecha límite para enviar dudas no puede ser posterior a la fecha de la junta.'))
 
     def _send_junta_reminder(self, manual=False):
@@ -795,16 +809,11 @@ class CrmLead(models.Model):
             
     def action_send_fallo_notification(self):
         self.ensure_one()
-        if not self.fallo_ganado:
-            raise UserError(_('Debe marcar la casilla "Ganado" antes de enviar la notificación.'))
-
-        # Usamos el helper genérico para enviar el correo
         self._send_fallo_notification(manual=True)
 
     def action_send_fallo_directores_notification(self):
         # Botón manual para enviar notificación de FALLO GANADO a directores.
         self.ensure_one()
-
         if not self.fallo_ganado:
             raise UserError(_('Debe marcar la casilla "Ganado" antes de enviar la notificación a directores.'))
 
@@ -963,7 +972,8 @@ class CrmLead(models.Model):
             raise UserError('Existen conceptos repetidos favor de revisar el archivo.')
 
         self.env.cr.execute('''SELECT ID min_id, (case when UPPER(col3) = 'UNIDAD' then 'col3' else 'col5' end) unidad, 
-                (case when UPPER(col5) = 'CANTIDAD' then 'col5' else 'col6' end) cantidad, (case when UPPER(col6) = 'PRECIO' then 'col6' else 'col7' end) precio 
+                (case when UPPER(col5) = 'CANTIDAD' then 'col5' else 'col6' end) cantidad, 
+                (case when UPPER(col6) in ('PRECIO', 'COSTO UNITARIO') then 'col6' else 'col7' end) precio 
             FROM crm_input_line ci WHERE ci.id = (select MIN(ID) min_id from crm_input_line ci WHERE ci.lead_id = ''' + str(self.id) + ')')
         min_id = self.env.cr.dictfetchall()
 
@@ -980,6 +990,12 @@ class CrmLead(models.Model):
             FROM (SELECT cil.id, TRIM(cil.col1) code, COUNT(pt.property_account_expense_id) num 
                     FROM crm_input_line cil JOIN product_template pt ON TRIM(cil.col1) = pt.default_code 
                    WHERE cil.LEAD_ID = ''' + str(self.id) + ' AND cil.id != ' + str(min_id[0]['min_id']) + ''' AND pt.property_account_expense_id IS NOT NULL
+                   GROUP BY 1, 2) as t1
+            WHERE cil.id = t1.id;
+            UPDATE crm_input_line cil SET tipinsumo_ex = true
+            FROM (SELECT cil.id, TRIM(cil.col1) code, COUNT(pt.tipo_insumo_id) num 
+                    FROM crm_input_line cil JOIN product_template pt ON TRIM(cil.col1) = pt.default_code 
+                   WHERE cil.LEAD_ID = ''' + str(self.id) + ' AND cil.id != ' + str(min_id[0]['min_id']) + ''' AND pt.tipo_insumo_id IS NOT NULL
                    GROUP BY 1, 2) as t1
             WHERE cil.id = t1.id; ''')
 
@@ -1001,6 +1017,7 @@ class CrmLead(models.Model):
                         'supplier_taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'active': True,})
                     rec.write({'input_ex': True, 'input_id': insumo.id})
 
+
     def action_genera_cotizaciones(self):
         self.ensure_one()
         count = len(self.input_ids.filtered(lambda u: not u.input_ex))
@@ -1010,6 +1027,10 @@ class CrmLead(models.Model):
         count = len(self.input_ids.filtered(lambda u: not u.account_ex))
         if count != 1:
             raise UserError('Los insumos cargados no cuentan con la información contable. Favor de contactar con el área correspondiente')
+
+        count = len(self.input_ids.filtered(lambda u: not u.tipinsumo_ex))
+        if count != 1:
+            raise UserError('Los insumos cargados no cuentan con el tipo. Favor de contactar con el área correspondiente')
 
         return {
             'type': 'ir.actions.act_window',
@@ -1025,30 +1046,27 @@ class CrmLead(models.Model):
 
     def action_cargar_concept(self):
         for record in self:
-            if not record.concept_file:
-                raise ValidationError('Seleccione un archivo para cargar.')
+            docto = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',record.id), 
+                ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', ('name','ilike','E02'), ('name','ilike','Economico 2')])
+            if not docto:
+                raise ValidationError('El documento E02 no se encuentra cargado, favor de revisar la documentación.')
 
-            if record.input_file and record.concept_ids:
+            if record.concept_ids:
                 raise ValidationError('Ya hay información cargada. En caso de ser necesario volver a cargar debe eliminarlos.')
 
-            filename, file_extension = os.path.splitext(record.concept_filename)
-            if file_extension in ['.xlsx', '.xls', '.xlsm']:
-                record.__leer_carga_concept()
+            if docto.file_extension in ['xlsx', 'xls', 'xlsm']:
+                record.__leer_carga_concept(docto)
             else:
                 raise ValidationError('Seleccione un archivo tipo xlsx, xls, xlsm')
 
 
-    def __leer_carga_concept(self):
+    def __leer_carga_concept(self, docto):
         for record in self:
-            file = tempfile.NamedTemporaryFile(suffix=".xlsm")
-            file.write(binascii.a2b_base64(record.concept_file))
-            file.seek(0)
-            xlsx_file = file.name
-            
-            wb = openpyxl.load_workbook(filename=xlsx_file, data_only=True)
-            sheets = wb.sheetnames
-            sheet_name = sheets[0]
-            sheet = wb[sheet_name]
+            attachment = docto.attachment_id
+            decoded_data = base64.b64decode(attachment.datas)
+            workbook = openpyxl.load_workbook(filename=io.BytesIO(decoded_data), data_only=True)
+            sheet = workbook.active
+            column = sheet.max_column
             registros = []
             partidas = []
             cargar = False
@@ -1061,7 +1079,12 @@ class CrmLead(models.Model):
                 col5 = str(row[4]).strip()
                 col6 = str(row[5]).strip()
                 col7 = str(row[6]).strip()
-                col8 = str(row[7]).strip()
+                if column > 7:
+                    col8 = str(row[7]).strip()
+                    if col8 == 'None':
+                        col8 = ''
+                else:
+                    col8 = ''
                 if col1 == 'None':
                     col1 = ''
                 if col2 == 'None':
@@ -1076,8 +1099,6 @@ class CrmLead(models.Model):
                     col6 = ''
                 if col7 == 'None':
                     col7 = ''
-                if col8 == 'None':
-                    col8 = ''
 
                 if col1.upper() == 'CLAVE':
                     cargar = True
@@ -1157,6 +1178,83 @@ class CrmLead(models.Model):
                 rec.write({'account_ex': True})
 
 
+    def action_cargar_combo(self):
+        for record in self:
+            docto = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',record.id), 
+                ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', ('name','ilike','E09'), ('name','ilike','Economico 9')])
+            if not docto:
+                raise ValidationError('El documento E09 no se encuentra cargado, favor de revisar la documentación.')
+
+            if record.combo_ids:
+                raise ValidationError('Ya hay información cargada. En caso de ser necesario volver a cargar debe eliminarlos.')
+
+            if docto.file_extension in ['xlsx', 'xls', 'xlsm']:
+                raise ValidationError('Se esta trabajando esta parte')
+                record.__leer_carga_combo(docto)
+            else:
+                raise ValidationError('Seleccione un archivo tipo xlsx, xls, xlsm')
+
+
+    def __leer_carga_combo(self, docto):
+        for record in self:
+            attachment = docto.attachment_id
+            decoded_data = base64.b64decode(attachment.datas)
+            workbook = openpyxl.load_workbook(filename=io.BytesIO(decoded_data), data_only=True)
+            sheet = workbook.active
+            column = sheet.max_column
+            registros = []
+            partidas = []
+            cargar = False
+            partida = False
+            for row in sheet.iter_rows(values_only=True):
+                col1 = str(row[0]).strip()
+                col2 = str(row[1]).strip()
+                col3 = str(row[2]).strip()
+                col4 = str(row[3]).strip()
+                col5 = str(row[4]).strip()
+                col6 = str(row[5]).strip()
+                col7 = str(row[6]).strip()
+                if column > 7:
+                    col8 = str(row[7]).strip()
+                    if col8 == 'None':
+                        col8 = ''
+                else:
+                    col8 = ''
+                if col1 == 'None':
+                    col1 = ''
+                if col2 == 'None':
+                    col2 = ''
+                if col3 == 'None':
+                    col3 = ''
+                if col4 == 'None':
+                    col4 = ''
+                if col5 == 'None':
+                    col5 = ''
+                if col6 == 'None':
+                    col6 = ''
+                if col7 == 'None':
+                    col7 = ''
+
+                if col1.upper() == 'CLAVE':
+                    cargar = True
+                    partida = False
+
+                if col2.upper() == 'RESUMEN DE PARTIDAS':
+                    cargar = False
+                    partida = True
+
+                if cargar:
+                    registro = {'col1': col1, 'col2': col2, 'col3': col3, 'col4': col4, 'col5': col5, 'col6': col6, 'col7': col7, 'col8': col8}
+                    registros.append((0, 0, registro))
+
+                if partida:
+                    if col1 != '' and col2 != '':
+                        registro = {'col1': col1, 'col2': col2}
+                        partidas.append((0, 0, registro))
+
+            record.write({'concept_ids': registros, 'budget_ids': partidas})
+
+
     def action_unlink_concept(self):
         for record in self:
             record.concept_ids.unlink()
@@ -1217,14 +1315,29 @@ class CrmLead(models.Model):
             raise UserError(_('El módulo de Documentos no está instalado.'))
 
 
-    def action_genera_ordentrabajo(self):
+    def action_genera_ordenventa(self):
         self.ensure_one()
         if self.fecha_firma > self.fecha_limite_firma:
             raise UserError(_('La fecha de firma no puede ser mayor a la fecha límite de firma.'))
 
         count = len(self.order_ids.filtered(lambda u: u.state != 'cancel'))
         if count != 0:
-            raise UserError('Ya existe una orden de trabajo.')
+            raise ValidationError('Ya existe una orden de venta.')
+
+        if not self.budget_ids or not self.concept_ids: #Faltan los combos or not self.input_ids:
+            raise ValidationError('Falta cargar información de los conceptos de trabajo y/o insumos')
+
+        count = len(self.budget_ids.filtered(lambda u: not u.budget_id))
+        if count != 0:
+            raise ValidationError('Falta cargar las partidas')
+            
+        count = len(self.concept_ids.filtered(lambda u: not u.concept_ex and u.col4 != ''))
+        if count > 1:
+            raise ValidationError('Faltan cargar los conceptos de trabajo')
+
+        count = len(self.concept_ids.filtered(lambda u: not u.combo_ex and u.col4 != ''))
+        if count > 1:
+            raise ValidationError('Faltan cargar la matriz de insumos de los conceptos')
 
         oc_vals = self.get_work_default_values()
         oc_vals_2 = oc_vals[:]
@@ -1322,6 +1435,7 @@ class crmInputsLine(models.Model):
     input_ex = fields.Boolean(string='Insumo cargado', default=False)
     input_id = fields.Many2one(comodel_name='product.template', string='Concepto de cobro')
     account_ex = fields.Boolean(string='Cuenta relacionada', default=False)
+    tipinsumo_ex = fields.Boolean(string='Tipo de insumo relacionado', default=False)
 
 class crmConceptLine(models.Model):
     _name = 'crm.concept.line'
@@ -1339,6 +1453,7 @@ class crmConceptLine(models.Model):
     concept_ex = fields.Boolean(string='Concepto cargado', default=False)
     concept_id = fields.Many2one(comodel_name='product.template', string='Concepto de cobro')
     account_ex = fields.Boolean(string='Cuenta relacionada', default=False)
+    combo_ex = fields.Boolean(string='Combo relacionado', default=False)
 
 class crmBudgetLine(models.Model):
     _name = 'crm.budget.line'
@@ -1350,6 +1465,21 @@ class crmBudgetLine(models.Model):
     budget_id = fields.Many2one(comodel_name='product.budget.item', string='Partida')
     no_char = fields.Integer(string='No. de Caracteres')
     parent = fields.Integer(string='Padre')
+
+class crmBudgetLine(models.Model):
+    _name = 'crm.combo.line'
+    _description = 'Combo por concepto'
+    
+    lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportunidad', readonly=True)
+    col1 = fields.Char(string='Columna 1')
+    col2 = fields.Char(string='Columna 2')
+    col3 = fields.Char(string='Columna 3')
+    col4 = fields.Char(string='Columna 4')
+    col5 = fields.Char(string='Columna 5')
+    col6 = fields.Char(string='Columna 6')
+    col7 = fields.Char(string='Columna 7')
+    concept_id = fields.Many2one(comodel_name='product.template', string='Concepto de cobro')
+    combo_ex = fields.Boolean(string='Combo relacionado', default=False)
 
 class CrmPropuestaTecnicaDoc(models.Model):
 

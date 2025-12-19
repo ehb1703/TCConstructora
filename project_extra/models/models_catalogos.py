@@ -298,7 +298,7 @@ class TipoInsumo(models.Model):
 class ProductTemplateInsumo(models.Model):
     _inherit = 'product.template'
     
-    tipo_insumo_id = fields.Many2one('product.tipo.insumo', string='Tipo de insumo', tracking=True, help='Clasificación del insumo para procesos de compra')            
+    tipo_insumo_id = fields.Many2one('product.tipo.insumo', string='Tipo de insumo', tracking=True, help='Clasificación del insumo para procesos de compra')
 
 class ResPartnerTipoInsumo(models.Model):
     _inherit = 'res.partner'

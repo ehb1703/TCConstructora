@@ -35,6 +35,7 @@ access_crm_cotizacion_insumos_wizard,access_crm_cotizacion_insumos_wizard,model_
 access_crm_input_line,access_crm_input_line,model_crm_input_line,,1,1,1,1
 access_crm_concept_line,access_crm_concept_line,model_crm_concept_line,,1,1,1,1
 access_crm_budget_line,access_crm_budget_line,model_crm_budget_line,,1,1,1,1
+access_crm_combo_line,access_crm_combo_line,model_crm_combo_line,,1,1,1,1
 access_crm_propuesta_tecnica_doc,access_crm_propuesta_tecnica_doc,model_crm_propuesta_tecnica_doc,,1,1,1,1
 access_crm_propuesta_tecnica_revision,access_crm_propuesta_tecnica_revision,model_crm_propuesta_tecnica_revision,,1,1,1,1
 access_crm_propuesta_economica_doc,crm_propuesta_economica_doc,model_crm_propuesta_economica_doc,base.group_user,1,1,1,1
