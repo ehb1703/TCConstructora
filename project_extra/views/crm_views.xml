@@ -38,6 +38,13 @@
                 <button name="action_genera_ordenventa" type="object" string="Orden de venta" class="btn-secondary" invisible="stage_name != 'Ganado'"/>
             </xpath>
 
+            <!-- Agregar botón de Documentos en la caja de botones -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_documents" type="object" class="oe_stat_button" icon="fa-folder-open">
+                    <field name="documents_count" widget="statinfo" string="Documentos"/>
+                </button>
+            </xpath>
+
             <xpath expr="//button[@name='action_set_won_rainbowman']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
@@ -100,6 +107,9 @@
                             <field name="bases_doc_name" string="Nombre del Documento" invisible="True"/>
                             <group>
                                 <field name="bases_pay" string="Pagar bases" readonly="stage_name not in ('Inscripción/Compra de bases', 'Declinado')"/>
+                            </group>
+                            <group>
+                                <field name="bases_pagado" string="Pagado" readonly="1" invisible="not bases_pay or not bases_cost"/>
                             </group>
                             <group>
                                 <field name="bases_notification_sent" readonly="1"/>
@@ -391,35 +401,47 @@
                 </page>
 
                 <page string="Ganado">
+                    <group invisible="stage_name != 'Ganado'">
+                        <group>
+                            <field name="doctomatriz_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                        </group>
+                        <group>
+                            <field name="doctobasicos_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                        </group>
+                    </group>
+                    <group invisible="stage_name != 'Ganado'">
+                        <div class="oe_button_box">
+                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_concept" string="Cargar" type="object" invisible="concept_ids" confirm="Se agregará el contenido del documento E02, ¿continuar?"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_genera_partidas" string="Partidas" type="object" invisible="not concept_ids"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_genera_concept" string="Conceptos" type="object" invisible="not concept_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_combo" string="Cargar Dcto de Analisis" type="object" invisible="combo_ids"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_basicos" string="Cargar Basicos" type="object" invisible="basico_ids"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_generar_basicos" string="Generar Basicos" type="object" invisible="not basico_ids"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_generar_combo" string="Generar Dcto de Analisis" type="object" invisible="not combo_ids"/>
+                        </div>
+                    </group>
                     <notebook>
                         <page string="Información">
                             <field name="contrato_documento_name" invisible="1"/>
+                            <field name="orden_trabajo_doc_name" invisible="1"/>
                             <field name="es_siop" invisible="1"/>
                             <group>
                                 <field name="fecha_limite_firma" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado'"/>
+                                <field name="contrato_firmado" readonly="stage_name != 'Ganado'"/>
                                 <field name="importe_contratado" readonly="stage_name != 'Ganado'"/>
-                                <field name="no_estimaciones" readonly="stage_name != 'Ganado'"/>
                                 <field name="rupc_siop" readonly="stage_name != 'Ganado'" invisible="not es_siop"/>
+                                <field name="contrato_documento" filename="contrato_documento_name" readonly="stage_name != 'Ganado'"/>
+                                <field name="orden_trabajo_doc" filename="orden_trabajo_doc_name" readonly="stage_name != 'Ganado'" string="Orden de trabajo"/>
                             </group>
                             <group>
                                 <field name="fecha_firma" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado' and contrato_firmado"/>
+                                <label for="contrato_firmado" invisible="1"/>
+                                <div invisible="1"/>
                                 <field name="importe_anticipo" invisible="bases_abstinencia_anticipo"/>
-                                <field name="contrato_firmado" readonly="stage_name != 'Ganado'"/>
-                            </group>
-                            <group colspan="2">
-                                <field name="contrato_documento" filename="contrato_documento_name" readonly="stage_name != 'Ganado'"/>
+                                <field name="no_estimaciones" readonly="stage_name != 'Ganado'"/>
                             </group>
                         </page>
                         <page string="Conceptos de Obra">
-                            <group invisible="stage_name != 'Ganado'">
-                                <div class="oe_button_box">
-                                    <button class="oe_stat_button" icon="fa-upload" name="action_cargar_concept" string="Cargar" type="object" invisible="concept_ids" confirm="Se agregará el contenido del documento E02, ¿continuar?"/>
-                                    <button class="oe_stat_button" icon="fa-upload" name="action_genera_partidas" string="Partidas" type="object" invisible="not concept_ids"/>
-                                    <button class="oe_stat_button" icon="fa-upload" name="action_genera_concept" string="Conceptos" type="object" invisible="not concept_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
-                                    <button class="oe_stat_button" icon="fa-upload" name="action_cargar_combo" string="Cargar Matriz" type="object" invisible="not concept_ids" confirm="Se agregará el contenido del archivo seleccionado, ¿continuar?"/>
-                                    <!--button class="oe_stat_button" confirm="¿Está seguro que desea eliminar los registros cargados?" icon="fa-times" name="action_unlink_concept" string="Eliminar Detalle" type="object" invisible="not concept_ids"/-->
-                                </div>
-                            </group>
                             <group>
                                 <group string="Partidas presupuestales">
                                     <field name="budget_ids" nolabel="1" widget="one2many_list">                        
@@ -448,20 +470,38 @@
                                 </group>
                             </group>
                         </page>
-                        <page string="Matriz de Insumos" invisible="not combo_ids">
-                            <field name="combo_ids" nolabel="1" widget="one2many_list">                        
-                                <list delete="0" create="0" edit="0" context="{'default_lead_id': id}">
-                                    <field name="col1"/>
-                                    <field name="col2"/>
-                                    <field name="col3"/>
-                                    <field name="col4"/>
-                                    <field name="col5"/>
-                                    <field name="col6"/>
-                                    <field name="col7"/>
-                                    <field name="combo_ex"/>
-                                </list>
-                                <form><p>Información no disponible a través de esta vista</p></form>
-                            </field>
+                        <page string="Análisis de precios">
+                            <group>
+                                <field name="combo_ids" nolabel="1" widget="one2many_list">                        
+                                    <list delete="0" create="0" edit="0" context="{'default_lead_id': id}">
+                                        <field name="col1"/>
+                                        <field name="col2"/>
+                                        <field name="col3"/>
+                                        <field name="col4"/>
+                                        <field name="col5"/>
+                                        <field name="col6"/>
+                                        <field name="col7"/>
+                                        <field name="combo_ex"/>
+                                    </list>
+                                    <form><p>Información no disponible a través de esta vista</p></form>
+                                </field>
+                            </group>
+                        </page>
+                        <page string="Básicos">
+                            <group>
+                                <field name="basico_ids" nolabel="1" widget="one2many_list">                        
+                                    <list delete="0" create="0" edit="0" context="{'default_lead_id': id}">
+                                        <field name="col1"/>
+                                        <field name="col2"/>
+                                        <field name="col3"/>
+                                        <field name="col4"/>
+                                        <field name="col5"/>
+                                        <field name="col6"/>
+                                        <field name="combo_ex"/>
+                                    </list>
+                                    <form><p>Información no disponible a través de esta vista</p></form>
+                                </field>
+                            </group>
                         </page>
                     </notebook>
                 </page>

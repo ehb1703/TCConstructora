@@ -30,6 +30,8 @@ class productBudgetItem(models.Model):
 class ProductComboInherit(models.Model):
     _inherit = 'product.combo'
 
+    combo_ids = fields.Many2many('product.combo', 'product_combo_rel', 'combo_id', string='Combos')
+
     @api.depends('combo_item_ids')
     def _compute_base_price(self):
         for combo in self:

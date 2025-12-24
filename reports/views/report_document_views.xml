@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_tipodocumento" model="ir.actions.act_window">
+        <field name="name">Tipo Documento</field>
+        <field name="res_model">report.tipodocumento</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_report_tipodocumento_list" model="ir.ui.view">
+        <field name="name">view.report.tipodocumento.list</field>
+        <field name="model">report.tipodocumento</field>
+        <field name="priority" eval="1"/>
+        <field name="arch" type="xml">
+            <list string="Tipo de documento" delete="0">
+                <field name="code"/>                
+                <field name="name"/>
+                <field name="no_docto"/>
+                <field name="description"/>
+                <field name="inicio_datos"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_form_tipo_documento" model="ir.ui.view">
+        <field name="name">Tipo de Documento</field>
+        <field name="model">report.tipodocumento</field>
+        <field name="arch" type="xml">
+            <form string="Tipo de Documento">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="no_docto"/>
+                        </group>
+                        <group>
+                            <field name="description"/>
+                            <field name="module_id"/>
+                            <field name="inicio_datos"/>
+                        </group>
+                    </group>
+                    <button name="button_configdoc" class="oe_stat_button" type="object" ><span class="o_stat_text">Configurar Documento</span></button>
+                    <p>Poner * cuando el campo no sea necesario</p>
+                    <notebook>
+                        <page>
+                            <field name="configdoc_ids" nolabel="1" required="1">
+                                <list editable="bottom" create="1" delete="1">
+                                   <field name="columna" />
+                                   <field name="no_columna"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_documents" name="Documentos" parent ="reports_menu_root" sequence="15" groups="group_documentos">
+        <menuitem id="menuitem_tipo_document" name="Tipo documento" action="action_tipodocumento" sequence="10"/>
+    </menuitem>
+</odoo>

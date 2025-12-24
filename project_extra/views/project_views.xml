@@ -6,6 +6,27 @@
         <field name="model">project.project</field>
         <field name="inherit_id" ref="project.edit_project"/>
         <field name="arch" type="xml">
+            
+            <xpath expr="//notebook" position="before">
+                <group string="Orden de Trabajo" invisible="not lead_id">
+                    <field name="lead_id" invisible="1"/>
+                    <group>
+                        <field name="orden_trabajo" readonly="1"/>
+                        <field name="dependencia"/>
+                        <field name="company_id" readonly="1" string="Ejecutor"/>
+                        <field name="user_id" string="Gerente de proyecto"/>
+			<field name="proj_fecha_adjudicacion" readonly="1" string="Fecha de adjudicación"/>
+                    </group>
+                    <group>
+                        <field name="authorized_budget" readonly="1" string="Importe contratado"/>
+                        <field name="proj_anticipo_porcentaje" readonly="1" string="% de anticipo"/>
+                        <field name="proj_importe_anticipo" readonly="1" string="Importe anticipo"/>
+                        <field name="proj_dias" readonly="1" string="Días"/>
+                        
+                    </group>
+                </group>
+            </xpath>
+
             <xpath expr="//notebook[last()]" position="inside">
                 <page string="Localizacion" name="geo_location">
                     <group string="Ubicación de la Obra">
@@ -42,18 +63,26 @@
                 <page string="Datos de la obra" name="data_project">
                     <group>
                         <group>
-                            <field name="dependencia"/>
-                            <field name="bloque"/>
-                            <field name="licitacion"/>
-                            <field name="num_contrato"/>
+                            <field name="normatividad_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="licitacion" readonly="1" string="Asignación"/>
+                            <field name="modalidad_contratacion_id" readonly="1"/>
+                            <field name="proj_fecha_apertura" readonly="1" string="Fecha de apertura"/>
+                            <field name="proj_fecha_adjudicacion" readonly="1" string="Fecha de adjudicación"/>
+                            <field name="contrato_a_id" options="{'no_create': True, 'no_open': True}"/>
+			    <field name="bloque"/>
                             <field name="fianzas"/>
+			    <field name="responsable_id"/>
                         </group>
                         <group>
-                            <field name="authorized_budget"/>
+                            <field name="proj_es_siop" invisible="1"/>
+                            <field name="proj_rupc_siop" readonly="1" invisible="not proj_es_siop"/>
+                            <field name="direccion_gral_ejecutora_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="proj_sancion_atraso" readonly="1"/>
+                            <field name="proj_ret_5_millar" readonly="1" string="Retención 5 al millar"/>
+                            <field name="proj_ret_2_millar" readonly="1" string="Retención 2 al millar"/>
                             <field name="cost_overrun"/>
                             <field name="superficie"/>
                             <field name="type_id"/>
-                            <field name="responsable_id"/>
                         </group>
                     </group>
                     <group string="Residentes">
@@ -74,7 +103,6 @@
                             <field name="docto_id" readonly="1" options="{'no_create':True, 'no_open':True}"/>
                             <field name="generado"/>
                         </list>
-                        <!--form><p>Información no disponible a través de esta vista</p></form-->
                      </field>
                 </page>
             </xpath>

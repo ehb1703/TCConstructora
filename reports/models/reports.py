@@ -3,7 +3,6 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 import logging
 import os
-#import io
 import tempfile
 import openpyxl
 import binascii

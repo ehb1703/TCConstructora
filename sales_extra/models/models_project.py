@@ -70,9 +70,38 @@ class saleOrderLineInherit(models.Model):
                 values['name'] = '%s - [%s] %s' % (values['name'], self.product_id.default_code, self.product_id.name) if self.product_id.default_code else '%s - %s' % (values['name'], self.product_id.name)
             values.update(self._timesheet_create_project_account_vals(self.order_id.project_id))
             if self.order_id.opportunity_id:
-                vals = {'licitacion': self.order_id.opportunity_id.no_licitacion, 'type_id': self.order_id.opportunity_id.tipo_obra_id.id,
-                    'num_contrato': self.order_id.opportunity_id.contrato_documento_name, 'dependencia': self.order_id.opportunity_id.partner_emisor_id.name}
-                values.update(vals)
+                opp = self.order_id.opportunity_id
+                no_lic = opp.no_licitacion or ''
+                
+                vals_crm = {
+                    'lead_id': opp.id,
+                    'type_id': opp.tipo_obra_id.id if opp.tipo_obra_id else False,
+                    'num_contrato': opp.contrato_documento_name,
+                    'dependencia': opp.partner_emisor_id.name if opp.partner_emisor_id else False,
+                    # Campos de cabecera "Orden de Trabajo" - usando campos existentes
+                    'licitacion': opp.no_licitacion,  # Asignación/No. Proceso
+                    'orden_trabajo': no_lic[-12:] if len(no_lic) >= 12 else no_lic,
+                    'proj_fecha_adjudicacion': opp.fallo_fecha_adjudicacion,
+                    'partner_id': opp.partner_emisor_id.id if opp.partner_emisor_id else False,  # Dependencia
+                    'description': opp.desc_licitacion,  # Descripción
+                    'company_id': opp.company_id.id if opp.company_id else False,  # Ejecutor
+                    'date_start': opp.bases_fecha_inicio_trabajos,  # Fecha de inicio
+                    'date': opp.bases_fecha_terminacion_trabajos,  # Fecha de término
+                    'proj_dias': opp.bases_plazo_ejecucion,
+                    'authorized_budget': opp.importe_contratado,  # Importe contratado
+                    'proj_anticipo_porcentaje': opp.bases_anticipo_porcentaje,
+                    'proj_importe_anticipo': opp.importe_anticipo,
+                    # Campos de pestaña "Datos de la obra"
+                    'modalidad_contratacion_id': opp.bases_modalidad_contrato_id.id if opp.bases_modalidad_contrato_id else False,
+                    'proj_fecha_apertura': opp.fecha_apertura,
+                    'proj_rupc_siop': opp.rupc_siop,
+                    'proj_es_siop': opp.es_siop,
+                    'proj_sancion_atraso': opp.bases_sancion_atraso,
+                    'proj_ret_5_millar': opp.bases_ret_5_millar,
+                    'proj_ret_2_millar': opp.bases_ret_2_millar,
+                }
+                values.update(vals_crm)
+            
             project = self.env['project.project'].create(values)
             project.cargar_docs()
 

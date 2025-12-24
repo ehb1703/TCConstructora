@@ -249,14 +249,14 @@ class TipoInsumo(models.Model):
     active = fields.Boolean(string='Activo', default=True, tracking=True)
     fecha_creacion = fields.Datetime(string='Fecha de creación', default=fields.Datetime.now, readonly=True, tracking=True)
     insumo_ids = fields.One2many('product.template', 'tipo_insumo_id', string='Insumos', help='Insumos vinculados a este tipo')
-    insumo_count = fields.Integer(string='Cantidad de insumos', compute='_compute_insumo_count', store=True)
+    insumo_count = fields.Integer(string='Cantidad de insumos', compute='_compute_insumo_count')
     
     _sql_constraints = [('codigo_uniq', 'unique(codigo)', 'El código del tipo de insumo debe ser único.'),]
     
-    @api.depends('insumo_ids')
     def _compute_insumo_count(self):
+        ProductTemplate = self.env['product.template']
         for record in self:
-            record.insumo_count = len(record.insumo_ids)
+            record.insumo_count = ProductTemplate.search_count([('tipo_insumo_id', '=', record.id)])
     
     def action_view_insumos(self):
         self.ensure_one()
@@ -305,3 +305,76 @@ class ResPartnerTipoInsumo(models.Model):
     
     tipo_insumo_ids = fields.Many2many('product.tipo.insumo', 'res_partner_tipo_insumo_rel', 'partner_id', 'tipo_insumo_id', string='Tipos de insumo',
         help='Tipos de insumo que provee este proveedor')
+
+class DireccionGeneralEjecutora(models.Model):
+    _name = 'project.direccion.ejecutora'
+    _description = 'Dirección General Ejecutora'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'nombre'
+    _order = 'codigo'
+    
+    codigo = fields.Char(string='Código', required=True, tracking=True, help='Identificador único para la dirección ejecutora (ej. DGE01, DGE02)')
+    nombre = fields.Char(string='Nombre', required=True, tracking=True, help='Nombre descriptivo (ej. Construcción)')
+    descripcion = fields.Text(string='Descripción', tracking=True, help='Descripción de las funciones de las direcciones ejecutoras')
+    active = fields.Boolean(string='Activo', default=True, tracking=True, help='Control para depuración y actualización del catálogo')
+    
+    _sql_constraints = [('codigo_uniq', 'unique(codigo)', 'El código de la dirección ejecutora debe ser único.'),]
+    
+    @api.depends('codigo', 'nombre')
+    def _compute_display_name(self):
+        for rec in self:
+            if rec.codigo and rec.nombre:
+                rec.display_name = f'{rec.codigo} - {rec.nombre}'
+            else:
+                rec.display_name = rec.nombre or rec.codigo or ''
+
+
+class ModalidadPreciosContrato(models.Model):
+    _name = 'project.modalidad.precios'
+    _description = 'Modalidad Precios Contrato'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'nombre'
+    _order = 'codigo'
+    
+    codigo = fields.Char(string='Código', required=True, tracking=True, help='Identificador único para los tipos de precios de contrato (ej. PC01, PC02)')
+    nombre = fields.Char(string='Nombre', required=True, tracking=True, help='Nombre descriptivo (ej. Precio alzado, precios unitarios, mixtos)')
+    descripcion = fields.Text(string='Descripción', tracking=True, 
+        help='Descripción detallada de las características de contratación con esa modalidad de precios')
+    active = fields.Boolean(string='Activo', default=True, tracking=True, help='Control para depuración y actualización del catálogo')
+    
+    _sql_constraints = [('codigo_uniq', 'unique(codigo)', 'El código de la modalidad de precios debe ser único.'),]
+    
+    @api.depends('codigo', 'nombre')
+    def _compute_display_name(self):
+        for rec in self:
+            if rec.codigo and rec.nombre:
+                rec.display_name = f'{rec.codigo} - {rec.nombre}'
+            else:
+                rec.display_name = rec.nombre or rec.codigo or ''
+
+
+class Normatividad(models.Model):
+    _name = 'project.normatividad'
+    _description = 'Normatividad'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'nombre'
+    _order = 'codigo'
+    
+    codigo = fields.Char(string='Código', required=True, tracking=True, 
+        help='Identificador único para normatividad (ej. N01, N02)')
+    nombre = fields.Char(string='Nombre', required=True, tracking=True, 
+        help='Nombre descriptivo (ej. Federal, Estatal, Municipal)')
+    descripcion = fields.Text(string='Descripción', tracking=True, 
+        help='Descripción detallada de las características de la normatividad particular de cada ente público')
+    active = fields.Boolean(string='Activo', default=True, tracking=True, 
+        help='Control para depuración y actualización del catálogo')
+    
+    _sql_constraints = [('codigo_uniq', 'unique(codigo)', 'El código de normatividad debe ser único.'),]
+    
+    @api.depends('codigo', 'nombre')
+    def _compute_display_name(self):
+        for rec in self:
+            if rec.codigo and rec.nombre:
+                rec.display_name = f'{rec.codigo} - {rec.nombre}'
+            else:
+                rec.display_name = rec.nombre or rec.codigo or ''
