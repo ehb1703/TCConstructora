@@ -9,6 +9,25 @@ _logger = logging.getLogger(__name__)
 class projectObra(models.Model):
     _inherit = 'project.project'
     
+    lead_id = fields.Many2one('crm.lead', string='Oportunidad/Licitación', readonly=True, copy=False)
+    orden_trabajo = fields.Char(string='Orden de trabajo', readonly=True)
+    proj_fecha_adjudicacion = fields.Date(string='Fecha de adjudicación', readonly=True)
+    proj_dias = fields.Integer(string='Días', readonly=True)
+    proj_anticipo_porcentaje = fields.Integer(string='% de anticipo', readonly=True)
+    proj_importe_anticipo = fields.Float(string='Importe anticipo', readonly=True)
+    normatividad_id = fields.Many2one('project.normatividad', string='Normatividad', 
+        help='Marco normativo aplicable a la obra')
+    contrato_a_id = fields.Many2one('project.modalidad.precios', string='Contrato a', 
+        help='Modalidad de precios del contrato')
+    direccion_gral_ejecutora_id = fields.Many2one('project.direccion.ejecutora', string='Dirección General Ejecutora', 
+        help='Unidad ejecutora responsable de la obra')
+    modalidad_contratacion_id = fields.Many2one('project.modalidad.contrato', string='Modalidad de contratación', readonly=True)
+    proj_fecha_apertura = fields.Date(string='Fecha de apertura', readonly=True)
+    proj_rupc_siop = fields.Char(string='RUPC. SIOP', readonly=True)
+    proj_es_siop = fields.Boolean(string='Es SIOP', readonly=True)
+    proj_sancion_atraso = fields.Boolean(string='Sanción por atraso', readonly=True)
+    proj_ret_5_millar = fields.Boolean(string='Ret. 5 al millar', readonly=True)
+    proj_ret_2_millar = fields.Boolean(string='Ret. 2 al millar', readonly=True)
     country_id = fields.Many2one('res.country', string='Pais')
     state_id = fields.Many2one('res.country.state', string='Estado')    
     city_id = fields.Many2one('res.municipalities', string='Municipio')
@@ -21,7 +40,7 @@ class projectObra(models.Model):
     date_localization = fields.Date(string='Geolocation Date')
     licitacion = fields.Char(string='No. de Proceso')
     num_contrato = fields.Char(string='Número de contrato')
-    documentos_ids =  fields.Many2many('project.documentation', string='Documentos')
+    documentos_ids = fields.Many2many('project.documentation', string='Documentos')
     authorized_budget = fields.Float(string='Presupuesto Autorizado')
     cost_overrun = fields.Float(string='Sobrecosto')
     responsable_id = fields.Many2one('hr.employee', string='Responsable técnico')

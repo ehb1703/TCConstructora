@@ -362,6 +362,138 @@
         </field>
     </record>
 
+    <!-- Dirección General Ejecutora -->
+    <record id="action_direccion_ejecutora" model="ir.actions.act_window">
+        <field name="name">Dirección General Ejecutora</field>
+        <field name="res_model">project.direccion.ejecutora</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_direccion_ejecutora_tree" model="ir.ui.view">
+        <field name="name">project.direccion.ejecutora.list</field>
+        <field name="model">project.direccion.ejecutora</field>
+        <field name="arch" type="xml">
+            <list string="Direcciones Generales Ejecutoras">
+                <field name="codigo"/>
+                <field name="nombre"/>
+                <field name="descripcion"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_direccion_ejecutora_form" model="ir.ui.view">
+        <field name="name">project.direccion.ejecutora.form</field>
+        <field name="model">project.direccion.ejecutora</field>
+        <field name="arch" type="xml">
+            <form string="Dirección General Ejecutora">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="codigo"/>
+                            <field name="nombre"/>
+                        </group>
+                        <group>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="descripcion" placeholder="Descripción de las funciones de la dirección ejecutora..."/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Modalidad Precios Contrato -->
+    <record id="action_modalidad_precios" model="ir.actions.act_window">
+        <field name="name">Modalidad Precios Contrato</field>
+        <field name="res_model">project.modalidad.precios</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_modalidad_precios_tree" model="ir.ui.view">
+        <field name="name">project.modalidad.precios.list</field>
+        <field name="model">project.modalidad.precios</field>
+        <field name="arch" type="xml">
+            <list string="Modalidades de Precios de Contrato">
+                <field name="codigo"/>
+                <field name="nombre"/>
+                <field name="descripcion"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_modalidad_precios_form" model="ir.ui.view">
+        <field name="name">project.modalidad.precios.form</field>
+        <field name="model">project.modalidad.precios</field>
+        <field name="arch" type="xml">
+            <form string="Modalidad Precios Contrato">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="codigo"/>
+                            <field name="nombre"/>
+                        </group>
+                        <group>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="descripcion" placeholder="Descripción detallada de las características de contratación con esta modalidad de precios..."/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Normatividad -->
+    <record id="action_normatividad" model="ir.actions.act_window">
+        <field name="name">Normatividad</field>
+        <field name="res_model">project.normatividad</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_normatividad_tree" model="ir.ui.view">
+        <field name="name">project.normatividad.list</field>
+        <field name="model">project.normatividad</field>
+        <field name="arch" type="xml">
+            <list string="Normatividades">
+                <field name="codigo"/>
+                <field name="nombre"/>
+                <field name="descripcion"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_normatividad_form" model="ir.ui.view">
+        <field name="name">project.normatividad.form</field>
+        <field name="model">project.normatividad</field>
+        <field name="arch" type="xml">
+            <form string="Normatividad">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="codigo"/>
+                            <field name="nombre"/>
+                        </group>
+                        <group>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="descripcion" placeholder="Descripción detallada de las características de la normatividad particular de cada ente público..."/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
     <menuitem id="menu_catalog_project" name="Catálogos" parent="project.menu_main_pm" sequence="200" groups="project.group_project_user,group_project_catalog">
         <menuitem id="menu_project_type" name="Tipo de Obra" action="action_project_type" sequence="1"/>
         <menuitem id="menu_project_docsrequeridos" name="Documentos" action="action_project_docsrequeridos" sequence="2"/>
@@ -370,6 +502,9 @@
         <menuitem id="menu_zonas_geo" name="Zonas Geográficas" action="action_zona_geografica" sequence="5"/> 
         <menuitem id="menu_especialidad" name="Especialidades" action="action_especialidad" sequence="6"/>
         <menuitem id="menu_modalidad_contrato" name="Modalidad de Contrato" action="action_modalidad_contrato" sequence="7"/>
+        <menuitem id="menu_direccion_ejecutora" name="Dirección Gral. Ejecutora" action="action_direccion_ejecutora" sequence="8"/>
+        <menuitem id="menu_modalidad_precios" name="Modalidad Precios Contrato" action="action_modalidad_precios" sequence="9"/>
+        <menuitem id="menu_normatividad" name="Normatividad" action="action_normatividad" sequence="10"/>
     </menuitem>
 
     <!-- Menú Tipos de insumo en Compras → Productos -->

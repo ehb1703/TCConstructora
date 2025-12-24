@@ -39,6 +39,38 @@ class purchaseOrderInherit(models.Model):
                 'target': 'new'}
             return action
 
+    def _check_bases_payment_status(self):
+        # Verifica si las facturas de bases de licitación están pagadas y actualiza el CRM
+        for order in self:
+            if order.type_purchase == 'bases' and order.lead_id:
+                # Buscar facturas asociadas a esta orden de compra
+                invoices = order.invoice_ids.filtered(lambda inv: inv.state == 'posted')
+                if invoices:
+                    # Verificar si todas las facturas están pagadas
+                    all_paid = all(inv.payment_state == 'paid' for inv in invoices)
+                    if all_paid and not order.lead_id.bases_pagado:
+                        order.lead_id.sudo().write({'bases_pagado': True})
+
+
+class AccountMoveInherit(models.Model):
+    _inherit = 'account.move'
+
+    def write(self, vals):
+        res = super(AccountMoveInherit, self).write(vals)
+        # Si cambió el estado de pago, verificar si hay que actualizar el CRM
+        if 'payment_state' in vals:
+            for move in self:
+                if move.move_type == 'in_invoice' and move.payment_state == 'paid':
+                    # Buscar órdenes de compra relacionadas
+                    purchase_orders = self.env['purchase.order'].search([
+                        ('invoice_ids', 'in', move.id),
+                        ('type_purchase', '=', 'bases'),
+                        ('lead_id', '!=', False)
+                    ])
+                    for po in purchase_orders:
+                        po._check_bases_payment_status()
+        return res
+
 
 class purchaseOrderLineInherit(models.Model):
     _inherit = 'purchase.order.line'

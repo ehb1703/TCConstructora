@@ -4,3 +4,6 @@ reports.access_report_requisition,access_report_requisition,reports.model_report
 reports.access_report_requisition_line,access_report_requisition_line,reports.model_report_requisition_line,reports.group_reports,1,1,1,0
 reports.access_report_requisition_data,access_report_requisition_data,reports.model_report_requisition_data,reports.group_reports,1,1,1,1
 reports.access_report_empresas_obras,access_report_empresas_obras,reports.model_report_empresas_obras,reports.group_reports,1,1,1,0
+
+reports.access_report_tipodocumento,access_report_tipodocumento,reports.model_report_tipodocumento,reports.group_documentos,1,1,1,0
+reports.access_report_config_doc,access_report_config_doc,reports.model_report_config_doc,reports.group_documentos,1,1,1,0
