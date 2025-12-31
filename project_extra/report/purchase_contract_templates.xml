@@ -86,49 +86,50 @@
                              del año <span t-esc="o.signature_date.strftime('%Y')"/>.</strong></p>
                             <br/><br/>
                         </div>
-                        <table class="table-border">
-                            <colgroup>
-                                <col width="45%"/>
-                                <col width="10%"/>
-                                <col width="45%"/>
-                            </colgroup>
-                            <tbody>
-                                <tr>
-                                    <td style="text-align: center; border: inset 0pt;">EL CONTRATANTE</td>
-                                    <td/>
-                                    <td style="text-align: center; border: inset 0pt;">EL CONTRATISTA</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align: center; border: inset 0pt;"><br/><br/><br/>___________________________________</td>
-                                    <td/>
-                                    <td style="text-align: center; border: inset 0pt;"><br/><br/><br/>___________________________________</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align: center; border: inset 0pt;"><span t-field="representante.representante_id.title.name"/> <span t-field="representante.representante_id.name"/></td>
-                                    <td/>
-                                    <td style="text-align: center; border: inset 0pt;"><span t-field="o.vendor_id.responsable_id.title.name"/> <span t-field="o.vendor_id.responsable_id.name"/></td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align: center; border: inset 0pt; font-weigth: bold;"><span t-field="representante.cargo"/></td>
-                                    <td/>
-                                    <td style="text-align: center; border: inset 0pt; font-weigth: bold;">Representante Legal</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align: center; border: inset 0pt;"><br/>TESTIGO</td>
-                                    <td/>
-                                    <td style="text-align: center; border: inset 0pt;"><br/>TESTIGO</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align: center; border: inset 0pt;"><br/><br/><br/>___________________________________</td>
-                                    <td/>
-                                    <td style="text-align: center; border: inset 0pt;"><br/><br/><br/>___________________________________</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align: center; border: inset 0pt;">PERSONA 1</td>
-                                    <td/>
-                                    <td style="text-align: center; border: inset 0pt;">PERSONA 2</td>
-                                </tr>
-                            </tbody>
+                        <table style="width: 80%; margin: 40px auto 0 auto; border: none; border-collapse: collapse; border-spacing: 0;">
+                            <tr>
+                                <td style="width: 45%; text-align: center; border: none; padding: 10px; vertical-align: top;">EL CONTRATANTE</td>
+                                <td style="width: 10%; border: none;"></td>
+                                <td style="width: 45%; text-align: center; border: none; padding: 10px; vertical-align: top;">EL CONTRATISTA</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; border: none; padding-top: 50px; vertical-align: bottom;">
+                                    <span style="display: inline-block; width: 80%; border-bottom: 1px solid #000;">&#160;</span>
+                                </td>
+                                <td style="border: none;"></td>
+                                <td style="text-align: center; border: none; padding-top: 50px; vertical-align: bottom;">
+                                    <span style="display: inline-block; width: 80%; border-bottom: 1px solid #000;">&#160;</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; border: none; padding: 5px;"><span t-field="representante.representante_id.title.name"/> <span t-field="representante.representante_id.name"/></td>
+                                <td style="border: none;"></td>
+                                <td style="text-align: center; border: none; padding: 5px;"><span t-field="o.vendor_id.responsable_id.title.name"/> <span t-field="o.vendor_id.responsable_id.name"/></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; border: none; padding: 5px;">Representante Legal</td>
+                                <td style="border: none;"></td>
+                                <td style="text-align: center; border: none; padding: 5px;">Representante Legal</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; border: none; padding-top: 30px;">TESTIGO</td>
+                                <td style="border: none;"></td>
+                                <td style="text-align: center; border: none; padding-top: 30px;">TESTIGO</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; border: none; padding-top: 50px; vertical-align: bottom;">
+                                    <span style="display: inline-block; width: 80%; border-bottom: 1px solid #000;">&#160;</span>
+                                </td>
+                                <td style="border: none;"></td>
+                                <td style="text-align: center; border: none; padding-top: 50px; vertical-align: bottom;">
+                                    <span style="display: inline-block; width: 80%; border-bottom: 1px solid #000;">&#160;</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; border: none; padding: 5px;">PERSONA 1</td>
+                                <td style="border: none;"></td>
+                                <td style="text-align: center; border: none; padding: 5px;">PERSONA 2</td>
+                            </tr>
                         </table>
                         <br/><br/>
                         <div width="100%" style="text-align: justify;">

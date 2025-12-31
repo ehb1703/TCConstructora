@@ -106,6 +106,8 @@ class CrmLead(models.Model):
     economico_operativo_id = fields.Many2one('hr.employee', 'Económico/operativo', tracking=True)
     junta_dudas_notif_auto_sent = fields.Boolean(string='Notif. Automática fecha límite dudas enviada', default=False)
     # Conceptos de obra
+    doctoconcept_id = fields.Many2one('report.tipodocumento', string='Tipo de documento Catálogo de Conceptos', 
+        domain="[('module_id', '=', 'crm.lead'), ('no_docto', '=', '2')]")
     doctomatriz_id = fields.Many2one('report.tipodocumento', string='Tipo de documento Matriz', 
         domain="[('module_id', '=', 'crm.lead'), ('no_docto', '=', '9')]")
     doctobasicos_id = fields.Many2one('report.tipodocumento', string='Tipo de documento Básicos', 
@@ -114,6 +116,7 @@ class CrmLead(models.Model):
     budget_ids = fields.One2many('crm.budget.line', 'lead_id', string='Partidas presupestales')
     combo_ids = fields.One2many('crm.combo.line', 'lead_id', string='Combos')
     basico_ids = fields.One2many('crm.basico.line', 'lead_id', string='Básicos')
+    relacion_ids = fields.One2many('crm.basico.relacion', 'lead_id', string='Relación básicos')
     # Insumos
     input_ids = fields.One2many('crm.input.line', 'lead_id', string='Insumos')
     input_file = fields.Binary(string='Archivo', attachment=True)
@@ -1053,6 +1056,9 @@ class CrmLead(models.Model):
 
     def action_cargar_concept(self):
         for record in self:
+            if not record.doctoconcept_id:
+                raise ValidationError('Falta agregar el tipo de archivo.')
+
             docto = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',record.id), 
                 ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', ('name','ilike','E02'), ('name','ilike','Economico 2')])
             if not docto:
@@ -1069,6 +1075,26 @@ class CrmLead(models.Model):
 
     def __leer_carga_concept(self, docto):
         for record in self:
+            if not record.doctoconcept_id:
+                raise ValidationError('Falta agregar el tipo de archivo.')
+
+            for x in record.doctobasicos_id:
+                inicio = x.inicio_datos
+                for y in x.configdoc_ids:
+                    if y.no_columna != '*':
+                        if y.columna == 'codigo':
+                            cod = int(y.no_columna) - 1
+                        if y.columna == 'descripcion':
+                            desc = int(y.no_columna) - 1
+                        if y.columna == 'unidad':
+                            uni = int(y.no_columna) - 1
+                        if y.columna == 'precio_unitario':
+                            prec = int(y.no_columna) - 1
+                        if y.columna == 'cantidad':
+                            qty = int(y.no_columna) - 1
+                        if y.columna == 'importe':
+                            imp = int(y.no_columna) - 1
+
             attachment = docto.attachment_id
             decoded_data = base64.b64decode(attachment.datas)
             workbook = openpyxl.load_workbook(filename=io.BytesIO(decoded_data), data_only=True)
@@ -1194,7 +1220,7 @@ class CrmLead(models.Model):
                 raise ValidationError('Cargar primero la información del archivo E09.')
 
             docto = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',record.id), 
-                ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', ('name','ilike','E10'), ('name','ilike','Economico 10')])
+                ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', ('name','ilike','E10 B'), ('name','ilike','Economico 10 A')])
             if not docto:
                 raise ValidationError('El documento E10 no se encuentra cargado, favor de revisar la documentación.')
 
@@ -1212,23 +1238,56 @@ class CrmLead(models.Model):
             if not record.doctobasicos_id:
                 raise ValidationError('Se debe de seleccionar el tipo de documento a cargar')
 
-            inicio = record.doctobasicos_id.inicio_datos
-            for x in record.doctobasicos_id.configdoc_ids:
-                if x.no_columna != '*':
-                    if x.columna == 'concepto':
-                        conc = int(x.no_columna) - 1
-                    if x.columna == 'codigo':
-                        cod = int(x.no_columna) - 1
-                    if x.columna == 'descripcion':
-                        desc = int(x.no_columna) - 1
-                    if x.columna == 'unidad':
-                        uni = int(x.no_columna) - 1
-                    if x.columna == 'precio_unitario':
-                        prec = int(x.no_columna) - 1
-                    if x.columna == 'cantidad':
-                        qty = int(x.no_columna) - 1
-                    if x.columna == 'importe':
-                        imp = int(x.no_columna) - 1
+            for x in record.doctobasicos_id:
+                inicio = x.inicio_datos
+                for y in x.configdoc_ids:
+                    if y.no_columna != '*':
+                        if y.columna == 'concepto':
+                            conc = int(y.no_columna) - 1
+                        if y.columna == 'codigo':
+                            cod = int(y.no_columna) - 1
+                        if y.columna == 'descripcion':
+                            desc = int(y.no_columna) - 1
+                        if y.columna == 'unidad':
+                            uni = int(y.no_columna) - 1
+                        if y.columna == 'precio_unitario':
+                            prec = int(y.no_columna) - 1
+                        if y.columna == 'cantidad':
+                            qty = int(y.no_columna) - 1
+                        if y.columna == 'importe':
+                            imp = int(y.no_columna) - 1
+                if x.docto_rel:
+                    iniciorel = x.docto_rel.inicio_datos
+                    for y in x.docto_rel.configdoc_ids:
+                        if y.no_columna != '*':
+                            if y.columna == 'codigo':
+                                codrel = int(y.no_columna) - 1
+                            if y.columna == 'descripcion':
+                                descrel = int(y.no_columna) - 1
+                            if y.columna == 'unidad':
+                                unirel = int(y.no_columna) - 1
+                            if y.columna == 'precio_unitario':
+                                precrel = int(y.no_columna) - 1
+
+            doctos = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',record.id), 
+                ('file_extension','in',['xlsx', 'xls', 'xlsm']), ('name','ilike','10 Relac')])
+            attachment = doctos.attachment_id
+            decoded_data = base64.b64decode(attachment.datas)
+            workbook = openpyxl.load_workbook(filename=io.BytesIO(decoded_data), data_only=True)
+            sheet = workbook.active
+            registros = []
+            contador = 1
+            for row in sheet.iter_rows(values_only=True):
+                if contador < inicio:
+                    contador += 1
+                    continue
+
+                if row[codrel] == None:
+                    continue
+
+                registro = {'col1': row[cod], 'col2': row[desc], 'col3': row[uni], 'col4': row[prec]}
+                registros.append((0, 0, registro))
+            record.write({'relacion_ids': registros})
 
             attachment = docto.attachment_id
             decoded_data = base64.b64decode(attachment.datas)
@@ -1244,9 +1303,10 @@ class CrmLead(models.Model):
                 if row[conc] == None or row[conc].replace(' ', '') == '':
                     continue
 
-                comboline = self.env['crm.combo.line'].search([('lead_id','=',record.id), ('col1','=',row[conc])], limit=1)
-                if comboline:
-                    comboline_id = comboline
+                relacion = self.env['crm.basico.relacion'].search([('lead_id','=',record.id), ('col1','=',row[conc])])
+                if relacion:
+                    relacion_id = relacion
+                    basico = row[conc]
                     continue
 
                 if row[qty] == None:
@@ -1256,15 +1316,19 @@ class CrmLead(models.Model):
                 if not isinstance(row[imp], (int, float)):
                     continue
                 
-                registro = {'comboline_id': comboline_id.id, 'col1': row[cod], 'col2': row[desc], 'col3': row[uni], 'col4': row[prec], 'col5': row[qty], 
-                    'col6': row[imp]}
+                registro = {'relacion_id': relacion_id.id, 'col1': row[cod], 'col2': row[desc], 'col3': row[uni], 'col4': row[prec], 'col5': row[qty], 
+                    'col6': row[imp], 'basico': basico}
                 registros.append((0, 0, registro))
-                
             record.write({'basico_ids': registros})
 
 
     def action_generar_basicos(self):
-        raise ValidationError('Se esta trabajando')
+        count = len(self.basico_ids.filtered(lambda u: not u.combo_ex))
+        if count == 0:
+            raise UserError('Los basicos fueron generados correctamente, favor de continuar con la generación de las tarjetas de conceptos')
+        else:
+            self.env.cr.execute('SELECT generar_basicos(' + str(self.id)+ ', ' + str(self.env.user.id) + ')')
+            basicos = self.env.cr.dictfetchall()
 
     def action_cargar_combo(self):
         for record in self:
@@ -1341,7 +1405,14 @@ class CrmLead(models.Model):
         count = len(self.basico_ids.filtered(lambda u: not u.combo_ex))
         if count > 1:
             raise ValidationError('Faltan cargar los básicos')
-        raise ValidationError('Se esta trabajando')
+
+        count = len(self.combo_ids.filtered(lambda u: not u.combo_ex))
+        if count == 0:
+            raise UserError('Las tarjetas de conceptos fueron generados correctamente')
+        else:
+            self.env.cr.execute('SELECT generar_basicos(' + str(self.id)+ ', ' + str(self.env.user.id) + ')')
+            basicos = self.env.cr.dictfetchall()
+        
 
     def action_unlink_concept(self):
         for record in self:
@@ -1591,11 +1662,23 @@ class crmBudgetLine(models.Model):
     no_char = fields.Integer(string='No. de Caracteres')
     parent = fields.Integer(string='Padre')
 
-class crmBasicoLine(models.Model):
-    _name = 'crm.basico.line'
-    _description = 'Combo por concepto'
+class crmBasicoRelacion(models.Model):
+    _name = 'crm.basico.relacion'
+    _description = 'Relación de básicos'
     
     lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportunidad', readonly=True)
+    col1 = fields.Char(string='Código')
+    col2 = fields.Char(string='Concepto')
+    col3 = fields.Char(string='Unidad')
+    col4 = fields.Char(string='Precio Unitario')
+    combo_id = fields.Many2one(comodel_name='product.combo', string='Combo')
+
+class crmBasicoLine(models.Model):
+    _name = 'crm.basico.line'
+    _description = 'Basicos de combos'
+    
+    lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportunidad', readonly=True)
+    basico = fields.Char(string='Básico')
     col1 = fields.Char(string='Código')
     col2 = fields.Char(string='Concepto')
     col3 = fields.Char(string='Unidad')
@@ -1603,7 +1686,7 @@ class crmBasicoLine(models.Model):
     col5 = fields.Char(string='Cantidad')
     col6 = fields.Char(string='Importe')
     combo_id = fields.Many2one(comodel_name='product.combo', string='Combo')
-    comboline_id = fields.Many2one(comodel_name='crm.combo.line', string='Línea del combo')
+    relacion_id = fields.Many2one(comodel_name='crm.basico.relacion', string='Línea del combo')
     combo_ex = fields.Boolean(string='Combo relacionado', default=False)
 
 class crmComboLine(models.Model):

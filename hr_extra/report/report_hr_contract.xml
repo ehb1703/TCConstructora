@@ -201,6 +201,176 @@
             </t>
         </template>
 
+        <template id="report_hrcontractobra_template">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                        <div class="page" style="font-family: Arial, sans-serif; font-size: 11pt; text-align: justify;">
+                            
+                            <!-- Obtener representante legal -->
+                            <t t-set="representante" t-value="o.env['company.legal.representative'].search([('company_id','=',o.company_id.id)], limit=1)"/>
+                            
+                            <h3 style="text-align: center; font-weight: bold;">
+                                CONTRATO INDIVIDUAL DE TRABAJO POR TIEMPO INDETERMINADO
+                            </h3>
+                            <br/>
+                            
+                            <p>
+                                <strong>CONTRATO INDIVIDUAL DE TRABAJO POR TIEMPO INDETERMINADO</strong>, QUE CELEBRAN POR UNA PARTE 
+                                LA PERSONA MORAL DENOMINADA <strong><span t-field="o.company_id.name"/></strong>, POR CONDUCTO DE SU 
+                                REPRESENTANTE LEGAL, LA C. <strong><span t-field="representante.representante_id.name"/></strong>, 
+                                EN LO SUCESIVO "EL PATRÓN", Y POR LA OTRA PARTE 
+                                <strong><span t-field="o.employee_id.name"/></strong>, EN ADELANTE "EL TRABAJADOR", 
+                                QUIENES CONVIENEN EN CELEBRAR EL PRESENTE CONTRATO AL TENOR DE LAS SIGUIENTES:
+                            </p>
+                            
+                            <h4 style="text-align: center;">D E C L A R A C I O N E S:</h4>
+                            
+                            <p><strong>I.- "EL PATRÓN" declara:</strong></p>
+                            
+                            <p>
+                                a). - Ser una empresa mexicana legalmente constituida; con suficiente capacidad jurídica y 
+                                económica para hacer frente a las obligaciones que del presente contrato se desprenden.
+                            </p>
+                            
+                            <p>
+                                b). - Que su Representante Legal la C. <span t-field="representante.representante_id.name"/>, 
+                                cuenta con las facultades suficientes para celebrar el presente Contrato y obligarse en los 
+                                términos del mismo.
+                            </p>
+                            
+                            <p>
+                                c). - El domicilio de la fuente de trabajo se encuentra ubicado en: 
+                                <span t-field="o.company_id.street"/> <span t-field="o.company_id.street2"/>, 
+                                <span t-field="o.company_id.city"/>, <span t-field="o.company_id.state_id.name"/>, 
+                                CP <span t-field="o.company_id.zip"/>
+                            </p>
+                            
+                            <p><strong>II.- Por otra parte, "EL TRABAJADOR" declara:</strong></p>
+                            
+                            <p>
+                                a). - Ser persona física, de nacionalidad <span t-field="o.employee_id.country_id.name"/>, 
+                                con facultades suficientes para obligarse al tenor del presente acto jurídico.
+                            </p>
+                            
+                            <p>
+                                b). - Que manifiesta tener los suficientes conocimientos, experiencia y capacidad técnica 
+                                y profesional para prestar los servicios en el puesto de 
+                                <strong><span t-field="o.job_id.name"/></strong>.
+                            </p>
+                            
+                            <p>Expuesto lo anterior, las partes se someten al tenor de las siguientes:</p>
+                            
+                            <h4 style="text-align: center;">C L Á U S U L A S:</h4>
+                            
+                            <p>
+                                <strong>PRIMERA.</strong> - "EL PATRÓN" contrata a "EL TRABAJADOR" bajo la modalidad de relación 
+                                de trabajo por tiempo indeterminado, de conformidad con lo establecido en el artículo 35 de la 
+                                Ley Federal del Trabajo.
+                            </p>
+                            
+                            <p>
+                                <strong>SEGUNDA.</strong> - "EL TRABAJADOR" se obliga a prestar sus servicios a "EL PATRÓN" 
+                                en el puesto de <strong><span t-field="o.job_id.name"/></strong>, en el departamento de 
+                                <strong><span t-field="o.department_id.name"/></strong>, así como para todos los trabajos 
+                                que sean inherentes a dicho puesto.
+                            </p>
+                            
+                            <p>
+                                <strong>TERCERA.</strong> - La fecha de inicio de la relación laboral es el 
+                                <strong><span t-field="o.date_start" t-options='{"format": "dd/MM/yyyy"}'/></strong>.
+                            </p>
+                            
+                            <p>
+                                <strong>CUARTA.</strong> - "EL TRABAJADOR" disfrutará de un sueldo de 
+                                <strong>$<span t-field="o.wage" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></strong> 
+                                mensuales.
+                            </p>
+                            
+                            <p>
+                                "EL TRABAJADOR" recibirá personalmente el pago correspondiente a su salario en moneda nacional 
+                                de curso legal y el pago será cubierto en el domicilio de "EL PATRÓN".
+                            </p>
+                            
+                            <p>
+                                <strong>QUINTA.</strong> - La duración de la jornada laboral será de conformidad con lo 
+                                establecido por los artículos 60, 61 y demás aplicables de la Ley Federal del Trabajo.
+                                El horario de trabajo será: <span t-field="o.resource_calendar_id.name"/>.
+                            </p>
+                            
+                            <p>
+                                <strong>SEXTA.</strong> - "EL TRABAJADOR" se obliga a NO DIVULGAR información alguna sobre 
+                                las actividades o asuntos administrativos de cualquier clase de "EL PATRÓN".
+                            </p>
+                            
+                            <p>
+                                <strong>SÉPTIMA.</strong> - "EL PATRÓN" se obliga a proporcionar capacitación y 
+                                "EL TRABAJADOR" a recibirla, de acuerdo a los planes y programas que se formulen para tal efecto.
+                            </p>
+                            
+                            <p>
+                                <strong>OCTAVA.</strong> - "EL TRABAJADOR" se someterá a los exámenes médicos que determine 
+                                "EL PATRÓN" y que serán practicados por el médico que éste designe.
+                            </p>
+                            
+                            <p>
+                                <strong>NOVENA.</strong> - Serán causas de rescisión todas aquellas que establece la 
+                                Ley Federal de Trabajo y el incumplir en cualquiera de las cláusulas señaladas en el 
+                                presente contrato.
+                            </p>
+                            
+                            <p>
+                                <strong>DÉCIMA.</strong> - Las partes convienen en que lo no previsto en el presente contrato 
+                                se sujetará a las disposiciones de la Ley Federal del Trabajo.
+                            </p>
+                            
+                            <p>
+                                <strong>DÉCIMA PRIMERA.</strong> - Para todo lo relacionado con la ejecución y cumplimiento 
+                                de las cláusulas del presente contrato, las partes se someten a la jurisdicción y competencia 
+                                de las autoridades laborales del Estado de <span t-field="o.company_id.state_id.name"/>.
+                            </p>
+                            
+                            <br/><br/>
+                            
+                            <p>
+                                LEÍDO que fue en voz alta el contenido del presente contrato a los que en él intervienen, 
+                                bien enterados de su alcance y contenido, se manifestaron conformes con el mismo y lo ratifican, 
+                                en la ciudad de <span t-field="o.company_id.city"/>, <span t-field="o.company_id.state_id.name"/>, 
+                                a <span t-esc="o.date_start.strftime('%d') if o.date_start else ''"/> de 
+                                <span t-esc="o.date_start.strftime('%B') if o.date_start else ''"/> de 
+                                <span t-esc="o.date_start.strftime('%Y') if o.date_start else ''"/>.
+                            </p>
+                            
+                            <br/><br/><br/>
+                            
+                            <!-- Área de firmas -->
+                            <div style="width: 100%; text-align: center; margin-top: 40px;">
+                                <table style="width: 100%; margin: 0 auto;">
+                                    <tr>
+                                        <td style="width: 45%; text-align: center; vertical-align: top;">
+                                            <p><strong>"EL PATRÓN"</strong></p>
+                                            <br/><br/><br/>
+                                            <div style="border-bottom: 1px solid #000; width: 80%; margin: 0 auto;"></div>
+                                            <p><span t-field="representante.representante_id.name"/></p>
+                                            <p>Representante Legal</p>
+                                        </td>
+                                        <td style="width: 10%;"></td>
+                                        <td style="width: 45%; text-align: center; vertical-align: top;">
+                                            <p><strong>"EL TRABAJADOR"</strong></p>
+                                            <br/><br/><br/>
+                                            <div style="border-bottom: 1px solid #000; width: 80%; margin: 0 auto;"></div>
+                                            <p><span t-field="o.employee_id.name"/></p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+        
         <template id="hr_extra.report_hr_contract">
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="o">

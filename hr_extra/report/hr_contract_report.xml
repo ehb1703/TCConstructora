@@ -2,7 +2,7 @@
 <odoo>
 
     <record id="action_report_hr_contract" model="ir.actions.report">
-        <field name="name">Documento del contrato</field>
+        <field name="name">Contrato Temporal</field>
         <field name="model">hr.contract</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">hr_extra.report_hr_contract</field>
@@ -13,7 +13,7 @@
     </record>
 
     <record id="action_report_hrcontract_obra" model="ir.actions.report">
-        <field name="name">Documento del contrato</field>
+        <field name="name">Contrato Obra Determinada</field>
         <field name="model">hr.contract</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">hr_extra.report_hrcontract_obra</field>

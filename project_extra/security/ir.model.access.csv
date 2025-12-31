@@ -43,6 +43,7 @@ access_crm_concept_line,access_crm_concept_line,model_crm_concept_line,,1,1,1,1
 access_crm_budget_line,access_crm_budget_line,model_crm_budget_line,,1,1,1,1
 access_crm_combo_line,access_crm_combo_line,model_crm_combo_line,,1,1,1,1
 access_crm_basico_line,access_crm_basico_line,model_crm_basico_line,,1,1,1,1
+access_crm_basico_relacion,access_crm_basico_relacion,model_crm_basico_relacion,,1,1,1,1
 access_crm_propuesta_tecnica_doc,access_crm_propuesta_tecnica_doc,model_crm_propuesta_tecnica_doc,,1,1,1,1
 access_crm_propuesta_tecnica_revision,access_crm_propuesta_tecnica_revision,model_crm_propuesta_tecnica_revision,,1,1,1,1
 access_purchase_confirm_order,purchase_confirm_order,model_purchase_confirm_order,,1,1,1,1

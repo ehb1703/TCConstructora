@@ -1,6 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <record id="view_hr_employee_obras_form" model="ir.ui.view">
+        <field name="name">hr.employee.obras.form</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='parent_id']" position="replace">
+                <field name="director_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
+            </xpath>
+
+            <xpath expr="//notebook/page[last()]" position="after">
+                <page string="Obras" name="obras_asignadas">
+                    <field name="obra_ids">
+                        <list string="Obras asignadas" editable="bottom">
+                            <field name="project_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="etapa_id" readonly="1"/>
+                            <field name="fecha_inicio" readonly="1"/>
+                            <field name="fecha_fin" readonly="1"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
     <record id="hr_employee_infonavit_form" model="ir.ui.view">
         <field name="name">hr.employee.infonavit.form</field>
         <field name="model">hr.employee</field>
@@ -28,6 +53,27 @@
         <field name="arch" type="xml">
             <xpath expr="//header/field[@name='state']" position="before">
                 <button name="action_report_contract" string="Contrato" class="btn-primary" type="object"/>
+            </xpath>
+
+            <xpath expr="//notebook" position="inside">
+                <page string="Beneficiarios" name="beneficiarios">
+                    <field name="beneficiario_ids">
+                        <list string="Beneficiarios" editable="bottom">
+                            <field name="nombre_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="parentesco_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="porcentaje"/>
+                        </list>
+                    </field>
+                    <group>
+                        <group></group>
+                        <group>
+                            <div class="oe_subtotal_footer_separator">
+                                <label for="total_porcentaje" string="Total"/>
+                                <field name="total_porcentaje" nolabel="1" class="oe_subtotal_footer_separator"/>
+                            </div>
+                        </group>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>

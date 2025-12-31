@@ -3,3 +3,4 @@ catalog_product_budget_item,catalog_product_budget_item,model_product_budget_ite
 
 access_product_budget_item,access_product_budget_item,model_product_budget_item,,1,0,0,0
 access_sale_concept_line,access_sale_concept_line,model_sale_concept_line,,1,1,1,1
+access_product_combo_line,access_product_combo_line,model_product_combo_line,,1,1,1,1

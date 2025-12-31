@@ -6,6 +6,18 @@
         <field name="model">project.project</field>
         <field name="inherit_id" ref="project.edit_project"/>
         <field name="arch" type="xml">
+            <xpath expr="//notebook" position="before">
+                <group>
+                    <group>
+                        <label for="fecha_inicio_obra" string="Fecha inicio"/>
+                        <div class="o_row">
+                            <field name="fecha_inicio_obra" readonly="1" nolabel="1"/>
+                            <i class="fa fa-long-arrow-right mx-2" title="Hasta"/>
+                            <field name="fecha_fin_obra" nolabel="1"/>
+                        </div>
+                    </group>
+                </group>
+            </xpath>
             
             <xpath expr="//notebook" position="before">
                 <group string="Orden de Trabajo" invisible="not lead_id">
@@ -14,7 +26,6 @@
                         <field name="orden_trabajo" readonly="1"/>
                         <field name="dependencia"/>
                         <field name="company_id" readonly="1" string="Ejecutor"/>
-                        <field name="user_id" string="Gerente de proyecto"/>
 			<field name="proj_fecha_adjudicacion" readonly="1" string="Fecha de adjudicación"/>
                     </group>
                     <group>
@@ -67,7 +78,6 @@
                             <field name="licitacion" readonly="1" string="Asignación"/>
                             <field name="modalidad_contratacion_id" readonly="1"/>
                             <field name="proj_fecha_apertura" readonly="1" string="Fecha de apertura"/>
-                            <field name="proj_fecha_adjudicacion" readonly="1" string="Fecha de adjudicación"/>
                             <field name="contrato_a_id" options="{'no_create': True, 'no_open': True}"/>
 			    <field name="bloque"/>
                             <field name="fianzas"/>

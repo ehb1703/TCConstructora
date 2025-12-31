@@ -403,6 +403,7 @@
                 <page string="Ganado">
                     <group invisible="stage_name != 'Ganado'">
                         <group>
+                            <field name="doctoconcept_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                             <field name="doctomatriz_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                         </group>
                         <group>
@@ -426,19 +427,19 @@
                             <field name="orden_trabajo_doc_name" invisible="1"/>
                             <field name="es_siop" invisible="1"/>
                             <group>
-                                <field name="fecha_limite_firma" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado'"/>
-                                <field name="contrato_firmado" readonly="stage_name != 'Ganado'"/>
-                                <field name="importe_contratado" readonly="stage_name != 'Ganado'"/>
-                                <field name="rupc_siop" readonly="stage_name != 'Ganado'" invisible="not es_siop"/>
-                                <field name="contrato_documento" filename="contrato_documento_name" readonly="stage_name != 'Ganado'"/>
-                                <field name="orden_trabajo_doc" filename="orden_trabajo_doc_name" readonly="stage_name != 'Ganado'" string="Orden de trabajo"/>
-                            </group>
-                            <group>
-                                <field name="fecha_firma" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado' and contrato_firmado"/>
-                                <label for="contrato_firmado" invisible="1"/>
-                                <div invisible="1"/>
-                                <field name="importe_anticipo" invisible="bases_abstinencia_anticipo"/>
-                                <field name="no_estimaciones" readonly="stage_name != 'Ganado'"/>
+                                <group>
+                                    <field name="fecha_limite_firma" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado'"/>
+                                    <field name="contrato_firmado" readonly="stage_name != 'Ganado'"/>
+                                    <field name="importe_contratado" readonly="stage_name != 'Ganado'"/>
+                                    <field name="rupc_siop" readonly="stage_name != 'Ganado'" invisible="not es_siop" string="RUPC.SIOP"/>
+                                    <field name="contrato_documento" filename="contrato_documento_name" readonly="stage_name != 'Ganado'"/>
+                                    <field name="orden_trabajo_doc" filename="orden_trabajo_doc_name" readonly="stage_name != 'Ganado'" string="Orden de trabajo"/>
+                                </group>
+                                <group>
+                                    <field name="fecha_firma" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado' and contrato_firmado"/>
+                                    <field name="importe_anticipo" invisible="bases_abstinencia_anticipo"/>
+                                    <field name="no_estimaciones" readonly="stage_name != 'Ganado'" string="No. De estimaciones"/>
+                                </group>
                             </group>
                         </page>
                         <page string="Conceptos de Obra">
@@ -491,6 +492,7 @@
                             <group>
                                 <field name="basico_ids" nolabel="1" widget="one2many_list">                        
                                     <list delete="0" create="0" edit="0" context="{'default_lead_id': id}">
+                                        <field name="basico"/>
                                         <field name="col1"/>
                                         <field name="col2"/>
                                         <field name="col3"/>

@@ -14,9 +14,10 @@ class TipoDocumento(models.Model):
     name = fields.Char(string='Nombre')
     no_docto = fields.Char(string='Número de documento')
     description = fields.Text(string='Descripción')
-    module_id = fields.Many2one('ir.model', string="Modelo")
+    module_id = fields.Many2one('ir.model', string='Modelo')
     inicio_datos = fields.Integer(string = 'Fila donde inician los datos')
     configdoc_ids = fields.One2many('report.config.doc', 'config_id')
+    docto_rel = fields.Many2one('report.tipodocumento', string='Documento relacionado')
     active = fields.Boolean(string='Activo', default=True, required=True)
     
     @api.constrains('name')

@@ -32,6 +32,7 @@
                             <field name="code"/>
                             <field name="name"/>
                             <field name="no_docto"/>
+                            <field name="docto_rel"/>
                         </group>
                         <group>
                             <field name="description"/>
