@@ -15,6 +15,8 @@ class projectObra(models.Model):
     proj_dias = fields.Integer(string='Días', readonly=True)
     proj_anticipo_porcentaje = fields.Integer(string='% de anticipo', readonly=True)
     proj_importe_anticipo = fields.Float(string='Importe anticipo', readonly=True)
+    fecha_inicio_obra = fields.Date(string='Fecha inicio', readonly=True, compute='_compute_fecha_inicio_obra', store=True)
+    fecha_fin_obra = fields.Date(string='Fecha fin')
     normatividad_id = fields.Many2one('project.normatividad', string='Normatividad', 
         help='Marco normativo aplicable a la obra')
     contrato_a_id = fields.Many2one('project.modalidad.precios', string='Contrato a', 
@@ -52,6 +54,15 @@ class projectObra(models.Model):
     dependencia = fields.Char(string='Dependencia')
     bloque = fields.Char(string='Bloque')
     fianzas = fields.Char(string='Fianzas')
+
+    @api.depends('lead_id', 'lead_id.fecha_firma')
+    def _compute_fecha_inicio_obra(self):
+        # Toma la fecha de firma del contrato en la etapa Ganado del CRM
+        for project in self:
+            if project.lead_id and project.lead_id.fecha_firma:
+                project.fecha_inicio_obra = project.lead_id.fecha_firma
+            else:
+                project.fecha_inicio_obra = False
 
     @api.model
     def _geo_localize(self, street='', zip='', city='', state='', country=''):

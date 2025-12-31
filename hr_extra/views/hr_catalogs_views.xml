@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_hr_parentesco" model="ir.actions.act_window">
+        <field name="name">Parentescos</field>
+        <field name="res_model">hr.parentesco</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crear un nuevo parentesco</p>
+            <p>Catálogo de parentescos para beneficiarios de empleados.</p>
+        </field>
+    </record>
+
+    <record id="view_hr_parentesco_tree" model="ir.ui.view">
+        <field name="name">hr.parentesco.list</field>
+        <field name="model">hr.parentesco</field>
+        <field name="arch" type="xml">
+            <list string="Parentescos">
+                <field name="codigo"/>
+                <field name="nombre"/>
+                <field name="descripcion"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hr_parentesco_form" model="ir.ui.view">
+        <field name="name">hr.parentesco.form</field>
+        <field name="model">hr.parentesco</field>
+        <field name="arch" type="xml">
+            <form string="Parentesco">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="codigo"/>
+                            <field name="nombre"/>
+                        </group>
+                        <group>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="descripcion" placeholder="Explicación detallada del parentesco y su alcance legal/administrativo..."/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_hr_parentesco" name="Parentescos" parent="hr.menu_human_resources_configuration" action="action_hr_parentesco" sequence="25"/>
+
+</odoo>

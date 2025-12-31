@@ -70,8 +70,7 @@ BEGIN
      
     RETURN 'OK';
 END;
-    $function$
-;   ''')
+    $function$ ;   ''')
 
 
 def migrate(cr, version):
