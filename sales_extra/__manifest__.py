@@ -16,7 +16,7 @@ Personalización de ordenes de venta
         'security/ir.model.access.csv',
         'views/product_views.xml',
         'views/sale_catalog_views.xml',
-        'views/project_views.xml',
+        #'views/project_views.xml',
     ],        
     'license': 'LGPL-3',
     'installable': True,

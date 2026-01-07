@@ -1,53 +1,35 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
-import base64
-import io
-import openpyxl
 import logging
 
 _logger = logging.getLogger(__name__)
 
-class saleOrderLineInherit(models.Model):
+"""class saleOrderLineInherit(models.Model):
     _inherit = 'sale.order'
 
-    concept_ids = fields.One2many('sale.concept.line', 'sale_id', string='Conceptos de trabajo')
-
-    def action_load_price(self):
-        docto = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',self.opportunity_id.id), '|', ('name','ilike','E02'), 
-            ('name','ilike','Economico 2')])
-        if not docto:
-            raise ValidationError('El documento E02 no se encuentra cargado, favor de agregar el precio unitario manualmente.')
-
-        attachment = docto.attachment_id
-        decoded_data = base64.b64decode(attachment.datas)
-        workbook = openpyxl.load_workbook(filename=io.BytesIO(decoded_data), data_only=True)
-        sheet = workbook.active
-        c = 0
-        d = 0
-        if not self.concept_ids:
-            registros = []
-            for row in sheet.iter_rows(values_only=True):
-                if row[0] == 'CLAVE':
-                    for cell in row:
-                        if cell in ('PRECIO UNITARIO', 'PRECIO UNITARIO ($) PROPUESTO'):
-                            d = c
-                        else:
-                            c += 1
-                concepto = self.env['crm.concept.line'].search([('lead_id','=',self.opportunity_id.id), ('concept_id.default_code','=',row[0])])
-                if concepto:
-                    registro = {'default_code': row[0], 'price_unit': row[d]}
-                    registros.append((0, 0, registro))
-            self.write({'concept_ids': registros})
-
-        self.env.cr.execute('''SELECT NUM, MAX(ID) ID, MAX(PRICE_UNIT) PRICE
-            FROM (SELECT ROW_NUMBER() OVER (ORDER BY id) NUM, 0 ID, PRICE_UNIT FROM sale_concept_line scl WHERE SALE_ID = ''' + str(self.id) + ''' UNION ALL
-                SELECT ROW_NUMBER() OVER (ORDER BY id) NUM, ID, 0 FROM sale_order_line ccl WHERE order_id = ''' + str(self.id) + ''') as t1
-            GROUP BY 1 ORDER BY 1''')
-        lines = self.env.cr.dictfetchall()        
-        for rec in lines:
-            line = self.env['sale.order.line'].search([('id','=',rec['id'])])
-            line.write({'price_unit': rec['price']})
+    @api.depends('order_line.price_subtotal', 'currency_id', 'company_id', 'payment_term_id')
+    def _compute_amounts(self):
+        AccountTax = self.env['account.tax']
+        for order in self:
+            order_lines = order.order_line.filtered(lambda x: not x.display_type)
+            base_lines = [line._prepare_base_line_for_taxes_computation() for line in order_lines]
+            base_lines += order._add_base_lines_for_early_payment_discount()
+            AccountTax._add_tax_details_in_base_lines(base_lines, order.company_id)
+            AccountTax._round_base_lines_tax_details(base_lines, order.company_id)
+            tax_totals = AccountTax._get_tax_totals_summary(
+                base_lines=base_lines,
+                currency=order.currency_id or order.company_id.currency_id,
+                company=order.company_id,
+            )
+            _logger.warning('Aqui 25........')
+            _logger.warning(tax_totals)
+            order.amount_untaxed = tax_totals['base_amount_currency']            
+            order.amount_tax = tax_totals['tax_amount_currency']
+            order.amount_total = tax_totals['total_amount_currency']
+            _logger.warning(order.amount_untaxed)
+            _logger.warning(order.amount_tax)
+            _logger.warning(order.amount_total) """
 
 
 class saleOrderLineInherit(models.Model):
@@ -115,12 +97,3 @@ class saleOrderLineInherit(models.Model):
         self.write({'project_id': project.id})
         project.reinvoiced_sale_order_id = self.order_id
         return project
-
-
-class saleConceptLine(models.Model):
-    _name = 'sale.concept.line'
-    _description = 'Conceptos de trabajo'
-    
-    sale_id = fields.Many2one(comodel_name='sale.order', string='Orden de venta', readonly=True)
-    default_code = fields.Char(string='Concepto cargado')
-    price_unit = fields.Float(string='Precio unitario')

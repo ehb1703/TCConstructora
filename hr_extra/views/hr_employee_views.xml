@@ -7,8 +7,9 @@
         <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="priority">100</field>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='parent_id']" position="replace">
-                <field name="director_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
+            <!-- Agregar campo Director/Gerente después del departamento -->
+            <xpath expr="//field[@name='department_id']" position="after">
+                <field name="director_ids" widget="many2many_tags" string="Director/Gerente" options="{'no_create': True, 'no_open': True}"/>
             </xpath>
 
             <xpath expr="//notebook/page[last()]" position="after">
@@ -52,7 +53,13 @@
         <field name="inherit_id" ref="hr_contract.hr_contract_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//header/field[@name='state']" position="before">
+                <field name="contract_type_name" invisible="1"/>
                 <button name="action_report_contract" string="Contrato" class="btn-primary" type="object"/>
+                <button name="action_report_convenio" string="Convenio" class="btn-secondary" type="object" invisible="contract_type_name not in ['Obra determinada', 'Permanente']"/>
+            </xpath>
+
+            <xpath expr="//field[@name='hr_responsible_id']" position="before">
+                <field name="project_id" string="Obra" options="{'no_create': True, 'no_open': True}" invisible="contract_type_name not in ['Obra determinada']"/>
             </xpath>
 
             <xpath expr="//notebook" position="inside">
@@ -77,5 +84,4 @@
             </xpath>
         </field>
     </record>
-
 </odoo>

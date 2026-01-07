@@ -377,11 +377,10 @@
                             </group>
                             <group>
                                 <field name="fallo_notif_auto_sent" readonly="1"/>
+				<field name="fallo_fecha_adjudicacion" string="Fecha de adjudicación" readonly="stage_name != 'Junta de Fallo'"/>
                             </group>
                             <group>
                                 <field name="fallo_notif_manual_sent" readonly="1"/>
-                            </group>
-                            <group colspan="2">
                                 <field name="fallo_ganado" readonly="stage_name != 'Junta de Fallo' or fallo_acta_name == False"/>
                             </group>                            
                             <group invisible="not fallo_ganado"/>
