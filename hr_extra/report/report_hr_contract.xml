@@ -206,164 +206,169 @@
                 <t t-foreach="docs" t-as="o">
                     <t t-call="web.external_layout">
                         <div class="page" style="font-family: Arial, sans-serif; font-size: 11pt; text-align: justify;">
-                            
                             <!-- Obtener representante legal -->
                             <t t-set="representante" t-value="o.env['company.legal.representative'].search([('company_id','=',o.company_id.id)], limit=1)"/>
                             
-                            <h3 style="text-align: center; font-weight: bold;">
-                                CONTRATO INDIVIDUAL DE TRABAJO POR TIEMPO INDETERMINADO
-                            </h3>
-                            <br/>
+                            <!-- Diccionario de meses en español -->
+                            <t t-set="meses" t-value="{'January': 'Enero', 'February': 'Febrero', 'March': 'Marzo', 'April': 'Abril', 'May': 'Mayo', 'June': 'Junio', 'July': 'Julio', 'August': 'Agosto', 'September': 'Septiembre', 'October': 'Octubre', 'November': 'Noviembre', 'December': 'Diciembre'}"/>
+                            <t t-set="mes_ingles" t-value="o.date_start.strftime('%B') if o.date_start else ''"/>
+                            <t t-set="mes_espanol" t-value="meses.get(mes_ingles, mes_ingles)"/>
+                            
+                            <!-- Obtener nombre de la obra -->
+                            <t t-set="nombre_obra" t-value="o.project_id.name if o.project_id else 'SIN OBRA ASIGNADA'"/>
                             
                             <p>
-                                <strong>CONTRATO INDIVIDUAL DE TRABAJO POR TIEMPO INDETERMINADO</strong>, QUE CELEBRAN POR UNA PARTE 
-                                LA PERSONA MORAL DENOMINADA <strong><span t-field="o.company_id.name"/></strong>, POR CONDUCTO DE SU 
-                                REPRESENTANTE LEGAL, LA C. <strong><span t-field="representante.representante_id.name"/></strong>, 
-                                EN LO SUCESIVO "EL PATRÓN", Y POR LA OTRA PARTE 
-                                <strong><span t-field="o.employee_id.name"/></strong>, EN ADELANTE "EL TRABAJADOR", 
-                                QUIENES CONVIENEN EN CELEBRAR EL PRESENTE CONTRATO AL TENOR DE LAS SIGUIENTES:
+                                <strong>CONTRATO INDIVIDUAL DE TRABAJO POR OBRA DETERMINADA</strong>, QUE CELEBRAN POR UNA PARTE LA PERSONA MORAL DENOMINADA 
+                                <strong><span t-field="o.company_id.name"/></strong>, POR CONDUCTO DE SU REPRESENTANTE LEGAL, LA C. 
+                                <strong><span t-field="representante.representante_id.name"/></strong>, A QUIEN EN LO SUCESIVO Y PARA LOS EFECTOS DEL PRESENTE CONTRATO SE LE DENOMINARÁ "EL PATRÓN", Y, POR OTRA PARTE, 
+                                <strong><span t-field="o.employee_id.name"/></strong>, A QUIEN EN LO SUCESIVO SE LE DENOMINARA "EL TRABAJADOR"; MISMOS QUE SE SUJETAN AL TENOR DE LAS SIGUIENTES,
                             </p>
-                            
-                            <h4 style="text-align: center;">D E C L A R A C I O N E S:</h4>
-                            
-                            <p><strong>I.- "EL PATRÓN" declara:</strong></p>
-                            
-                            <p>
-                                a). - Ser una empresa mexicana legalmente constituida; con suficiente capacidad jurídica y 
-                                económica para hacer frente a las obligaciones que del presente contrato se desprenden.
-                            </p>
-                            
-                            <p>
+                            <p style="text-align: center;"><strong>D E C L A R A C I O N E S:</strong></p>
+                            <p><strong>I.- "EL PATRÓN" declara:</strong>
+                                <br/><br/>
+                                a). - Ser una empresa mexicana legalmente constituida; con suficiente capacidad jurídica y económica para hacer frente a las obligaciones que del presente contrato se desprenden.
+                                <br/><br/>
                                 b). - Que su Representante Legal la C. <span t-field="representante.representante_id.name"/>, 
-                                cuenta con las facultades suficientes para celebrar el presente Contrato y obligarse en los 
-                                términos del mismo.
-                            </p>
-                            
+                                cuenta con las facultades suficientes para celebrar el presente Contrato y obligarse en los términos del mismo, según consta en la escritura pública señalada en el inciso a) de las declaraciones de "EL PATRÓN".
+                            </p>                            
                             <p>
                                 c). - El domicilio de la fuente de trabajo se encuentra ubicado en: 
                                 <span t-field="o.company_id.street"/> <span t-field="o.company_id.street2"/>, 
                                 <span t-field="o.company_id.city"/>, <span t-field="o.company_id.state_id.name"/>, 
                                 CP <span t-field="o.company_id.zip"/>
-                            </p>
-                            
-                            <p><strong>II.- Por otra parte, "EL TRABAJADOR" declara:</strong></p>
-                            
-                            <p>
+                                <br/><br/>
+                                d). - El domicilio donde se llevará a cabo la obra para la cual es contratado se ubica en: "<t t-esc="nombre_obra"/>"
+                                <br/><br/>
+                                <strong>II.- Por otra parte, "EL TRABAJADOR" declara:</strong>
+                                <br/><br/>
                                 a). - Ser persona física, de nacionalidad <span t-field="o.employee_id.country_id.name"/>, 
                                 con facultades suficientes para obligarse al tenor del presente acto jurídico.
+                                <br/><br/>
+                                b). - Estar enterado que "EL PATRÓN" necesita de sus servicios, lo anterior en términos del Artículo 35, de la Ley Federal del Trabajo, en el entendido de que es una relación de trabajo por obra determinada, rigiendo la vigencia del mismo en función al tiempo que durará la ejecución de la obra.
+                                <br/><br/>
+                                c). - Que se encuentra debidamente enterado de lo que declara "EL PATRÓN", asimismo, manifiesta tener los suficientes conocimientos, experiencia y capacidad técnica y profesional para prestar los servicios solicitados, en el puesto de <strong><span t-field="o.job_id.name"/></strong>, además de lo anteriormente señalado en la presente cláusula, manifiesto que actualmente "EL PATRÓN", me ha instruido acerca de los reglamentos internos y condiciones generales de trabajo.
+                                <br/><br/>
+                                Expuesto lo anterior, las partes se someten al tenor de las siguientes:
                             </p>
+                            <p style="text-align: center;"><strong>C L Á U S U L A S:</strong></p>                            
+                            <p>
+                                <strong>PRIMERA.</strong> - "EL PATRÓN" contrata a "EL TRABAJADOR" bajo la modalidad de relación de trabajo por obra determinada, es decir que el plazo máximo de la relación de trabajo será el que la obra dure en ejecución, pudiendo determinarlo por etapas, unidades producidas o la totalidad de la obra denominada "<t t-esc="nombre_obra"/>", para prestar sus servicios y labores en el puesto de <strong><span t-field="o.job_id.name"/></strong>.
+                                <br/><br/>
+                                <strong>SEGUNDA.</strong> - "EL PATRÓN" comunica a "EL TRABAJADOR" que la temporalidad del presente contrato obedece a lo previsto por el numeral 35 y 36 de la Ley Federal del Trabajo, es decir que el plazo máximo de la relación de trabajo será el que la obra dure en ejecución, en el entendido que la temporalidad del mismo puede determinarse por etapas, unidades producidas o la totalidad de la obra, por lo que una vez concluido lo pactado en el presente contrato, las partes darán por concluida la relación laboral, sin que esto le genere algún tipo de responsabilidad.
+                                <br/><br/>
+                                <strong>TERCERA.</strong> - El presente contrato obliga a lo expresamente pactado conforme a las disposiciones contenidas en los artículos 35 y 36 de la Ley Federal del Trabajo, y la duración de la relación laboral se encuentra directamente supeditada a la duración de la ejecución de la obra. Que a continuación se describe la conclusión y entrega de la obra denominada <t t-esc="nombre_obra"/>. Por lo que una vez concluido el objeto del presente contrato se dará por terminada la relación laboral sin responsabilidad para alguna de las partes.
+                                <br/><br/>
+                                <strong>CUARTA.</strong> - "EL TRABAJADOR" se obliga a prestar sus servicios a "EL PATRÓN" en el puesto de <strong><span t-field="o.job_id.name"/></strong>, así como para todos los trabajos que sean inherente a dicho puesto, debiendo desempeñar los mencionados servicios en la obra señalada en la cláusula inmediata anterior.
+                                <br/>
+                                Así mismo las partes manifiestan que existe subordinación, dependencia económica y asignación de labores hacia el trabajador únicamente por la empresa denominada <strong><span t-field="o.company_id.name"/></strong>, y se entiende para todos los efectos legales en la relación obrero patronal, esta última será la única responsable, sin que pueda derivar dicha responsabilidad a terceros, por lo que en ningún supuesto podrá entenderse una sustitución patronal o patrón solidario o subsidiario.
+                                <br/><br/>
+                                <strong>QUINTA.</strong> - "EL TRABAJADOR" manifiesta a "EL PATRÓN" tener los conocimientos y aptitudes inherentes al puesto para el cual ha sido contratado.
+                            </p>
+                            
+                            <!-- Detectar tipo de salario usando wage_type: 'hourly' o 'fixed' -->
+                            <t t-set="es_por_hora" t-value="o.wage_type == 'hourly'"/>
+                            <t t-set="salario_valor" t-value="o.hourly_wage if es_por_hora else o.wage"/>
+                            <t t-set="schedule_pay" t-value="o.schedule_pay if o.schedule_pay else 'monthly'"/>
+                            
+                            <!-- Determinar el texto según el tipo de salario -->
+                            <t t-if="es_por_hora">
+                                <t t-set="salario_tipo" t-value="'por hora'"/>
+                            </t>
+                            <t t-elif="schedule_pay == 'daily'">
+                                <t t-set="salario_tipo" t-value="'diarios'"/>
+                            </t>
+                            <t t-elif="schedule_pay == 'weekly'">
+                                <t t-set="salario_tipo" t-value="'semanales'"/>
+                            </t>
+                            <t t-elif="schedule_pay == '10-days'">
+                                <t t-set="salario_tipo" t-value="'cada 10 días'"/>
+                            </t>
+                            <t t-elif="schedule_pay == '14-days'">
+                                <t t-set="salario_tipo" t-value="'cada 14 días'"/>
+                            </t>
+                            <t t-elif="schedule_pay == 'bi-weekly'">
+                                <t t-set="salario_tipo" t-value="'quincenales'"/>
+                            </t>
+                            <t t-elif="schedule_pay == 'semi-monthly'">
+                                <t t-set="salario_tipo" t-value="'quincenales'"/>
+                            </t>
+                            <t t-elif="schedule_pay == 'monthly'">
+                                <t t-set="salario_tipo" t-value="'mensuales'"/>
+                            </t>
+                            <t t-elif="schedule_pay == 'bi-monthly'">
+                                <t t-set="salario_tipo" t-value="'bimestrales'"/>
+                            </t>
+                            <t t-elif="schedule_pay == 'quarterly'">
+                                <t t-set="salario_tipo" t-value="'trimestrales'"/>
+                            </t>
+                            <t t-elif="schedule_pay == 'semi-annually'">
+                                <t t-set="salario_tipo" t-value="'semestrales'"/>
+                            </t>
+                            <t t-elif="schedule_pay == 'annually'">
+                                <t t-set="salario_tipo" t-value="'anuales'"/>
+                            </t>
+                            <t t-else="">
+                                <t t-set="salario_tipo" t-value="'mensuales'"/>
+                            </t>
                             
                             <p>
-                                b). - Que manifiesta tener los suficientes conocimientos, experiencia y capacidad técnica 
-                                y profesional para prestar los servicios en el puesto de 
-                                <strong><span t-field="o.job_id.name"/></strong>.
-                            </p>
-                            
-                            <p>Expuesto lo anterior, las partes se someten al tenor de las siguientes:</p>
-                            
-                            <h4 style="text-align: center;">C L Á U S U L A S:</h4>
-                            
-                            <p>
-                                <strong>PRIMERA.</strong> - "EL PATRÓN" contrata a "EL TRABAJADOR" bajo la modalidad de relación 
-                                de trabajo por tiempo indeterminado, de conformidad con lo establecido en el artículo 35 de la 
-                                Ley Federal del Trabajo.
-                            </p>
-                            
-                            <p>
-                                <strong>SEGUNDA.</strong> - "EL TRABAJADOR" se obliga a prestar sus servicios a "EL PATRÓN" 
-                                en el puesto de <strong><span t-field="o.job_id.name"/></strong>, en el departamento de 
-                                <strong><span t-field="o.department_id.name"/></strong>, así como para todos los trabajos 
-                                que sean inherentes a dicho puesto.
-                            </p>
-                            
-                            <p>
-                                <strong>TERCERA.</strong> - La fecha de inicio de la relación laboral es el 
-                                <strong><span t-field="o.date_start" t-options='{"format": "dd/MM/yyyy"}'/></strong>.
-                            </p>
-                            
-                            <p>
-                                <strong>CUARTA.</strong> - "EL TRABAJADOR" disfrutará de un sueldo de 
-                                <strong>$<span t-field="o.wage" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></strong> 
-                                mensuales.
-                            </p>
-                            
-                            <p>
-                                "EL TRABAJADOR" recibirá personalmente el pago correspondiente a su salario en moneda nacional 
-                                de curso legal y el pago será cubierto en el domicilio de "EL PATRÓN".
-                            </p>
-                            
-                            <p>
-                                <strong>QUINTA.</strong> - La duración de la jornada laboral será de conformidad con lo 
-                                establecido por los artículos 60, 61 y demás aplicables de la Ley Federal del Trabajo.
-                                El horario de trabajo será: <span t-field="o.resource_calendar_id.name"/>.
-                            </p>
-                            
-                            <p>
-                                <strong>SEXTA.</strong> - "EL TRABAJADOR" se obliga a NO DIVULGAR información alguna sobre 
-                                las actividades o asuntos administrativos de cualquier clase de "EL PATRÓN".
-                            </p>
-                            
-                            <p>
-                                <strong>SÉPTIMA.</strong> - "EL PATRÓN" se obliga a proporcionar capacitación y 
-                                "EL TRABAJADOR" a recibirla, de acuerdo a los planes y programas que se formulen para tal efecto.
-                            </p>
-                            
-                            <p>
-                                <strong>OCTAVA.</strong> - "EL TRABAJADOR" se someterá a los exámenes médicos que determine 
-                                "EL PATRÓN" y que serán practicados por el médico que éste designe.
-                            </p>
-                            
-                            <p>
-                                <strong>NOVENA.</strong> - Serán causas de rescisión todas aquellas que establece la 
-                                Ley Federal de Trabajo y el incumplir en cualquiera de las cláusulas señaladas en el 
-                                presente contrato.
-                            </p>
-                            
-                            <p>
-                                <strong>DÉCIMA.</strong> - Las partes convienen en que lo no previsto en el presente contrato 
-                                se sujetará a las disposiciones de la Ley Federal del Trabajo.
-                            </p>
-                            
-                            <p>
-                                <strong>DÉCIMA PRIMERA.</strong> - Para todo lo relacionado con la ejecución y cumplimiento 
-                                de las cláusulas del presente contrato, las partes se someten a la jurisdicción y competencia 
-                                de las autoridades laborales del Estado de <span t-field="o.company_id.state_id.name"/>.
-                            </p>
-                            
-                            <br/><br/>
-                            
-                            <p>
-                                LEÍDO que fue en voz alta el contenido del presente contrato a los que en él intervienen, 
-                                bien enterados de su alcance y contenido, se manifestaron conformes con el mismo y lo ratifican, 
-                                en la ciudad de <span t-field="o.company_id.city"/>, <span t-field="o.company_id.state_id.name"/>, 
-                                a <span t-esc="o.date_start.strftime('%d') if o.date_start else ''"/> de 
-                                <span t-esc="o.date_start.strftime('%B') if o.date_start else ''"/> de 
-                                <span t-esc="o.date_start.strftime('%Y') if o.date_start else ''"/>.
-                            </p>
-                            
+                                <strong>SEXTA.</strong> - "EL TRABAJADOR" disfrutará de un sueldo de <strong>$<t t-esc="'%.2f' % salario_valor"/></strong> <t t-esc="salario_tipo"/>.
+                                <br/><br/>
+                                "EL TRABAJADOR" recibirá personalmente el pago correspondiente a su salario en moneda nacional de curso legal y el pago será cubierto en el domicilio de "EL PATRÓN"; debiéndose efectuar este pago, en el centro de trabajo o en el lugar que en ese momento esté prestando sus servicios y suscribiendo el recibo correspondiente, cuya firma implica un finiquito que solo se entregará al tener una antigüedad de 90 días, y se le entregará el total a la fecha del mismo de la terminación laboral. "EL TRABAJADOR" otorga su consentimiento para que la empresa le cubra su salario en efectivo o cheque, previa firma de recibo de la cantidad por duplicado.
+                                <br/><br/>
+                                <strong>SÉPTIMA.</strong> - "EL TRABAJADOR" se obliga a laborar los días de descanso obligatorio que establece el Artículo 74 de la Ley Federal del Trabajo, cuando así lo requiera "EL PATRÓN", siempre y cuando la parte patronal por escrito le solicite que los labore y que dicha solicitud se encuentre autorizada y firmada por el mismo, sin cuyo requisito no se le cubrirá el importe de los días de descanso obligatorio supuestamente laborados.
+                                <br/><br/>
+                                <strong>OCTAVA.</strong> - La duración de la jornada laboral concerniente a la semana, se regirá conforme a lo previsto por los artículos 58, 60, 61 y demás aplicables de la Ley Federal del trabajo, es decir, que "EL TRABAJADOR" prestará sus servicios de conformidad a las necesidades de "EL PATRÓN"; las cuales serán distribuidas en los días laborables.
+                                <br/><br/>
+                                En el entendido que la jornada de trabajo será de conformidad con lo establecido por los artículos 60, 61 y demás aplicables de la Ley Federal del Trabajo, "EL PATRÓN" podrá exigir indistintamente una jornada continua o discontinua y también podrá repartir las horas de trabajo de cada semana con motivo de los horarios que se asignen, por lo tanto, "EL PATRÓN" fijará libremente los roles, turnos u horarios de trabajo a los que se sujetará "EL TRABAJADOR", conviniendo éste que "EL PATRÓN" podrá modificar los horarios de trabajo establecidos de acuerdo con sus necesidades, inclusive con cualquiera de las modalidades que dispone el artículo 59 de la Ley Federal del Trabajo.
+                                <br/><br/>
+                                El hecho de que se asigne en algún momento una jornada de trabajo semanal menor a los máximos previstos por la legislación laboral, no implica la reducción de la jornada semanal contratada y pagada, subsistiendo la obligación de "EL TRABAJADOR" de estar a disposición de "EL PATRÓN" las 48 horas semanales contratadas.
+                                <br/><br/>
+                                <strong>NOVENA.</strong> - Cuando por circunstancias especiales llegue a prolongarse la jornada de trabajo, "EL TRABAJADOR" estará obligado a laborar el tiempo extra necesario en términos del artículo 66 de la Ley Federal del Trabajo, en la inteligencia de que sólo se considerarán y pagarán como horas extraordinarias, las que excedan del tiempo semanal pactado en este contrato y hayan sido autorizadas en forma escrita por "EL PATRÓN" o sus representantes.
+                                <br/><br/>
+                                "EL TRABAJADOR" hará constar cada día su asistencia mediante LISTA DE ASISTENCIA, el incumplimiento de tal requisito, se considerará falta de asistencia sin justificación, para los efectos conducentes.
+                                <br/><br/>
+                                En el entendido de que se deberá checar al ingresar a la fuente de trabajo y al salir de la misma, incluyendo el horario estipulado para ingerir alimentos.
+                                <br/><br/>
+                                <strong>DÉCIMA.</strong> - "EL TRABAJADOR" se obliga a NO DIVULGAR información alguna sobre las actividades o asuntos administrativos de cualquier clase de "EL PATRÓN".
+                                <br/><br/>
+                                <strong>DÉCIMA PRIMERA.</strong> - "EL PATRÓN" se obliga a proporcionar capacitación y "EL TRABAJADOR" a recibirla, de acuerdo a los planes y programas que se formulen para tal efecto.
+                                <br/><br/>
+                                <strong>DÉCIMA SEGUNDA.</strong> - "EL TRABAJADOR" se someterá a los exámenes médicos que determine "EL PATRÓN" y que serán practicados por el médico que éste designe, en las fechas que el mismo patrón señale.
+                                <br/><br/>
+                                En materia de riesgos y enfermedades, tanto profesionales como generales, las partes se sujetarán a lo que sobre el particular establece la Ley Federal del Trabajo y la Ley del Seguro Social.
+                                <br/><br/>
+                                "EL TRABAJADOR" se obliga a participar en los programas de entrenamiento y prevención de riesgos que establezca "EL PATRÓN", así como en las brigadas de primeros auxilios, contra incendios y demás necesarias para su propia seguridad y la de sus compañeros de trabajo, teniendo el propio "TRABAJADOR" la obligación de pertenecer a las mismas cuando así se lo requiera "EL PATRÓN".
+                                <br/><br/>
+                                <strong>DÉCIMA TERCERA.</strong> - "EL TRABAJADOR" se obliga a desempeñar su trabajo con toda diligencia y empeño, en beneficio de "EL PATRÓN", sin poder desempeñar otro trabajo por cuenta propia o ajena durante la jornada de trabajo convenida, siendo causal de rescisión inmediata el incumplimiento a lo estipulado en la presente cláusula.
+                                <br/><br/>
+                                <strong>DÉCIMA CUARTA.</strong> - Serán causas de rescisión todas aquellas que establece la Ley Federal de Trabajo y el incumplir en cualquiera de las cláusulas señaladas en el presente contrato, así como las contempladas en el reglamento interior de trabajo de la fuente de trabajo.
+                                <br/><br/>
+                                <strong>DÉCIMA QUINTA.</strong> - Las partes convienen en que lo no previsto en el presente contrato se sujetará a las disposiciones de la Ley Federal del Trabajo o Leyes Complementarias y en el Reglamento Interior de Trabajo.
+                                <br/><br/>
+                                <strong>DÉCIMA SEXTA.</strong> - Para todo lo relacionado con la ejecución y cumplimiento de las cláusulas del presente contrato, las partes que lo celebran se someten en forma expresa a la jurisdicción y competencia de los tribunales de la Ciudad de <span t-field="o.company_id.city"/>, <span t-field="o.company_id.state_id.name"/>, que por razón de la materia resulten competentes; renunciando expresamente a cualquier otro fuero que pudiere corresponderles por razón de sus domicilios presentes o futuros, o por cualquier otra razón.
+                                <br/><br/>
+                                LEÍDO que fue en voz alta el contenido del presente contrato a los que en él intervienen, bien enterados de su alcance y contenido, se manifestaron conformes con el mismo y lo ratifican, en la ciudad de <span t-field="o.company_id.city"/>, Estado de <span t-field="o.company_id.state_id.name"/> al <t t-esc="o.date_start.strftime('%d') if o.date_start else ''"/> de <t t-esc="mes_espanol"/> de <t t-esc="o.date_start.strftime('%Y') if o.date_start else ''"/>.
+                            </p>                            
                             <br/><br/><br/>
-                            
                             <!-- Área de firmas -->
-                            <div style="width: 100%; text-align: center; margin-top: 40px;">
-                                <table style="width: 100%; margin: 0 auto;">
-                                    <tr>
-                                        <td style="width: 45%; text-align: center; vertical-align: top;">
-                                            <p><strong>"EL PATRÓN"</strong></p>
-                                            <br/><br/><br/>
-                                            <div style="border-bottom: 1px solid #000; width: 80%; margin: 0 auto;"></div>
-                                            <p><span t-field="representante.representante_id.name"/></p>
-                                            <p>Representante Legal</p>
-                                        </td>
-                                        <td style="width: 10%;"></td>
-                                        <td style="width: 45%; text-align: center; vertical-align: top;">
-                                            <p><strong>"EL TRABAJADOR"</strong></p>
-                                            <br/><br/><br/>
-                                            <div style="border-bottom: 1px solid #000; width: 80%; margin: 0 auto;"></div>
-                                            <p><span t-field="o.employee_id.name"/></p>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
+                            <table style="width: 100%; border: none; border-collapse: collapse;">
+                                <tr>
+                                    <td style="width: 45%; text-align: center; border: none; vertical-align: top;">
+                                        <p><strong>"EL PATRÓN"</strong></p>
+                                        <br/><br/><br/>
+                                        <p>___________________________________</p>
+                                        <p><span t-field="representante.representante_id.name"/></p>
+                                    </td>
+                                    <td style="width: 10%; border: none;"></td>
+                                    <td style="width: 45%; text-align: center; border: none; vertical-align: top;">
+                                        <p><strong>"EL TRABAJADOR"</strong></p>
+                                        <br/><br/><br/>
+                                        <p>___________________________________</p>
+                                        <p><span t-field="o.employee_id.name"/></p>
+                                    </td>
+                                </tr>
+                            </table>
                             
                         </div>
                     </t>

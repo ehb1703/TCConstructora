@@ -30,6 +30,11 @@ class hrContractInherit(models.Model):
 
     beneficiario_ids = fields.One2many('hr.contract.beneficiario', 'contract_id', string='Beneficiarios')
     total_porcentaje = fields.Integer(string='Total', compute='_compute_total_porcentaje', store=True)
+    contract_type_name = fields.Char(string='Tipo de contrato nombre', related='contract_type_id.name', store=False)
+    project_id = fields.Many2one('project.project', string='Obra')
+    l10n_mx_schedule_pay_temp = fields.Selection(selection=[('daily', 'Diario'), ('weekly', 'Semanal'), ('10_days', '10 Dias'), ('14_days', '14 Dias'), 
+        ('bi_weekly', 'Quincenal'), ('monthly', 'Mensual'), ('bi_monthly', 'Bimestral'),], 
+        compute='_compute_l10n_mx_schedule_pay', store=True, readonly=False, required=True, string='Pago', default='weekly', index=True)
 
     @api.depends('beneficiario_ids', 'beneficiario_ids.porcentaje')
     def _compute_total_porcentaje(self):
@@ -48,3 +53,7 @@ class hrContractInherit(models.Model):
             return self.env.ref('hr_extra.action_report_hrcontract_obra').report_action(self)
         else:
             return self.env.ref('hr_extra.action_report_hr_contract').report_action(self)
+
+    def action_report_convenio(self):
+        # Genera el convenio de confidencialidad
+        return self.env.ref('hr_extra.action_report_convenio_confidencialidad').report_action(self)

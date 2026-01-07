@@ -22,4 +22,15 @@
         <field name="binding_model_id" ref="model_hr_contract"/>
         <field name="binding_type">report</field>
     </record>
+
+    <record id="action_report_convenio_confidencialidad" model="ir.actions.report">
+        <field name="name">Convenio de Confidencialidad</field>
+        <field name="model">hr.contract</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hr_extra.report_convenio_confidencialidad</field>
+        <field name="report_file">hr_extra.report_convenio_confidencialidad</field>
+        <field name="print_report_name">'Convenio Confidencialidad - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_hr_contract"/>
+        <field name="binding_type">report</field>
+    </record>
 </odoo>

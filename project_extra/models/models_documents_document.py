@@ -97,7 +97,7 @@ class DocumentsDocument(models.Model):
             documento.sudo().write({'res_model': 'crm.lead', 'res_id': lead.id,})
             tipo_carpeta = folder.name
             lead.message_post(
-                body=_("📎 Nuevo documento agregado en <b>%s</b>: %s") % (tipo_carpeta, documento.name),
+                body=_("📎 Nuevo documento agregado en %s: %s") % (tipo_carpeta, documento.name),
                 message_type='notification',
                 subtype_xmlid='mail.mt_note')
             return True

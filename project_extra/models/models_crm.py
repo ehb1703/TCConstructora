@@ -1078,7 +1078,7 @@ class CrmLead(models.Model):
             if not record.doctoconcept_id:
                 raise ValidationError('Falta agregar el tipo de archivo.')
 
-            for x in record.doctobasicos_id:
+            for x in record.doctoconcept_id:
                 inicio = x.inicio_datos
                 for y in x.configdoc_ids:
                     if y.no_columna != '*':
@@ -1102,52 +1102,29 @@ class CrmLead(models.Model):
             column = sheet.max_column
             registros = []
             partidas = []
-            cargar = False
+            cargar = True
             partida = False
+            contador = 1
             for row in sheet.iter_rows(values_only=True):
-                col1 = str(row[0]).strip()
-                col2 = str(row[1]).strip()
-                col3 = str(row[2]).strip()
-                col4 = str(row[3]).strip()
-                col5 = str(row[4]).strip()
-                col6 = str(row[5]).strip()
-                col7 = str(row[6]).strip()
-                if column > 7:
-                    col8 = str(row[7]).strip()
-                    if col8 == 'None':
-                        col8 = ''
-                else:
-                    col8 = ''
-                if col1 == 'None':
-                    col1 = ''
-                if col2 == 'None':
-                    col2 = ''
-                if col3 == 'None':
-                    col3 = ''
-                if col4 == 'None':
-                    col4 = ''
-                if col5 == 'None':
-                    col5 = ''
-                if col6 == 'None':
-                    col6 = ''
-                if col7 == 'None':
-                    col7 = ''
+                if contador < inicio:
+                    contador += 1
+                    continue
 
-                if col1.upper() == 'CLAVE':
-                    cargar = True
-                    partida = False
-
-                if col2.upper() == 'RESUMEN DE PARTIDAS':
-                    cargar = False
-                    partida = True
+                if row[desc] != None:
+                    if row[desc].upper() == 'RESUMEN DE PARTIDAS':
+                        cargar = False
+                        partida = True
 
                 if cargar:
-                    registro = {'col1': col1, 'col2': col2, 'col3': col3, 'col4': col4, 'col5': col5, 'col6': col6, 'col7': col7, 'col8': col8}
-                    registros.append((0, 0, registro))
+                    if row[cod] == row[desc] == row[uni] == row[prec] == row[qty] == row[imp] == None:
+                        _logger.warning('No se guarda la información')
+                    else:
+                        registro = {'col1': row[cod], 'col2': row[desc], 'col3': row[uni], 'col4': row[qty], 'col5': row[prec], 'col6': row[imp]}
+                        registros.append((0, 0, registro))
 
                 if partida:
-                    if col1 != '' and col2 != '':
-                        registro = {'col1': col1, 'col2': col2}
+                    if row[cod] != None:
+                        registro = {'col1': row[cod], 'col2': row[desc]}
                         partidas.append((0, 0, registro))
 
             record.write({'concept_ids': registros, 'budget_ids': partidas})
@@ -1166,45 +1143,34 @@ class CrmLead(models.Model):
         if count != 0:
             raise UserError('Las partidas no han sido cargadas, favor de realizar la carga')
 
-        self.env.cr.execute('''SELECT ID min_id, (case when UPPER(col3) = 'UNIDAD' then 'col3' else 'col4' end) unidad,
-                (case when UPPER(col4) = 'CANTIDAD' then 'col4' else 'col5' end) cantidad, 
-                (case when SPLIT_PART(UPPER(col5), ' ', 1) = 'PRECIO' then 'col5' else 'col6' end) precio 
-            FROM crm_concept_line ci WHERE ci.id = (select MIN(ID) min_id from crm_concept_line ci WHERE ci.lead_id = ''' + str(self.id) + ')')
-        min_id = self.env.cr.dictfetchall()
-
-        unidad = min_id[0]['unidad']
-        cantidad = min_id[0]['cantidad']
-        precio = min_id[0]['precio']
-
         iva = self.env['account.tax'].search([('amount','=',16), ('type_tax_use','=','sale')])
         partida = 0
         for rec in self.concept_ids.filtered(lambda u: not u.concept_ex):
-            if rec.id != min_id[0]['min_id']:
-                if not rec.concept_ex:
-                    partida_id = self.env['crm.budget.line'].search([('lead_id','=',rec.lead_id.id), ('col1','=',rec.col1)])
-                    if partida_id:
-                        partida = partida_id.budget_id.id
+            if not rec.concept_ex:
+                partida_id = self.env['crm.budget.line'].search([('lead_id','=',rec.lead_id.id), ('col1','=',rec.col1)])
+                if partida_id:
+                    partida = partida_id.budget_id.id
 
-                    if partida != 0 and rec.col1 != '' and rec.col1 != partida_id.budget_id.code:
-                        concept_id = self.env['product.template'].search([('budget_id','=',partida), ('default_code','=',rec.col1)])
-                        if concept_id:
-                            if concept_id.property_account_income_id:
-                                rec.write({'concept_ex': True, 'concept_id': concept_id.id, 'account_ex': True})
-                            else:
-                                rec.write({'concept_ex': True, 'concept_id': concept_id.id})
+                if partida != 0 and rec.col1 != '' and rec.col1 != partida_id.budget_id.code:
+                    concept_id = self.env['product.template'].search([('budget_id','=',partida), ('default_code','=',rec.col1)])
+                    if concept_id:
+                        if concept_id.property_account_income_id:
+                            rec.write({'concept_ex': True, 'concept_id': concept_id.id, 'account_ex': True})
                         else:
-                            statement = ('SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat, REPLACE(' + cantidad + ", ',', '') qty, (CASE WHEN " + 
-                                    precio + " = '' THEN '0.0' ELSE REPLACE(" + precio + """, ',', '') END)::float importe 
-                                FROM crm_concept_line cil JOIN uom_uom uu ON lower(cil.""" + unidad + 
-                                ") = lower(uu.name->>'en_US') JOIN product_category pc ON pc.NAME = 'All' WHERE cil.id = " + str(rec.id))
-                            self.env.cr.execute(statement)
-                            info = self.env.cr.dictfetchall()
-                            if info:
-                                insumo = self.env['product.template'].create({'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'], 'uom_po_id': info[0]['uom'], 
-                                    'type': 'service', 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': False, 'sale_ok': True, 
-                                    'taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'list_price': info[0]['importe'], 
-                                    'service_tracking': 'task_in_project', 'active': True, 'budget_id': partida})
-                                rec.write({'concept_ex': True, 'concept_id': insumo.id})
+                            rec.write({'concept_ex': True, 'concept_id': concept_id.id})
+                    else:
+                        statement = ('''SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat, REPLACE(cil.col4, ',', '') qty, 
+                                (CASE WHEN cil.col5 = '' THEN '0.0' ELSE REPLACE(cil.col5, ',', '') END)::float importe 
+                            FROM crm_concept_line cil JOIN uom_uom uu ON lower(cil.col3) = lower(uu.name->>'en_US') JOIN product_category pc ON pc.NAME = 'All' 
+                            WHERE cil.id = ''' + str(rec.id))
+                        self.env.cr.execute(statement)
+                        info = self.env.cr.dictfetchall()
+                        if info:
+                            insumo = self.env['product.template'].create({'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'], 'uom_po_id': info[0]['uom'], 
+                                'type': 'service', 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': False, 'sale_ok': True, 
+                                'taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'list_price': info[0]['importe'], 
+                                'service_tracking': 'task_in_project', 'active': True, 'budget_id': partida})
+                            rec.write({'concept_ex': True, 'concept_id': insumo.id})
 
         for rec in self.concept_ids.filtered(lambda u: u.concept_ex):
             if rec.concept_id.property_account_income_id:
@@ -1556,14 +1522,13 @@ class CrmLead(models.Model):
         for rec in self.concept_ids.filtered(lambda u: u.concept_ex):
             taxes = rec.concept_id.taxes_id._filter_taxes_by_company(self.company_id)
             product_id = self.env['product.product'].search([('product_tmpl_id','=',rec.concept_id.id)])
-            self.env.cr.execute('SELECT REPLACE(' + cantidad + ", ',', '')::float qty FROM crm_concept_line cil WHERE cil.id = " + str(rec.id))
-            statement = self.env.cr.dictfetchall()
             name = '[' + product_id.default_code + '] ' + product_id.name 
 
             lines = {'currency_id': product_id.currency_id.id, 'company_id': self.company_id.id, 'order_partner_id': self.partner_id.id, 
                 'salesman_id': self.env.user.id, 'product_id': product_id.id, 'product_uom': product_id.uom_po_id.id, 'qty_delivered_method': 'timesheet',
-                'invoice_status': 'to invoice', 'name': name, 'product_uom_qty': statement[0]['qty'], 'price_unit': 0, 'tax_id': fpos.map_tax(taxes), 
-                'state': 'sent', 'is_service': True, 'remaining_hours': statement[0]['qty']}
+                'invoice_status': 'to invoice', 'name': name, 'product_uom_qty': float(rec.col4.replace(',', '')), 
+                'price_unit': float(rec.col5.replace(',', '')), 'tax_id': fpos.map_tax(taxes), 'state': 'sent', 'is_service': True, 
+                'remaining_hours': float(rec.col4.replace(',', ''))}
             order_lines.append((0, 0, lines))
 
         values = {'company_id': self.company_id.id, 'partner_id': self.partner_id.id, 'partner_invoice_id': self.partner_id.id, 
@@ -1638,12 +1603,12 @@ class crmConceptLine(models.Model):
     _description = 'Conceptos de trabajo'
     
     lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportunidad', readonly=True)
-    col1 = fields.Char(string='Columna 1')
-    col2 = fields.Char(string='Columna 2')
-    col3 = fields.Char(string='Columna 3')
-    col4 = fields.Char(string='Columna 4')
-    col5 = fields.Char(string='Columna 5')
-    col6 = fields.Char(string='Columna 6')
+    col1 = fields.Char(string='Código')
+    col2 = fields.Char(string='Descripción')
+    col3 = fields.Char(string='UDM')
+    col4 = fields.Char(string='Cantidad')
+    col5 = fields.Char(string='Precio Unitario')
+    col6 = fields.Char(string='Importe')
     col7 = fields.Char(string='Columna 7')
     col8 = fields.Char(string='Columna 8')
     concept_ex = fields.Boolean(string='Concepto cargado', default=False)

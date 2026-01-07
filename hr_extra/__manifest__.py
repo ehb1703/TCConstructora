@@ -11,7 +11,8 @@
             - Beneficiarios en contratos de empleados
             - Asignación de obras a empleados
         Reportería
-	       - Reportes de contratos (Temporal, Obra Determinada)
+           - Reportes de contratos (Temporal, Obra Determinada)
+           - Convenio de Confidencialidad
     """,
     'installable': True,
     'application': True,
@@ -22,6 +23,7 @@
         'views/hr_employee_views.xml',
         'report/hr_contract_report.xml',
         'report/report_hr_contract.xml',
+        'report/report_convenio_confidencialidad.xml',
     ],
     'license': 'OEEL-1',
 }

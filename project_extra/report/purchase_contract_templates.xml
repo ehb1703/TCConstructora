@@ -7,6 +7,9 @@
                     <div class="page">                        
                         <t t-set="representante" t-value="o.env['company.legal.representative'].search([('company_id','=',o.company_id.id)], limit=1)"/>
                         <t t-set="mes" t-value="o.signature_date.strftime('%m')"/>
+                        <t t-set="meses" t-value="{'January': 'Enero', 'February': 'Febrero', 'March': 'Marzo', 'April': 'Abril', 'May': 'Mayo', 'June': 'Junio', 'July': 'Julio', 'August': 'Agosto', 'September': 'Septiembre', 'October': 'Octubre', 'November': 'Noviembre', 'December': 'Diciembre'}"/>
+                        <t t-set="mes_espanol" t-value="meses.get(mes, mes)"/>
+
                         <div width="100%" style="text-align: justify;">
                             <p><strong>CONTRATO DE OBRA A PRECIO UNITARIO</strong> QUE CELEBRAN, POR UNA PARTE LA EMPRESA <strong><span t-field="o.company_id.name"/></strong> REPRESENTADA EN ESTE ACTO POR EL <strong><span t-field="representante.representante_id.title.name"/> <span t-field="representante.representante_id.name"/></strong> A QUIEN EN LOS SUCESIVO SE LE DENOMINARÁ <strong>“EL CONTRATANTE”</strong> Y POR LA OTRA, <strong><span t-field="o.vendor_id.name"/></strong>, REPRESENTADA EN ESTE ACTO POR EL <strong><span t-field="o.vendor_id.responsable_id.function"/> <span t-field="o.vendor_id.responsable_id.title.name"/> <span t-field="o.vendor_id.responsable_id.name"/></strong>, A QUIEN EN LO SUCESIVO SE LE DENOMINARÁ “EL CONTRATISTA”, Y QUIENES SE SUJETAN AL TENOR DE LAS SIGUIENTES DECLARACIONES Y CLÁUSULAS.
                             <br/><br/>
@@ -70,20 +73,7 @@
                             <strong>DÉCIMA TERCERA – DEL PRINCIPIO DE CONSERVACIÓN DE LOS CONTRATOS.</strong> En observancia al principio de conservación de los contratos, las partes están de acuerdo en que, si llegare a declararse judicialmente la nulidad de alguna de las cláusulas del presente contrato, las demás seguirán surtiendo sus plenos efectos jurídicos. 
                             <br/><br/>
                             <strong>DÉCIMA CUARTA – AUSENCIA DE DOLO.</strong> Ambas partes manifiestan que en la elaboración del presente contrato no existe dolo o mala fe ni ningún otro vicio del consentimiento que pudiera invalidarlo en parte o en su totalidad.
-                            Enteradas ambas partes del contenido y alcance de todas y cada una de las cláusulas, así como de los derechos que se adquieren y de las obligaciones que contraen, lo firman de conformidad por duplicado, en la ciudad de Guadalajara, Jalisco, el día <strong><span t-esc="o.signature_date.strftime('%d')"/> de 
-                                <t t-if="mes == '01'">Enero</t>
-                                <t t-if="mes == '02'">Febrero</t>
-                                <t t-if="mes == '03'">Marzo</t>
-                                <t t-if="mes == '04'">Abril</t>
-                                <t t-if="mes == '05'">Mayo</t>
-                                <t t-if="mes == '06'">Junio</t>
-                                <t t-if="mes == '07'">Julio</t>
-                                <t t-if="mes == '08'">Agosto</t>
-                                <t t-if="mes == '09'">Septiembre</t>
-                                <t t-if="mes == '10'">Octubre</t>
-                                <t t-if="mes == '11'">Noviembre</t>
-                                <t t-if="mes == '12'">Diciembre</t>
-                             del año <span t-esc="o.signature_date.strftime('%Y')"/>.</strong></p>
+                            Enteradas ambas partes del contenido y alcance de todas y cada una de las cláusulas, así como de los derechos que se adquieren y de las obligaciones que contraen, lo firman de conformidad por duplicado, en la ciudad de Guadalajara, Jalisco, el día <strong><span t-esc="o.signature_date.strftime('%d')"/> de <t t-esc="mes_espanol"/> del año <span t-esc="o.signature_date.strftime('%Y')"/>.</strong></p>
                             <br/><br/>
                         </div>
                         <table style="width: 80%; margin: 40px auto 0 auto; border: none; border-collapse: collapse; border-spacing: 0;">

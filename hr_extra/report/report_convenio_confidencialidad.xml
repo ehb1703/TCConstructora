@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Template para Convenio de Confidencialidad -->
+        <template id="report_convenio_confidencialidad">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                        <div class="page" style="font-family: Arial, sans-serif; font-size: 11pt; text-align: justify;">
+                            
+                            <!-- Obtener representante legal -->
+                            <t t-set="representante" t-value="o.env['company.legal.representative'].search([('company_id','=',o.company_id.id)], limit=1)"/>
+                            
+                            <!-- Diccionario de meses en español -->
+                            <t t-set="meses" t-value="{'January': 'Enero', 'February': 'Febrero', 'March': 'Marzo', 'April': 'Abril', 'May': 'Mayo', 'June': 'Junio', 'July': 'Julio', 'August': 'Agosto', 'September': 'Septiembre', 'October': 'Octubre', 'November': 'Noviembre', 'December': 'Diciembre'}"/>
+                            <t t-set="mes_ingles" t-value="o.date_start.strftime('%B') if o.date_start else ''"/>
+                            <t t-set="mes_espanol" t-value="meses.get(mes_ingles, mes_ingles)"/>
+                            
+                            <p style="text-align: center;"><strong>CONTRATO DE CONFIDENCIALIDAD</strong></p>
+                            
+                            <p>
+                                <strong>CONTRATO DE CONFIDENCIALIDAD</strong> QUE CELEBRAN POR UNA PARTE 
+                                <strong><span t-field="o.company_id.name"/></strong>, REPRESENTADA EN ESTE ACTO POR 
+                                <strong><span t-field="representante.representante_id.name"/></strong>, Y POR LA OTRA 
+                                <strong><span t-field="o.employee_id.name"/></strong>, EN ADELANTE PUDIENDO SER DENOMINADOS 
+                                INDISTINTAMENTE SEGÚN CORRESPONDA COMO EL "TITULAR" O EL "RECEPTOR", 
+                                AL TENOR DE LAS SIGUIENTES DECLARACIONES Y CLÁUSULAS:
+                            </p>
+                            
+                            <p style="text-align: center;"><strong>DECLARACIONES</strong></p>
+                            
+                            <p><strong>Declara <span t-field="o.company_id.name"/>:</strong></p>
+                            
+                            <p>
+                                a. Que es una empresa de sociedad anónima de capital variable, en uso y goce de 
+                                sus facultades y capaz de obligarse y ser obligado.
+                            </p>
+                            
+                            <p>
+                                b. Que tiene su domicilio ubicado en <span t-field="o.company_id.street"/> 
+                                <span t-field="o.company_id.street2"/>, Col. <span t-field="o.company_id.city"/>, 
+                                <span t-field="o.company_id.state_id.name"/>, México C.P. <span t-field="o.company_id.zip"/> 
+                                y se encuentra dado de alta en Hacienda por lo que su RFC es <span t-field="o.company_id.vat"/>.
+                            </p>
+                            
+                            <p>
+                                c. Que le ha solicitado a <strong><span t-field="o.employee_id.name"/></strong> su 
+                                participación en las actividades laborales de la empresa, lo que en lo sucesivo 
+                                se denominará como el "TRABAJO".
+                            </p>
+                            
+                            <p>
+                                d. Que cuenta con la capacidad y conocimiento para realizar las actividades que 
+                                se generen por el TRABAJO.
+                            </p>
+                            
+                            <p>
+                                e. Que por dicho TRABAJO, será necesario el intercambiar información, la cual 
+                                desde este momento se cataloga como confidencial.
+                            </p>
+                            
+                            <p><strong>Declara <span t-field="o.employee_id.name"/>:</strong></p>
+                            
+                            <p>
+                                a. Que tiene facultades para celebrar este contrato y que a la fecha no le han sido revocadas.
+                            </p>
+                            
+                            <p>
+                                b. Que es su deseo tomar el TRABAJO y que cuenta con la capacidad económica, física, 
+                                humana, laboral y tiempo para realizar las actividades encomendadas.
+                            </p>
+                            
+                            <p>
+                                c. Reconociendo que tendrá acceso a información clasificada como confidencial y que 
+                                por ello es que está de acuerdo en la firma de este contrato.
+                            </p>
+                            
+                            <p style="text-align: center;"><strong>GLOSARIO</strong></p>
+                            
+                            <p>
+                                Están de acuerdo las partes en que para el mejor entendimiento e interpretación de 
+                                este contrato, es su deseo delimitar los alcances de los significados del objeto de 
+                                este contrato por ello es que acuerdan en definir:
+                            </p>
+                            
+                            <p>
+                                <strong>Titular.-</strong> Es cualquiera de las partes que firma este contrato, que sea dueña de la 
+                                información que proporciona a la otra parte y que es necesaria para llevar el TRABAJO.
+                            </p>
+                            
+                            <p>
+                                <strong>Receptor.-</strong> Es cualquiera de las partes que firma este contrato, y que recibe o se 
+                                hace de su conocimiento información de la otra parte y que es necesaria para llevar el TRABAJO.
+                            </p>
+                            
+                            <p>
+                                <strong>Información Confidencial.-</strong> Para efectos de este contrato, se entiende como todos los 
+                                asuntos de naturaleza técnica como son procesos o mecanismos de secreto industrial, 
+                                conocimientos prácticos (know-how), datos, fórmulas, inventos (sean o no patentables o 
+                                protegidos por derechos de autor), especificaciones y características de productos o 
+                                servicios planeados o en proceso de desarrollo, y asuntos, métodos y resultados de 
+                                investigación, temas de naturaleza de negocios como puede ser información acerca de 
+                                costos, ganancias, selección de precios, políticas, mercados, ventas, proveedores, clientes, 
+                                productos, inventarios, volúmenes de mercancías, tipos de mercancías, planes de producto 
+                                y servicio, conceptos de negocio, planes o estrategias, temas de recursos humanos como 
+                                son las políticas y prácticas de contratación, empleados, incluyendo nombres individuales, 
+                                direcciones, y números telefónicos, sueldos y prestaciones, información propia o 
+                                confidencial con respecto a un tercero el cual ha divulgado tal información al Titular o sus 
+                                respectivos agentes, y otra información de naturaleza similar que no sea generalmente 
+                                revelada al público por la Propietaria, la cual puede ser proporcionada al Receptor o que de 
+                                otra forma ha llegado a la Receptora.
+                            </p>
+                            
+                            <p>La Información Confidencial no incluirá información que:</p>
+                            
+                            <p>
+                                1. Sea desarrollada independientemente, sin basarse en la Información Confidencial que 
+                                sea recibida libre de restricción de cualquier otra fuente que tenga derecho o licencia 
+                                para divulgar esa Información confidencial.
+                            </p>
+                            
+                            <p>
+                                2. Posteriormente se convierta en información de dominio público, sin incumplimiento de 
+                                este Contrato por el RECEPTOR.
+                            </p>
+                            
+                            <p>
+                                3. Al momento de haberse divulgado al RECEPTOR, era conocida por ésta sin existir 
+                                restricción de uso, según sea comprobado con documentación en poder de dicha parte.
+                            </p>
+                            
+                            <p>
+                                4. Que el TITULAR acuerde por escrito que la Información Confidencial está libre de restricciones.
+                            </p>
+                            
+                            <p>
+                                5. El RECEPTOR no impedirá la divulgación de la Información Confidencial si (i) dicha 
+                                divulgación es hecha conforme a un requerimiento judicial o de alguna entidad 
+                                gubernamental que sea competente conforme a este Contrato o (ii) si dicha divulgación 
+                                es requerida por ley, siempre y cuando el RECEPTOR hubiere notificado por escrito al 
+                                TITULAR de dicho requerimiento, previamente a cualquier divulgación de la Información Confidencial.
+                            </p>
+                            
+                            <p style="text-align: center;"><strong>CLÁUSULAS</strong></p>
+                            
+                            <p>
+                                <strong>PRIMERA.-</strong> El TITULAR, cuando sea necesario, proporcionará al RECEPTOR la 
+                                Información Confidencial que requiera para que pueda desempeñar el TRABAJO, sin 
+                                importar si el TITULAR no identifica la información otorgada al RECEPTOR con el carácter 
+                                de confidencial, se entenderá que toda la información que le sea proporcionada sin importar 
+                                la forma ya sea oral, escrita en medios magnéticos u ópticos o en cualquier otra, siempre 
+                                deberá de identificarse con el carácter de "Confidencial".
+                            </p>
+                            
+                            <p>
+                                El RECEPTOR se obliga a usar la Información Confidencial, única y exclusivamente para 
+                                el propósito o fin para el cual le fue proporcionada por el TITULAR.
+                            </p>
+                            
+                            <p>
+                                Por lo que el RECEPTOR no podrá usar la información para generar su propio negocio y 
+                                mucho menos dejar de lado al TITULAR, en caso de incumplimiento el RECEPTOR 
+                                reconoce y acepta a pagar al TITULAR una indemnización por daños y perjuicios.
+                            </p>
+                            
+                            <p>
+                                <strong>SEGUNDA.-</strong> El RECEPTOR a partir de la fecha de celebración del presente contrato, se 
+                                obliga a usar la información confidencial única y exclusivamente para el propósito o fin para 
+                                el cual le fue proporcionada por el TITULAR.
+                            </p>
+                            
+                            <p>
+                                Además se obliga a que la información que le sea proporcionada, no la podrá enajenar, 
+                                arrendar, prestar, grabar, negociar, revelar, publicar, enseñar, darla a conocer, transmitirla 
+                                o de alguna otra forma divulgarla o proporcionarla a cualquier persona física o moral, 
+                                nacional o extranjera, pública o privada, por cualquier medio, aun cuando se trate de incluirla 
+                                o entregarla en otros documentos como estudios, reportes, propuestas u ofertas, ni en todo 
+                                ni en parte, por ningún motivo a terceras personas físicas o morales, nacionales o 
+                                extranjeras, públicas o privadas, presentes o futuras, que no hayan sido autorizadas 
+                                previamente y por escrito por el TITULAR conforme a lo previsto en la cláusula tercera.
+                            </p>
+                            
+                            <p>
+                                Toda información que se proporcione y se genere a partir del trabajo de EL RECEPTOR en 
+                                el TRABAJO, ya sean informes, programas, estudios, datos estadísticos, entre otros, hasta 
+                                el mismo TRABAJO, será propiedad única del TITULAR.
+                            </p>
+                            
+                            <p>
+                                Asimismo, el RECEPTOR conviene expresamente en que no podrá aprovechar o utilizar, 
+                                en ningún caso, la información confidencial para sí o para fines propios.
+                            </p>
+                            
+                            <p>
+                                <strong>TERCERA.-</strong> El TITULAR debe autorizar por escrito pudiendo ser vía correo electrónico y 
+                                previamente al RECEPTOR en caso de que sea deseo del TITULAR, o necesidad del 
+                                RECEPTOR divulgar todo o parte de la información confidencial a un tercero.
+                            </p>
+                            
+                            <p>El TITULAR podrá negar la referida autorización, pero deberá de expresar la causa.</p>
+                            
+                            <p>
+                                Si el TITULAR otorga la autorización escrita firmará con el tercero para tal efecto, un 
+                                contrato de confidencialidad previo a que el RECEPTOR le proporcione, en todo o en parte, 
+                                cualquier Información Confidencial al tercero.
+                            </p>
+                            
+                            <p>
+                                <strong>CUARTA.-</strong> El RECEPTOR podrá transmitir la Información Confidencial al personal que 
+                                labora para él, en lo futuro sus "Representantes", que tengan la necesidad de conocer la 
+                                Información Confidencial en relación con los vínculos entre las partes de este Contrato, 
+                                quienes deberán ser informados del contenido del presente Contrato.
+                            </p>
+                            
+                            <p>
+                                El RECEPTOR conviene en que responderá solidariamente por cualquier violación a la 
+                                obligación de confidencialidad pactada en el presente contrato que fuera incurrida por sus 
+                                Representantes o por cualquier otra persona vinculada contractualmente con el RECEPTOR.
+                            </p>
+                            
+                            <p>
+                                <strong>QUINTA.-</strong> El Receptor responderá por los daños que él o sus Representantes le causen 
+                                al TITULAR, en caso de negligencia o culpa, en el manejo inapropiado de la Información 
+                                Confidencial o incumplimiento de las obligaciones establecidas en virtud del presente Contrato.
+                            </p>
+                            
+                            <p>
+                                <strong>SEXTA.-</strong> La vigencia del presente contrato será de 1 año contado a partir de la fecha de 
+                                firma del mismo.
+                            </p>
+                            
+                            <p>
+                                Independientemente de la vigencia del contrato, El RECEPTOR asume la obligación de no 
+                                revelar la información confidencial dentro del plazo de 3 (tres) años contados a partir de la 
+                                conclusión de la vigencia de este Contrato.
+                            </p>
+                            
+                            <p>
+                                <strong>SÉPTIMA.-</strong> El TITULAR podrá exigir en cualquier momento que la Información Confidencial 
+                                y todas las copias que se hayan hecho de la misma, le sean devueltas en los términos y 
+                                condiciones que se determinen en la solicitud formal de devolución o solicitar su destrucción 
+                                por medio de una solicitud formal de destrucción.
+                            </p>
+                            
+                            <p>
+                                El RECEPTOR deberá devolver o destruir, dentro de los 30 días siguientes a la fecha en 
+                                que reciba el comunicado, los originales, copias y reproducciones de la información 
+                                confidencial que tenga en su posesión, así como la que esté en posesión de personas a las 
+                                cuales la información confidencial les haya sido divulgada por órdenes del TITULAR.
+                            </p>
+                            
+                            <p>
+                                En caso de destrucción, se deberá de documentar por parte del RECEPTOR, quien le 
+                                remitirá al TITULAR dicha documentación.
+                            </p>
+                            
+                            <p>
+                                <strong>OCTAVA.-</strong> Las partes convienen en no celebrar con ninguna persona física o moral, nacional 
+                                o extranjera, pública o privada, presente o futura, cualquier clase de acuerdo, convenio, 
+                                contrato, negociación o asumir obligaciones que estén en conflicto con el presente contrato 
+                                o que deriven o impliquen el incumplimiento del mismo.
+                            </p>
+                            
+                            <p>
+                                <strong>NOVENA.-</strong> En caso de que una o más de las disposiciones contenidas en este contrato 
+                                sea, por cualquier razón, inválida, ilegal o no pueda ejercitarse en cualquier aspecto, tal 
+                                invalidez o ilegalidad no afectará cualquier otra disposición aquí prevista y este contrato 
+                                será interpretado como si tal disposición inválida o ilegal nunca hubiera sido incluida.
+                            </p>
+                            
+                            <p>
+                                <strong>DÉCIMA.-</strong> El presente contrato solo puede ser modificado mediante convenio por escrito 
+                                suscrito por todas las partes contratantes.
+                            </p>
+                            
+                            <p>
+                                <strong>DÉCIMA PRIMERA.-</strong> Todo aviso o notificación que deban hacerse las partes respecto del 
+                                presente contrato se realizará por escrito a los siguientes domicilios:
+                            </p>
+                            
+                            <p>
+                                <strong><span t-field="o.company_id.name"/>:</strong> <span t-field="o.company_id.street"/> 
+                                <span t-field="o.company_id.street2"/>, <span t-field="o.company_id.city"/>, 
+                                <span t-field="o.company_id.state_id.name"/>, México C.P. <span t-field="o.company_id.zip"/>
+                            </p>
+                            
+                            <p>
+                                <strong><span t-field="o.employee_id.name"/>:</strong> 
+                                <span t-field="o.employee_id.address_id.street"/> 
+                                <span t-field="o.employee_id.address_id.street2"/>, 
+                                <span t-field="o.employee_id.address_id.city"/>, 
+                                <span t-field="o.employee_id.address_id.state_id.name"/>, 
+                                C.P. <span t-field="o.employee_id.address_id.zip"/>
+                            </p>
+                            
+                            <p>
+                                Asimismo, si por cualquier causa alguna de las partes contratantes cambia su domicilio, la 
+                                parte que sufra el cambio deberá notificarlo con una anticipación de 5 (cinco) días naturales 
+                                a la fecha en que ocurra el cambio, de lo contrario las notificaciones hechas al anterior 
+                                domicilio surtirán todos sus efectos.
+                            </p>
+                            
+                            <p>
+                                <strong>DÉCIMA SEGUNDA.-</strong> Para la interpretación y cumplimiento de este contrato, así como para 
+                                la resolución de cualquier controversia relacionada con el mismo las partes, se someterán 
+                                a la jurisdicción de los tribunales de la ciudad de <span t-field="o.company_id.city"/>, 
+                                <span t-field="o.company_id.state_id.name"/>, renunciando expresamente a cualquier otro fuero 
+                                que por cualquier causa pudiere corresponderles.
+                            </p>
+                            
+                            <p>
+                                <strong>DÉCIMA TERCERA.-</strong> Las partes reconocen y aceptan que las presentes declaraciones y 
+                                cláusulas contenidas en este Contrato dejan sin efecto cualquier acuerdo o negociación 
+                                previa entre las partes, prevaleciendo lo dispuesto en este instrumento respecto de 
+                                cualquier otro acuerdo anterior.
+                            </p>
+                            
+                            <br/>
+                            
+                            <p>
+                                Leído que fue en todas sus partes el contenido del presente contrato y conociendo las 
+                                partes contratantes el alcance de todas las declaraciones y cláusulas lo suscriben por 
+                                duplicado en la ciudad de <span t-field="o.company_id.city"/>, Estado de 
+                                <span t-field="o.company_id.state_id.name"/> al 
+                                <t t-esc="o.date_start.strftime('%d') if o.date_start else ''"/> de 
+                                <t t-esc="mes_espanol"/> de 
+                                <t t-esc="o.date_start.strftime('%Y') if o.date_start else ''"/>.
+                            </p>
+                            
+                            <br/><br/><br/>
+                            
+                            <!-- Área de firmas -->
+                            <table style="width: 100%; border: none; border-collapse: collapse;">
+                                <tr>
+                                    <td style="width: 45%; text-align: center; border: none; vertical-align: top;">
+                                        <p><strong><span t-field="o.company_id.name"/></strong></p>
+                                        <br/><br/><br/>
+                                        <p>___________________________________</p>
+                                        <p><span t-field="representante.representante_id.name"/></p>
+                                        <p>REPRESENTANTE LEGAL</p>
+                                    </td>
+                                    <td style="width: 10%; border: none;"></td>
+                                    <td style="width: 45%; text-align: center; border: none; vertical-align: top;">
+                                        <p><strong>TRABAJADOR</strong></p>
+                                        <br/><br/><br/>
+                                        <p>___________________________________</p>
+                                        <p><span t-field="o.employee_id.name"/></p>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>
