@@ -32,6 +32,15 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base_vat.view_partner_base_vat_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//sheet/div[2]/h1[1]" position="replace">
+                <field name="nombre"/>
+                <field name="apaterno" invisible="is_company" placeholder="Apellido Paterno"/>
+                <field name="amaterno" invisible="is_company" placeholder="Apellido Materno"/>
+                <h1>
+                    <field id="company" options="{'line_breaks': False}" widget="text" class="text-break" name="name" default_focus="1" placeholder="e.g. Lumber Inc" invisible="not is_company" required="type == 'contact'" readonly="1"/>
+                    <field id="individual" options="{'line_breaks': False}" widget="text" class="text-break" name="name" default_focus="1" placeholder="e.g. Brandon Freeman" invisible="is_company" required="type == 'contact'" readonly="1"/>
+                </h1>
+            </xpath>
             <xpath expr="//field[@name='function']" position="before">
                 <field name="responsable_id" invisible="not is_company" domain="[('is_company', '=', False)]"/>
             </xpath>

@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!--record id="view_load_price_unit_from" model="ir.ui.view">
+    <record id="view_load_price_unit_from" model="ir.ui.view">
         <field name="name">view.load.price.unit.from.from</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale_project.view_order_form_inherit_sale_project"/>
         <field name="arch" type="xml">
-            <xpath expr="//button[@name='action_cancel']" position="before">
-                <button name="action_load_price" type="object" string="Precios Unitarios" invisible="state not in ['sent'] or not id or locked" data-hotkey="x"/>
+            <xpath expr="//page[@name='other_information']//group[@name='sale_info']" position="inside">
+                <separator string="Información de Anticipo" colspan="2"/>
+                <field name="tiene_anticipo" readonly="1"/>
+                <field name="anticipo_porcentaje" readonly="1" invisible="not tiene_anticipo"/>
+                <field name="anticipo_importe" readonly="1" invisible="not tiene_anticipo"/>
+                <field name="factura_anticipo_generada" readonly="1" invisible="not tiene_anticipo"/>
             </xpath>
         </field>
-    </record -->
+    </record>
 </odoo>

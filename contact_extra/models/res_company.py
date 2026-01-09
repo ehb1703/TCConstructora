@@ -5,7 +5,6 @@ from odoo.exceptions import ValidationError, UserError
 
 _logger = logging.getLogger(__name__)
 
-
 class respartnerCurp(models.Model):
     _inherit = 'res.partner'
 
@@ -20,6 +19,9 @@ class respartnerCurp(models.Model):
     area_em = fields.Char(string='Zona Geográfica', tracking=True)
     soporte_ids = fields.Many2many(comodel_name='ir.attachment', string="Documentos fiscales")
     responsable_id = fields.Many2one('res.partner', string='Responsable', tracking=True)
+    apaterno = fields.Char(string='Apellido Paterno', tracking=True)
+    amaterno = fields.Char(string='Apellido Materno', tracking=True)
+    nombre = fields.Char(string='Nombre(s)', tracking=True)
 
     @api.constrains('curp')
     def _check_curp(self):
@@ -27,6 +29,23 @@ class respartnerCurp(models.Model):
             if record.curp:
                 if len(record.curp) != 18:
                     raise ValidationError(_('El CURP debe de tener 18 caracteres'))
+
+    @api.onchange('apaterno', 'amaterno', 'nombre')
+    def onchange_name(self):
+        name = ''
+        paterno = ''
+        materno = ''
+        nombre = ''
+        if not self.is_company:
+            if self.apaterno:
+                paterno = self.apaterno
+            if self.amaterno:
+                materno = self.amaterno
+            if self.nombre:
+                nombre = self.nombre
+            self.name = nombre + ' ' + paterno + ' ' + materno
+        else:
+            self.name = self.nombre
                     
 
 class rescompanyContacts(models.Model):

@@ -71,7 +71,8 @@ BEGIN
             UPDATE crm_basico_line SET COMBO_ID = idcombo, COMBO_EX = True WHERE ID = y.ID;
         END LOOP;
         UPDATE crm_basico_relacion SET COMBO_ID = idcombo WHERE id = x.ID;
-    END LOOP;
+    END LOOP; 
+
     RETURN 'OK';
 END;
     $function$ ; ''')

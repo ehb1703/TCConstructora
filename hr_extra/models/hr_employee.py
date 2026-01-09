@@ -25,6 +25,11 @@ class hrEmployeeInherit(models.Model):
     director_ids = fields.Many2many('hr.employee', 'hr_employee_director_rel', 'employee_id', 'director_id', string='Director/Gerente',
         domain="[('job_id.name', 'ilike', 'Director')]")
 
+    @api.onchange('work_contact_id')
+    def onchange_name(self):
+        if self.work_contact_id:
+            self.name = self.work_contact_id.name
+
 class hrContractInherit(models.Model):
     _inherit = 'hr.contract'
 
