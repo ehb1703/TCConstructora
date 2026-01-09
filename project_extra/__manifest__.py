@@ -11,7 +11,7 @@ Personalización del modulo:
     Campos proyecto
     """,
     'category': 'Services/Project',
-    'depends': ['base', 'crm', 'sale_crm', 'sale_purchase_project', 'project', 'hr', 'documents'],
+    'depends': ['base', 'crm', 'sale_crm', 'sale_purchase_project', 'project', 'hr', 'documents', 'reports'],
     'data': [
         'data/mail_template_crm.xml',
         'data/cron_visita.xml',

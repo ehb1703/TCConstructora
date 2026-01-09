@@ -1123,7 +1123,7 @@ class CrmLead(models.Model):
                         registros.append((0, 0, registro))
 
                 if partida:
-                    if row[cod] != None:
+                    if row[cod] != None and row[desc] != None:
                         registro = {'col1': row[cod], 'col2': row[desc]}
                         partidas.append((0, 0, registro))
 
@@ -1291,9 +1291,18 @@ class CrmLead(models.Model):
     def action_generar_basicos(self):
         count = len(self.basico_ids.filtered(lambda u: not u.combo_ex))
         if count == 0:
-            raise UserError('Los basicos fueron generados correctamente, favor de continuar con la generación de las tarjetas de conceptos')
+            raise ValidationError('Los basicos fueron generados correctamente, favor de continuar con la generación de las tarjetas de conceptos')
         else:
-            self.env.cr.execute('SELECT generar_basicos(' + str(self.id)+ ', ' + str(self.env.user.id) + ')')
+            self.env.cr.execute('SELECT cbr.COL1, cbr.COL2 FROM crm_basico_line cbr WHERE cbr.LEAD_ID = ' + str(self.id) + ''' AND cbr.COMBO_EX IS FALSE 
+                AND NOT EXISTS(SELECT * FROM crm_basico_relacion cbr2 WHERE cbr.COL1 = cbr2.COL1 AND cbr.LEAD_ID = cbr2.LEAD_ID) 
+                AND NOT EXISTS(SELECT * FROM product_template pt WHERE pt.DEFAULT_CODE = cbr.COL1) GROUP BY 1, 2 ORDER BY 1''')
+            ex_basicos = self.env.cr.dictfetchall()
+            mensaje = ''
+            for x in ex_basicos:
+                mensaje += x['col1'] + ' - ' + x['col2'] + '\n'
+            if mensaje != '':
+                raise ValidationError('Faltan de cargar los siguientes insumos: %s' % mensaje)
+            self.env.cr.execute('SELECT generar_basicos(' + str(self.id) + ', ' + str(self.env.user.id) + ')')
             basicos = self.env.cr.dictfetchall()
 
     def action_cargar_combo(self):
@@ -1376,6 +1385,14 @@ class CrmLead(models.Model):
         if count == 0:
             raise UserError('Las tarjetas de conceptos fueron generados correctamente')
         else:
+            self.env.cr.execute('SELECT ccl.COL1, ccl.COL2 FROM crm_combo_line ccl WHERE ccl.LEAD_ID = ' + str(self.id) + ''' AND ccl.COMBO_EX IS FALSE 
+                AND NOT EXISTS(SELECT * FROM product_template pt WHERE pt.DEFAULT_CODE = ccl.COL1) GROUP BY 1, 2 ORDER BY 1''')
+            ex_basicos = self.env.cr.dictfetchall()
+            mensaje = ''
+            for x in ex_basicos:
+                mensaje += x['col1'] + ' - ' + x['col2'] + '\n'
+            if mensaje != '':
+                raise ValidationError('Faltan de cargar los siguientes insumos: %s' % mensaje)
             self.env.cr.execute('SELECT generar_basicos(' + str(self.id)+ ', ' + str(self.env.user.id) + ')')
             basicos = self.env.cr.dictfetchall()
         
@@ -1508,11 +1525,6 @@ class CrmLead(models.Model):
 
 
     def get_work_default_values(self):
-        self.env.cr.execute('''SELECT (CASE WHEN UPPER(col4) = 'CANTIDAD' THEN 'col4' ELSE 'col5' END) cantidad
-            FROM crm_concept_line ci WHERE ci.id = (SELECT MIN(ID) min_id FROM crm_concept_line ci WHERE ci.lead_id = ''' + str(self.id) + ')')
-        min_id = self.env.cr.dictfetchall()
-
-        cantidad = min_id[0]['cantidad']
         sequence = self.env['ir.sequence'].next_by_code('sale.order')
         orders = []
         order_lines = []
@@ -1531,9 +1543,14 @@ class CrmLead(models.Model):
                 'remaining_hours': float(rec.col4.replace(',', ''))}
             order_lines.append((0, 0, lines))
 
+        tiene_anticipo = False
+        if self.importe_anticipo != 0.00:
+            tiene_anticipo = True
+
         values = {'company_id': self.company_id.id, 'partner_id': self.partner_id.id, 'partner_invoice_id': self.partner_id.id, 
-            'partner_shipping_id': self.partner_id.id, 'currency_id': self.company_id.currency_id.id, 'user_id': self.env.uid, 'name': sequence, 'state': 'sent',
-            'origin': self.no_licitacion or self.name, 'invoice_status': 'to invoice', 'opportunity_id': self.id, 
+            'partner_shipping_id': self.partner_id.id, 'currency_id': self.company_id.currency_id.id, 'user_id': self.env.uid, 'name': sequence, 
+            'state': 'sent', 'origin': self.no_licitacion or self.name, 'invoice_status': 'to invoice', 'opportunity_id': self.id, 
+            'tiene_anticipo': tiene_anticipo, 'anticipo_porcentaje': self.bases_anticipo_porcentaje, 'anticipo_importe': self.importe_anticipo, 
             'client_order_ref': self.no_licitacion or self.name, 'order_line': order_lines}
         orders.append(values)
         return orders

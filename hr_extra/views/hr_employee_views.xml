@@ -7,11 +7,18 @@
         <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="priority">100</field>
         <field name="arch" type="xml">
-            <!-- Agregar campo Director/Gerente después del departamento -->
+            <xpath expr="//sheet/div[2]/div[1]/h1[1]" position="replace">
+                <field name="work_contact_id" />
+                <h1 class="d-flex flex-row align-items-center">
+                    <div invisible="not user_id" class="me-2">
+                        <widget name="hr_employee_chat" invisible="not context.get('chat_icon')"/>
+                    </div>
+                    <field name="name" placeholder="Employee's Name" required="True" style="font-size: min(4vw, 2.6rem);" readonly="1"/>
+                </h1>
+            </xpath>
             <xpath expr="//field[@name='department_id']" position="after">
                 <field name="director_ids" widget="many2many_tags" string="Director/Gerente" options="{'no_create': True, 'no_open': True}"/>
             </xpath>
-
             <xpath expr="//notebook/page[last()]" position="after">
                 <page string="Obras" name="obras_asignadas">
                     <field name="obra_ids">

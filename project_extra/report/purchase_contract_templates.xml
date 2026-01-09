@@ -6,7 +6,7 @@
                 <t t-call="web.external_layout">
                     <div class="page">                        
                         <t t-set="representante" t-value="o.env['company.legal.representative'].search([('company_id','=',o.company_id.id)], limit=1)"/>
-                        <t t-set="mes" t-value="o.signature_date.strftime('%m')"/>
+                        <t t-set="mes" t-value="o.signature_date.strftime('%B')"/>
                         <t t-set="meses" t-value="{'January': 'Enero', 'February': 'Febrero', 'March': 'Marzo', 'April': 'Abril', 'May': 'Mayo', 'June': 'Junio', 'July': 'Julio', 'August': 'Agosto', 'September': 'Septiembre', 'October': 'Octubre', 'November': 'Noviembre', 'December': 'Diciembre'}"/>
                         <t t-set="mes_espanol" t-value="meses.get(mes, mes)"/>
 
