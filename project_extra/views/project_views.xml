@@ -26,7 +26,7 @@
                         <field name="orden_trabajo" readonly="1"/>
                         <field name="dependencia"/>
                         <field name="company_id" readonly="1" string="Ejecutor"/>
-			<field name="proj_fecha_adjudicacion" readonly="1" string="Fecha de adjudicación"/>
+                        <field name="proj_fecha_adjudicacion" readonly="1" string="Fecha de adjudicación"/>
                     </group>
                     <group>
                         <field name="authorized_budget" readonly="1" string="Importe contratado"/>

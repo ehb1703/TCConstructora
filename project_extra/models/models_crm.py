@@ -166,12 +166,7 @@ class CrmLead(models.Model):
     pt_revision_ids = fields.One2many('crm.propuesta.tecnica.revision', 'lead_id', string='Revisiones Propuesta Técnica')
     pe_doc_line_ids = fields.One2many('crm.propuesta.economica.doc', 'lead_id', string='Documentos Propuesta Económica')
     pe_revision_ids = fields.One2many('crm.propuesta.economica.revision', 'lead_id', string='Revisiones Propuesta Económica')
-    pe_autorizado = fields.Boolean(string='PE Autorizada', compute='_compute_pe_autorizado', store=False, help='Indica si hay alguna revisión autorizada en Propuesta Económica')
-
-    @api.depends('pe_revision_ids', 'pe_revision_ids.autorizado')
-    def _compute_pe_autorizado(self):
-        for lead in self:
-            lead.pe_autorizado = any(rev.autorizado for rev in lead.pe_revision_ids)
+    pe_autorizado = fields.Boolean(string='PE Autorizada', default=False)
 
     @api.depends('importe_contratado', 'bases_anticipo_porcentaje', 'bases_abstinencia_anticipo')
     def _compute_importe_anticipo(self):
@@ -1301,7 +1296,7 @@ class CrmLead(models.Model):
             for x in ex_basicos:
                 mensaje += x['col1'] + ' - ' + x['col2'] + '\n'
             if mensaje != '':
-                raise ValidationError('Faltan de cargar los siguientes insumos: %s' % mensaje)
+                raise ValidationError('Faltan de cargar los siguientes insumos de basicos: %s' % mensaje)
             self.env.cr.execute('SELECT generar_basicos(' + str(self.id) + ', ' + str(self.env.user.id) + ')')
             basicos = self.env.cr.dictfetchall()
 
@@ -1386,14 +1381,15 @@ class CrmLead(models.Model):
             raise UserError('Las tarjetas de conceptos fueron generados correctamente')
         else:
             self.env.cr.execute('SELECT ccl.COL1, ccl.COL2 FROM crm_combo_line ccl WHERE ccl.LEAD_ID = ' + str(self.id) + ''' AND ccl.COMBO_EX IS FALSE 
-                AND NOT EXISTS(SELECT * FROM product_template pt WHERE pt.DEFAULT_CODE = ccl.COL1) GROUP BY 1, 2 ORDER BY 1''')
+                AND ccl.COL1 IS NOT NULL AND NOT EXISTS(SELECT * FROM product_template pt WHERE pt.DEFAULT_CODE = ccl.COL1) 
+                AND NOT EXISTS(SELECT * FROM crm_basico_relacion cbr WHERE cbr.COL1 = ccl.COL1 and ccl.LEAD_ID = cbr.LEAD_ID) GROUP BY 1, 2 ORDER BY 1''')
             ex_basicos = self.env.cr.dictfetchall()
             mensaje = ''
             for x in ex_basicos:
                 mensaje += x['col1'] + ' - ' + x['col2'] + '\n'
             if mensaje != '':
-                raise ValidationError('Faltan de cargar los siguientes insumos: %s' % mensaje)
-            self.env.cr.execute('SELECT generar_basicos(' + str(self.id)+ ', ' + str(self.env.user.id) + ')')
+                raise ValidationError('Faltan de cargar los siguientes insumos del combo: %s' % mensaje)
+            self.env.cr.execute('SELECT generar_combos(' + str(self.id)+ ', ' + str(self.env.user.id) + ')')
             basicos = self.env.cr.dictfetchall()
         
 
@@ -1495,6 +1491,9 @@ class CrmLead(models.Model):
         if self.fecha_firma > self.fecha_limite_firma:
             raise UserError(_('La fecha de firma no puede ser mayor a la fecha límite de firma.'))
 
+        if self.importe_contratado <= 0:
+            raise UserError(_('Falta capturar el Importe Contratado.'))
+
         count = len(self.order_ids.filtered(lambda u: u.state != 'cancel'))
         if count != 0:
             raise ValidationError('Ya existe una orden de venta.')
@@ -1506,8 +1505,10 @@ class CrmLead(models.Model):
         if count != 0:
             raise ValidationError('Falta cargar las partidas')
             
-        count = len(self.concept_ids.filtered(lambda u: not u.concept_ex and u.col4 != ''))
-        if count > 1:
+        self.env.cr.execute('SELECT COUNT(*) num FROM crm_concept_line WHERE lead_id = ' + str(self.id) + 
+            " AND CONCEPT_EX IS FALSE AND COL4 NOT IN ('',  NULL)")
+        count = self.env.cr.dictfetchall()
+        if count[0]['num'] > 0:
             raise ValidationError('Faltan cargar los conceptos de trabajo')
 
         count = len(self.combo_ids.filtered(lambda u: not u.combo_ex))
@@ -1703,7 +1704,7 @@ class CrmPropuestaTecnicaRevision(models.Model):
     _order = 'fecha_revision desc'
     
     lead_id = fields.Many2one('crm.lead', string='Oportunidad', required=True, ondelete='cascade')
-    fecha_revision = fields.Date(string='Fecha de revisión', default=fields.Date.context_today, required=True)
+    fecha_revision = fields.Datetime(string='Fecha de revisión', default=fields.Date.context_today, required=True)
     employee_id = fields.Many2one('hr.employee', string='Nombre', required=True, help='Persona que revisó la documentación.')
     revisado = fields.Boolean(string='Revisado', default=False)
 
@@ -1722,33 +1723,12 @@ class CrmPropuestaEconomicaRevision(models.Model):
     _order = 'fecha_revision desc, id desc'
     
     lead_id = fields.Many2one('crm.lead', string='Oportunidad', required=True, ondelete='cascade')
-    fecha_revision = fields.Date(string='Fecha de revisión', default=fields.Date.context_today, required=True)
+    fecha_revision = fields.Datetime(string='Fecha de revisión', default=fields.Date.context_today, required=True)
     employee_ids = fields.Many2many('hr.employee', 'crm_pe_revision_employee_rel', 'revision_id', 'employee_id', string='Nombre', 
         help='Personas que revisarán la documentación.')
     revisado = fields.Boolean(string='Revisado', default=False)
     autorizado = fields.Boolean(string='Autorizado', default=False)
-    activo = fields.Boolean(string='Activo', default=True, help='Indica si esta revisión está activa', compute='_compute_activo', store=True)
-    
-    @api.depends('lead_id.pe_revision_ids', 'lead_id.pe_revision_ids.autorizado')
-    def _compute_activo(self):
-        """ Una revisión está activa si:
-            1. Es la más reciente sin autorizar, O
-            2. No hay ninguna autorizada aún """
-        for record in self:
-            # Obtener todas las revisiones de esta oportunidad ordenadas por fecha
-            todas_revisiones = record.lead_id.pe_revision_ids.sorted('fecha_revision', reverse=True)
-            if not todas_revisiones:
-                record.activo = False
-                continue
-            
-            hay_autorizada = any(rev.autorizado for rev in todas_revisiones)
-            if hay_autorizada:
-                # Si esta revisión ya está autorizada, ya no está activa
-                record.activo = record.autorizado
-            else:
-                # Si no hay ninguna autorizada, solo la más reciente está activa
-                record.activo = (record.id == todas_revisiones[0].id)
-
+    activo = fields.Boolean(string='Activo', default=True, help='Indica si esta revisión está activa')
 
     @api.onchange('revisado')
     def _onchange_revisado(self):
@@ -1762,21 +1742,39 @@ class CrmPropuestaEconomicaRevision(models.Model):
         for record in self:
             if record.autorizado and not record.revisado:
                 raise ValidationError(_('Debe marcar como "Revisado" antes de poder autorizar.'))
-    
-    def write(self, vals):
-        # Controlar el flujo de autorización
-        res = super(CrmPropuestaEconomicaRevision, self).write(vals)
-        for record in self:
-            # Si se marca como autorizado
-            if vals.get('autorizado') and record.revisado:
-                # Desactivar autorizaciones de revisiones anteriores
-                revisiones_anteriores = self.env['crm.propuesta.economica.revision'].search([('lead_id', '=', record.lead_id.id), ('id', '!=', record.id),
-                    ('fecha_revision', '<', record.fecha_revision)])
-                if revisiones_anteriores:
-                    revisiones_anteriores.write({'autorizado': False})
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        c = 0
+        for vals in vals_list:
+            lead_id = self.env['crm.lead'].search([('id', '=', vals.get('lead_id'))])
+            revisiones_anteriores = self.env['crm.propuesta.economica.revision'].search([('lead_id', '=', vals.get('lead_id'))])
+            if revisiones_anteriores:
+                c = 1
+                for rec in revisiones_anteriores:
+                    rec.write({'activo': False})
+                vals['autorizado'] = vals.get('autorizado')
+            else:
+                if vals.get('autorizado'):
+                    vals['autorizado'] = False
                 
-                # Activar la siguiente revisión (si existe y no está autorizada)
-                siguiente_revision = self.env['crm.propuesta.economica.revision'].search([('lead_id', '=', record.lead_id.id), ('id', '!=', record.id),
-                    ('fecha_revision', '>', record.fecha_revision), ('autorizado', '=', False)], order='fecha_revision asc', limit=1)
-                record.lead_id.pe_revision_ids._compute_activo()
-        return res
+            if c == 1 and vals['autorizado']:
+                lead_id.pe_autorizado = True
+
+        return super().create(vals_list)
+
+
+    def write(self, values):
+        if any(field in values for field in ['autorizado']):
+            if 'lead_id' in values:
+                lead = values.get('lead_id')
+            else:
+                lead = self.lead_id.id
+
+            lead_id = self.env['crm.lead'].search([('id', '=', lead)])
+            if values.get('autorizado'):
+                lead_id.pe_autorizado = True
+            else:
+                lead_id.pe_autorizado = False
+
+        return super().write(values)

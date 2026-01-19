@@ -46,6 +46,46 @@ class respartnerCurp(models.Model):
             self.name = nombre + ' ' + paterno + ' ' + materno
         else:
             self.name = self.nombre
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        _logger.warning(vals_list)
+        for vals in vals_list:
+            if any(field in vals for field in ['nombre', 'apaterno', 'amaterno']):
+                company = vals.get('is_company')
+                if not company:
+                    name = vals.get('nombre') + ' ' + vals.get('apaterno') + ' ' + vals.get('amaterno')
+                else:
+                    name = vals.get('nombre')
+                vals['name'] = name
+        return super().create(vals_list)
+
+    def write(self, values):
+        company = self.is_company
+        nombre = self.nombre
+        paterno = self.apaterno
+        materno = self.amaterno
+        if any(field in values for field in ['is_company', 'nombre', 'apaterno', 'amaterno']):
+            if 'is_company' in values:
+                company = values.get('is_company')
+            if 'nombre' in values:
+                nombre = values.get('nombre')
+
+            if not company:
+                if 'apaterno' in values:
+                    paterno = values.get('apaterno')
+                if 'amaterno' in values:
+                    materno = values.get('amaterno')
+                name = nombre + ' ' + paterno + ' ' + materno
+            else:
+                name = nombre
+
+            if name != self.name:
+                values['name'] = name
+                empleado = self.env['hr.employee'].search([('work_contact_id', '=', self.id)])
+                if empleado:
+                    empleado.write({'name': name, 'legal_name': name})
+        return super().write(values)
                     
 
 class rescompanyContacts(models.Model):
