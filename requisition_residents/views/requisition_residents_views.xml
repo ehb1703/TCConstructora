@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_requisition_residents" model="ir.actions.act_window">
+        <field name="name">Requisiciones - Residentes</field>
+        <field name="res_model">requisition.residents</field>
+        <field name="view_mode">list,kanban,form</field>
+    </record>
+
+    <record id="view_requisition_residents_list" model="ir.ui.view">
+        <field name="name">view.requisition.residents.list</field>
+        <field name="model">requisition.residents</field>
+        <field name="priority" eval="1"/>
+        <field name="arch" type="xml">
+            <list string="Requisiciones - Residentes" delete="0">
+                <field name="name"/>
+                <field name="finicio"/>
+                <field name="ffinal"/>
+                <field name="project_id"/>
+                <field name="employee_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_requisition_residents_form" model="ir.ui.view">
+        <field name="name">view.requisition.residents.form</field>
+        <field name="model">requisition.residents</field>
+        <field name="arch" type="xml">
+            <form string="Requisiciones - Residentes" delete="0">
+                <header>
+                    <button string="Resumen" name="action_resumen" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="employee_id" invisible="state == 'draft'" readonly="state != 'draft'"/>
+                            <field name="project_id"/>
+                            <field name="company_id"/>
+                        </group>
+                        <group>
+                            <label for="finicio" string="Periodo"/>
+                            <div class="o_row">
+                                <field name="finicio" nolabel="1"/><i class="fa fa-long-arrow-right mx-2" title=" hasta "/><field name="ffinal" nolabel="1"/>
+                            </div>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Resumen">
+                            <field name="line_ids" widget="one2many_list">
+                                <list create="false" delete="false" edit="false">
+                                    <field name="category"/>
+                                    <field name="description"/>
+                                    <field name="partner_id"/>
+                                    <field name="amount_untaxed"/>
+                                    <field name="amount_tax"/>
+                                    <field name="amount_total"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
+                            </field>
+                            <group>
+                                <group colspan="2"/>
+                                <group class="oe_subtotal_footer">
+                                    <field name="amount_untaxed" widget="monetary" nolabel="1" readonly="1"/>
+                                    <field name="amount_tax" widget="monetary" nolabel="1" readonly="1"/>
+                                    <field name="amount_total" widget="monetary" nolabel="1" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Caja Chica">
+                            <field name="cash_ids" widget="one2many_list">
+                                <list create="true" delete="false" editable="bottom" context="{'default_req_id': id}">
+                                    <field name="foto_name" string="Nombre del Documento" column_invisible="True"/>
+                                    <field name="product_template_id" column_invisible="1"/>
+                                    <field name="product_id"/>
+                                    <field name="fecha"/>
+                                    <field name="partner_id"/>
+                                    <field name="amount" string="Importe" sum="amount"/>
+                                    <field name="categoria"/>
+                                    <field name="type_comp" string="Comprobante"/>
+                                    <field name="comp"/>
+                                    <field name="observaciones"/>
+                                    <field name="foto" filename="foto_name" widget="binary"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
+                            </field>
+                        </page>
+                        <page string="Nómina">
+                            <field name="nom_ids" widget="one2many_list">
+                                <list create="true" delete="false" editable="bottom" context="{'default_req_id': id}">
+                                    <field name="employee_id"/>
+                                    <field name="job_id"/>
+                                    <field name="salary" sum="salary"/>
+                                    <field name="observaciones"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
+                            </field>
+                        </page>
+                        <page string="Destajo">
+                            <field name="destajo_ids" widget="one2many_list">
+                                <list create="true" delete="false" edit="true" context="{'default_req_id': id}">
+                                    <field name="type_des"/>
+                                    <field name="partner_id"/>
+                                    <field name="fuerza"/>
+                                    <field name="account_id"/>
+                                    <field name="amount_total" sum="amount_total"/>
+                                </list>
+                                <form>
+                                    <field name="req_id" invisible="1"/>
+                                    <group>
+                                        <group>
+                                            <field name="type_des"/>
+                                            <field name="partner_id"/>
+                                        </group>
+                                        <group>
+                                            <field name="account_id" domain="[('partner_id', '=', partner_id)]"/>
+                                            <field name="fuerza"/>
+                                        </group>        
+                                    </group>
+                                    <group>
+                                        <field name="croquis_id" widget="many2many_binary"/>
+                                        <field name="foto_ids" widget="many2many_binary"/>
+                                        <field name="cotizacion_id" widget="many2many_binary"/>
+                                    </group>
+                                    <group>
+                                        <field name="line_ids" widget="one2many_list" nolabel="1">
+                                            <list editable="bottom" create="true" delete="true" context="{'default_destajo_id': id}">
+                                                <field name="destajo_id" column_invisible="1"/>
+                                                <field name="product_template_id" column_invisible="1"/>
+                                                <field name="fecha"/>
+                                                <field name="product_id"/>
+                                                <field name="name"/>
+                                                <field name="product_uom_id"/>
+                                                <field name="localizacion"/>
+                                                <field name="ubicacion"/>
+                                                <field name="price_unit"/>
+                                                <field name="largo"/>
+                                                <field name="ancho"/>
+                                                <field name="alto"/>
+                                                <field name="area"/>
+                                                <field name="volumen"/>
+                                                <field name="volumen_acum"/>
+                                                <field name="volumen_pres"/>
+                                                <field name="volumen_ejec"/>
+                                                <field name="amount"/>
+                                                <field name="price"/>
+                                            </list>
+                                        </field>
+                                    </group>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="Acarreos">
+                            <field name="acarreo_ids" widget="one2many_list">
+                                <list create="true" delete="false" editable="bottom" context="{'default_req_id': id}">
+                                    <!--field name="req_id" column_invisible="1"/-->
+                                    <field name="product_template_id" column_invisible="1"/>
+                                    <field name="fecha"/>
+                                    <field name="partner_id"/>
+                                    <field name="product_id"/>
+                                    <field name="capacidad"/>
+                                    <field name="origen"/>
+                                    <field name="destino"/>
+                                    <field name="km"/>
+                                    <field name="price"/>
+                                    <field name="qty"/>
+                                    <field name="amount"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
+                            </field>
+                        </page>
+                        <page string="Renta de Campamentos">
+                            <field name="campamento_ids" widget="one2many_list">
+                                <list create="true" delete="false" editable="bottom" context="{'default_req_id': id}">
+                                    <field name="req_id" column_invisible="1"/>
+                                    <field name="product_template_id" column_invisible="1"/>
+                                    <field name="partner_id"/>
+                                    <field name="product_id"/>
+                                    <field name="finicio"/>
+                                    <field name="ffinal"/>
+                                    <field name="ocupacion"/>
+                                    <field name="price"/>
+                                    <field name="periodo"/>
+                                    <field name="deposito"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
+                            </field>
+                        </page>
+                        <page string="Maquinaria">
+                            <field name="maquinaria_ids" widget="one2many_list">
+                                <list create="true" delete="false" edit="true" context="{'default_req_id': id}">
+                                    <field name="req_id" column_invisible="1"/>
+                                    <field name="sequence"/>
+                                    <field name="partner_id"/>
+                                    <field name="maquinaria"/>
+                                    <field name="no_serie"/>
+                                    <field name="finicio"/>
+                                    <field name="ffinal"/>
+                                    <field name="days"/>
+                                    <field name="time_out"/>
+                                    <field name="total_days"/>
+                                    <field name="rmountly"/>
+                                </list>
+                                <form>
+                                    <field name="req_id" invisible="1"/>
+                                    <group>
+                                        <group>
+                                            <field name="sequence"/>
+                                            <field name="partner_id"/>
+                                            <field name="maquinaria"/>
+                                            <field name="no_serie"/>
+                                            <field name="finicio"/>
+                                            <field name="ffinal"/>
+                                            <field name="days"/>
+                                        </group>
+                                        <group>
+                                            <field name="time_out"/>
+                                            <field name="total_days"/>
+                                            <field name="rmountly"/>
+                                            <field name="amount"/>
+                                            <field name="justification"/>
+                                            <field name="autoriza_id"/>
+                                            <field name="horometro"/>
+                                        </group>        
+                                    </group>
+                                    <group>
+                                        <field name="line_ids" widget="one2many_list" nolabel="1">
+                                            <list editable="bottom" create="true" delete="true" context="{'default_maquinaria_id': id}">
+                                                <field name="maquinaria_id" column_invisible="1"/>
+                                                <field name="fecha"/>
+                                                <field name="horometro"/>
+                                                <field name="hrs"/>
+                                                <field name="price"/>
+                                                <field name="amount"/>
+                                                <field name="rendimiento"/>
+                                                <field name="vale"/>
+                                            </list>
+                                        </field>
+                                    </group>
+                                </form>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="reports_menu_root" name="Requisiciones" sequence="10">
+        <menuitem id="menu_requisiciones" name="Requisiciones" groups="group_requisition_admin,group_requisition_capture" sequence="10">
+            <menuitem id="menu_requisition_residents" name="Requisición - Residentes" action="action_requisition_residents" sequence="10"/>
+        </menuitem>
+    </menuitem>
+</odoo>

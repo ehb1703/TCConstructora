@@ -5,11 +5,11 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
-class saleOrderLineInherit(models.Model):
+class saleOrderInherit(models.Model):
     _inherit = 'sale.order'
 
     anticipo_porcentaje = fields.Float(string='% Anticipo')
-    anticipo_importe = fields.Monetary(string='Importe Anticipo')
+    anticipo_importe = fields.Monetary(string='Importe Anticipo (IVA incluido)')
     tiene_anticipo = fields.Boolean(string='Tiene Anticipo')
     factura_anticipo_generada = fields.Boolean(string='Factura Anticipo Generada')
 

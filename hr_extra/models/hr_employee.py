@@ -30,6 +30,13 @@ class hrEmployeeInherit(models.Model):
         if self.work_contact_id:
             self.name = self.work_contact_id.name
 
+    def _prepare_resource_values(self, vals, tz):
+        if 'work_contact_id' in vals:
+            vals['name'] = vals['legal_name']
+        resource_vals = super()._prepare_resource_values(vals, tz)
+        return resource_vals
+
+
 class hrContractInherit(models.Model):
     _inherit = 'hr.contract'
 

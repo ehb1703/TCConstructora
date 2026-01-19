@@ -111,7 +111,7 @@
                     <p>Este es un recordatorio de la <b>visita de obra</b> programada.</p>
                     <ul>
                         <li><b>Convocatoria: </b><t t-out="object.name or ''"/></li>
-                        <li><b>Fecha y hora de visita: </b><t t-if="object.visita_fecha"><t t-out="object.visita_fecha"/></t></li>
+                        <li><b>Fecha y hora de visita: </b><t t-if="object.visita_fecha"><t t-out="format_datetime(object.visita_fecha, dt_format='long')">day, month dd, yyyy - hh:mm:ss (GMT)</t></t></li>
                         <li><b>Lugar de reunión: </b><t t-if="object.visita_lugar_reunion"><t t-out="object.visita_lugar_reunion"/></t></li>
                         <li><b>Personas asignadas: </b><t t-if="object.visita_personas_ids"><t t-out="', '.join(object.visita_personas_ids.mapped('name'))"/></t></li>
                     </ul>
@@ -229,7 +229,7 @@
                         <li><b>No. de Procedimiento: </b><t t-if="object.no_licitacion"><t t-out="object.no_licitacion"/></t></li>
                         <li><b>Dependencia emisora: </b><t t-if="object.partner_emisor_id"><t t-out="object.partner_emisor_id.name"/></t></li>
                         <li><b>Tipo de obra: </b><t t-if="object.tipo_obra_id"><t t-out="object.tipo_obra_id.name"/></t></li>
-                        <li><b>Fecha de la junta de fallo: </b><t t-if="object.fallo_fecha"><t t-out="object.fallo_fecha"/></t></li>
+                        <li><b>Fecha de la junta de fallo: </b><t t-if="object.fallo_fecha"><t t-out="format_datetime(object.fallo_fecha, dt_format='long')">day, month dd, yyyy - hh:mm:ss (GMT)</t></t></li>
                     </ul>
                     <p>
                         Abrir en la Aplicación:

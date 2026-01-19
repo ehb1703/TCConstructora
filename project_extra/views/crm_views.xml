@@ -54,7 +54,7 @@
             </xpath>
 
             <xpath expr="//field[@name='expected_revenue']" position="attributes">
-                <attribute name="string">Capital contable</attribute>
+                <attribute name="string">Capital</attribute>
             </xpath>
 
             <xpath expr="//notebook" position="before">
@@ -311,11 +311,11 @@
                                     </list>
                                     <form>
                                         <group>
+                                            <field name="activo" invisible="1"/>
                                             <field name="fecha_revision"/>
                                             <field name="employee_ids" widget="many2many_tags" string="Nombre"/>
                                             <field name="revisado"/>
                                             <field name="autorizado" readonly="not revisado or not activo"/>
-                                            <field name="activo" invisible="1"/>
                                             <div invisible="not activo" class="alert alert-info" role="alert">
                                                 <p><strong>Esta es la revisión activa actual.</strong></p>
                                                 <p>Primero marque como "Revisado", luego podrá marcar como "Autorizado".</p>

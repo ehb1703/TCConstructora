@@ -295,18 +295,6 @@
                             <t t-elif="schedule_pay == 'monthly'">
                                 <t t-set="salario_tipo" t-value="'mensuales'"/>
                             </t>
-                            <t t-elif="schedule_pay == 'bi-monthly'">
-                                <t t-set="salario_tipo" t-value="'bimestrales'"/>
-                            </t>
-                            <t t-elif="schedule_pay == 'quarterly'">
-                                <t t-set="salario_tipo" t-value="'trimestrales'"/>
-                            </t>
-                            <t t-elif="schedule_pay == 'semi-annually'">
-                                <t t-set="salario_tipo" t-value="'semestrales'"/>
-                            </t>
-                            <t t-elif="schedule_pay == 'annually'">
-                                <t t-set="salario_tipo" t-value="'anuales'"/>
-                            </t>
                             <t t-else="">
                                 <t t-set="salario_tipo" t-value="'mensuales'"/>
                             </t>
