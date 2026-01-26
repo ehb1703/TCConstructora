@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <record id="view_users_form_api_checadores" model="ir.ui.view">
+        <field name="name">res.users.form.api.checadores</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='preferences']" position="after">
+                <page string="API Checadores" name="api_checadores">
+                    <group string="Permisos de API">
+                        <field name="can_manage_api_checadores" 
+                               widget="boolean_toggle"
+                               string="Puede gestionar API de Checadores"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_api_checadores_config_settings" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.api.checadores</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="95"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="API Checadores" name="hr_extra_api" groups="hr.group_hr_manager">
+                    
+                    <block title="API REST para Checadores Biométricos">
+                        
+                        <setting id="api_checadores_enabled_setting" string="Habilitar API">
+                            <field name="api_checadores_enabled" widget="boolean_toggle"/>
+                        </setting>
+
+                        <setting id="api_checadores_username_setting" string="Usuario del API" invisible="not api_checadores_enabled">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="api_checadores_username" class="col-lg-3 o_light_label"/>
+                                    <field name="api_checadores_username" placeholder="Ej: api_checadores" required="api_checadores_enabled"/>
+                                </div>
+                            </div>
+                        </setting>
+
+                        <setting id="api_checadores_user_management" string="Gestión de Usuario API" invisible="not api_checadores_enabled">
+                            <div class="content-group">
+                                
+                                <div class="row mt16">
+                                    <label for="api_checadores_user_id" string="Usuario" class="col-lg-3 o_light_label"/>
+                                    <div class="col-lg-9">
+                                        <field name="api_checadores_user_id" 
+                                               widget="many2one"
+                                               domain="[('active', '=', True)]"
+                                               placeholder="Seleccionar usuario..."
+                                               options="{'no_create': True, 'no_open': True}"
+                                               class="oe_inline"/>
+                                        <button name="action_open_api_user" string="Ver" type="object" class="btn btn-link" icon="fa-external-link" invisible="not api_checadores_user_id"/>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mt8">
+                                    <div class="col-lg-9 offset-lg-3">
+                                        <button name="action_create_api_user" string="Crear Nuevo Usuario API" type="object" class="btn btn-primary" icon="fa-plus" invisible="api_checadores_user_id"/>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mt16" invisible="not api_checadores_user_id">
+                                    <div class="col-lg-9 offset-lg-3">
+                                        <div class="alert alert-success" role="alert" invisible="not api_checadores_user_active">
+                                            <strong>Usuario:</strong> 
+                                            <field name="api_checadores_username" readonly="1" class="oe_inline"/>
+                                            <span class="badge bg-success ms-2">Activo</span>
+                                        </div>
+                                        <div class="alert alert-danger" role="alert" invisible="api_checadores_user_active">
+                                            <strong>Advertencia:</strong> Usuario inactivo.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mt16" invisible="not api_checadores_user_id">
+                                    <label for="api_checadores_password" string="Contraseña" class="col-lg-3 o_light_label"/>
+                                    <div class="col-lg-9">
+                                        <div class="d-flex">
+                                            <field name="api_checadores_password" password="True" placeholder="Nueva contraseña (min 8 caracteres)" class="flex-grow-1"/>
+                                            <button name="action_update_api_password" string="Actualizar" type="object" class="btn btn-secondary ms-2" invisible="not api_checadores_password"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </setting>
+
+                        <setting id="api_checadores_jwt_setting" string="Clave JWT" invisible="not api_checadores_enabled">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="api_checadores_jwt_secret" class="col-lg-3 o_light_label"/>
+                                    <div class="col-lg-9">
+                                        <div class="d-flex">
+                                            <field name="api_checadores_jwt_secret" password="True" readonly="True" class="flex-grow-1"/>
+                                            <button name="action_regenerate_jwt_secret" string="Regenerar" type="object" class="btn btn-secondary ms-2" confirm="¿Regenerar clave JWT? Invalida todos los tokens."/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </setting>
+
+                        <setting id="api_checadores_endpoints" invisible="not api_checadores_enabled">
+                            <div class="content-group">
+                                <h4>Endpoints Disponibles</h4>
+                                <div class="alert alert-info" role="status">
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <td><strong>Auth:</strong></td>
+                                            <td><code>POST /api/v1/auth/login</code></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Empleados:</strong></td>
+                                            <td><code>GET /api/v1/employees</code></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Health:</strong></td>
+                                            <td><code>GET /api/v1/health</code></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </setting>
+
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

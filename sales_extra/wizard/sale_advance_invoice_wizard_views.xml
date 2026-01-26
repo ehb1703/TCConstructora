@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- TAREA 0037: Vista del Wizard de Factura Anticipo -->
+    <record id="sale_advance_invoice_wizard_form" model="ir.ui.view">
+        <field name="name">sale.advance.invoice.wizard.form</field>
+        <field name="model">sale.advance.invoice.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generar Factura de Anticipo">
+                <group invisible="not tiene_anticipo">
+                    <group string="Datos de la Orden">
+                        <field name="sale_order_id" invisible="1"/>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="tiene_anticipo" invisible="1"/>
+                        <field name="partner_id"/>
+                        <field name="amount_total"/>
+                        <field name="contrato_referencia"/>
+                    </group>
+                    <group string="Desglose del Anticipo">
+                        <field name="anticipo_porcentaje" string="Porcentaje de Anticipo (%)"/>
+                        <field name="anticipo_importe_sin_iva" string="Subtotal (sin IVA)"/>
+                        <field name="anticipo_iva" string="IVA (16%)"/>
+                        <field name="anticipo_importe_con_iva" string="Total (con IVA)"/>
+                    </group>
+                </group>
+                <group invisible="tiene_anticipo">
+                    <div class="alert alert-info" role="alert">
+                        <strong>Nota:</strong> Esta orden de venta no tiene anticipo configurado o tiene abstinencia de anticipo.
+                    </div>
+                </group>
+                <footer>
+                    <button string="Si, Generar Factura de Anticipo" name="action_confirm_with_invoice" type="object" class="btn-primary" invisible="not tiene_anticipo"/>
+                    <button string="No, Solo Confirmar Orden" name="action_confirm_without_invoice" type="object" class="btn-secondary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción del wizard -->
+    <record id="action_sale_advance_invoice_wizard" model="ir.actions.act_window">
+        <field name="name">Generar Factura de Anticipo</field>
+        <field name="res_model">sale.advance.invoice.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+    </record>
+</odoo>
