@@ -414,10 +414,10 @@
                             <button class="oe_stat_button" icon="fa-upload" name="action_cargar_concept" string="Cargar" type="object" invisible="concept_ids" confirm="Se agregará el contenido del documento E02, ¿continuar?"/>
                             <button class="oe_stat_button" icon="fa-upload" name="action_genera_partidas" string="Partidas" type="object" invisible="not concept_ids"/>
                             <button class="oe_stat_button" icon="fa-upload" name="action_genera_concept" string="Conceptos" type="object" invisible="not concept_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
-                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_combo" string="Cargar Dcto de Analisis" type="object" invisible="combo_ids"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_combo" string="Cargar Matriz" type="object" invisible="combo_ids"/>
                             <button class="oe_stat_button" icon="fa-upload" name="action_cargar_basicos" string="Cargar Basicos" type="object" invisible="basico_ids"/>
                             <button class="oe_stat_button" icon="fa-upload" name="action_generar_basicos" string="Generar Basicos" type="object" invisible="not basico_ids"/>
-                            <button class="oe_stat_button" icon="fa-upload" name="action_generar_combo" string="Generar Dcto de Analisis" type="object" invisible="not combo_ids"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_generar_combo" string="Generar Matriz" type="object" invisible="not combo_ids"/>
                         </div>
                     </group>
                     <notebook>
@@ -470,7 +470,7 @@
                                 </group>
                             </group>
                         </page>
-                        <page string="Análisis de precios">
+                        <page string="Matriz">
                             <group>
                                 <field name="combo_ids" nolabel="1" widget="one2many_list">                        
                                     <list delete="0" create="0" edit="0" context="{'default_lead_id': id}">

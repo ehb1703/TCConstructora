@@ -6,6 +6,9 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale_project.view_order_form_inherit_sale_project"/>
         <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_cancel']" position="before">
+                <button name="action_create_advance_invoice" string="Factura Anticipo" type="object" class="btn-secondary" invisible="state != 'sale' or not tiene_anticipo or factura_anticipo_generada"/>
+            </xpath>
             <xpath expr="//page[@name='other_information']//group[@name='sale_info']" position="inside">
                 <separator string="Información de Anticipo" colspan="2"/>
                 <field name="tiene_anticipo" readonly="1"/>

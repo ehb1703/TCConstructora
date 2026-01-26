@@ -300,7 +300,7 @@
                             </t>
                             
                             <p>
-                                <strong>SEXTA.</strong> - "EL TRABAJADOR" disfrutará de un sueldo de <strong>$<t t-esc="'%.2f' % salario_valor"/></strong> <t t-esc="salario_tipo"/>.
+                                <strong>SEXTA.</strong> - "EL TRABAJADOR" disfrutará de un sueldo de <strong>$<t t-esc="'%.2f' % salario_valor"/></strong> (<t t-esc="o.get_salario_en_letra(salario_valor)"/>) <t t-esc="salario_tipo"/>.
                                 <br/><br/>
                                 "EL TRABAJADOR" recibirá personalmente el pago correspondiente a su salario en moneda nacional de curso legal y el pago será cubierto en el domicilio de "EL PATRÓN"; debiéndose efectuar este pago, en el centro de trabajo o en el lugar que en ese momento esté prestando sus servicios y suscribiendo el recibo correspondiente, cuya firma implica un finiquito que solo se entregará al tener una antigüedad de 90 días, y se le entregará el total a la fecha del mismo de la terminación laboral. "EL TRABAJADOR" otorga su consentimiento para que la empresa le cubra su salario en efectivo o cheque, previa firma de recibo de la cantidad por duplicado.
                                 <br/><br/>

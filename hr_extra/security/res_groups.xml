@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Categoría propia para organizar -->
+        <record id="module_category_api_checadores" model="ir.module.category">
+            <field name="name">API Checadores</field>
+            <field name="description">Control de acceso para API de checadores biométricos</field>
+            <field name="sequence">100</field>
+        </record>
+        
+        <!-- Grupo principal: API Checadores (Usuario del API) -->
+        <record id="group_api_checadores" model="res.groups">
+            <field name="name">API Checadores</field>
+            <field name="category_id" ref="module_category_api_checadores"/>
+            <field name="comment">Acceso de solo lectura a empleados, departamentos y horarios para el API de checadores biométricos</field>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+        
+        <!-- Grupo de gestión: API Checadores - Gestor (Configurar desde UI) -->
+        <record id="group_api_checadores_manager" model="res.groups">
+            <field name="name">API Checadores - Gestor</field>
+            <field name="category_id" ref="module_category_api_checadores"/>
+            <field name="comment">Puede configurar el API desde Odoo (crear usuarios, regenerar claves)</field>
+            <field name="implied_ids" eval="[(4, ref('hr.group_hr_manager'))]"/>
+        </record>
+        
+    </data>
+</odoo>

@@ -16,13 +16,14 @@ class projectType(models.Model):
     description = fields.Char(string='Descripción')
     normative_clas = fields.Selection(selection=[('na','No Aplica'), ('nom','NOM'), ('sct','SCT'), ('cfe','CFE'), ('conagua','CONAGUA')], 
         string='Clasificación Normativa', default='na')
-    technicalcat_id = fields.Many2one('project.technical.category', string = 'Categoría Técnica')
+    technicalcat_id = fields.Many2one('project.technical.category', string='Categoría Técnica')
     uom_id = fields.Many2one('uom.uom', string='Unidad de medida principal')
     docto_req_id = fields.Many2many('project.docsrequeridos', 'project_type_docsrequeridos_rel', 'project_req', string='Documentos Requeridos', 
         domain="[('model_id', '=', 'project.proyect')]")
     docto_noreq_id = fields.Many2many('project.docsrequeridos', 'project_type_docsnorequeridos_rel', 'projet_noreq', string='Documentos no Requeridos',
         domain="[('model_id', '=', 'project.proyect')]")
     observations = fields.Char(string='Observaciones')
+    piecework_ids = fields.Many2many('project.piecework', 'project_type_piecework', 'type_id', string='Tipos de Destajo')
     active = fields.Boolean(string='Activo', default=True, required=True)
 
     @api.depends('code', 'name')
@@ -360,16 +361,35 @@ class Normatividad(models.Model):
     _rec_name = 'nombre'
     _order = 'codigo'
     
-    codigo = fields.Char(string='Código', required=True, tracking=True, 
-        help='Identificador único para normatividad (ej. N01, N02)')
-    nombre = fields.Char(string='Nombre', required=True, tracking=True, 
-        help='Nombre descriptivo (ej. Federal, Estatal, Municipal)')
+    codigo = fields.Char(string='Código', required=True, tracking=True, help='Identificador único para normatividad (ej. N01, N02)')
+    nombre = fields.Char(string='Nombre', required=True, tracking=True, help='Nombre descriptivo (ej. Federal, Estatal, Municipal)')
     descripcion = fields.Text(string='Descripción', tracking=True, 
         help='Descripción detallada de las características de la normatividad particular de cada ente público')
-    active = fields.Boolean(string='Activo', default=True, tracking=True, 
-        help='Control para depuración y actualización del catálogo')
+    active = fields.Boolean(string='Activo', default=True, tracking=True, help='Control para depuración y actualización del catálogo')
     
     _sql_constraints = [('codigo_uniq', 'unique(codigo)', 'El código de normatividad debe ser único.'),]
+    
+    @api.depends('codigo', 'nombre')
+    def _compute_display_name(self):
+        for rec in self:
+            if rec.codigo and rec.nombre:
+                rec.display_name = f'{rec.codigo} - {rec.nombre}'
+            else:
+                rec.display_name = rec.nombre or rec.codigo or ''
+
+class tipoDestajo(models.Model):
+    _name = 'project.piecework'
+    _description = 'Tipo de destajo'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'nombre'
+    _order = 'codigo'
+
+    codigo = fields.Char(string='Código', required=True, tracking=True)
+    nombre = fields.Char(string='Nombre', required=True, tracking=True)
+    descripcion = fields.Text(string='Descripción', tracking=True)
+    active = fields.Boolean(string='Activo', default=True, tracking=True)
+    
+    _sql_constraints = [('codigo_uniq', 'unique(codigo)', 'El código del tipo de destajo debe ser único.'),]
     
     @api.depends('codigo', 'nombre')
     def _compute_display_name(self):

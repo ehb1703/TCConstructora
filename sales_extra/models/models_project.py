@@ -13,6 +13,45 @@ class saleOrderInherit(models.Model):
     tiene_anticipo = fields.Boolean(string='Tiene Anticipo')
     factura_anticipo_generada = fields.Boolean(string='Factura Anticipo Generada')
 
+    def action_confirm(self):
+        # Sobrescribir la confirmación para mostrar wizard de anticipo si la orden tiene anticipo configurado. Si viene del wizard, no mostrar wizard otra vez
+        if self._context.get('skip_advance_wizard'):
+            return super().action_confirm()
+        
+        for order in self:
+            # Si tiene anticipo y no se ha generado la factura, mostrar wizard
+            if order.tiene_anticipo and not order.factura_anticipo_generada:
+                return {
+                    'name': _('¿Desea generar la factura del anticipo ahora?'),
+                    'type': 'ir.actions.act_window',
+                    'res_model': 'sale.advance.invoice.wizard',
+                    'view_mode': 'form',
+                    'target': 'new',
+                    'context': {'active_id': order.id, 'active_model': 'sale.order',}}
+        
+        # Si no tiene anticipo, confirmar normalmente
+        return super().action_confirm()
+
+
+    def action_create_advance_invoice(self):
+        # Acción manual para crear factura de anticipo desde la orden de venta. Disponible después de confirmar la orden sin generar factura.
+        self.ensure_one()
+        
+        if not self.tiene_anticipo:
+            raise UserError(_('Esta orden de venta no tiene anticipo configurado.'))
+        
+        if self.factura_anticipo_generada:
+            raise UserError(_('Ya se ha generado la factura de anticipo para esta orden.'))
+        
+        # Abrir wizard para generar factura
+        return {
+            'name': _('Generar Factura de Anticipo'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'sale.advance.invoice.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'active_id': self.id, 'active_model': 'sale.order', 'skip_confirmation': True,}}
+
 
 class saleOrderLineInherit(models.Model):
     _inherit = 'sale.order.line'

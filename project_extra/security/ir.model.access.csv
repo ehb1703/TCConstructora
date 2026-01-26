@@ -15,6 +15,7 @@ catalog_tipo_insumo,catalog_tipo_insumo,model_product_tipo_insumo,group_project_
 catalog_direccion_ejecutora,catalog_direccion_ejecutora,model_project_direccion_ejecutora,group_project_catalog,1,1,1,0
 catalog_modalidad_precios,catalog_modalidad_precios,model_project_modalidad_precios,group_project_catalog,1,1,1,0
 catalog_normatividad,catalog_normatividad,model_project_normatividad,group_project_catalog,1,1,1,0
+catalog_project_piecework,catalog_project_piecework,model_project_piecework,group_project_catalog,1,1,1,0
 
 user_project_type,user_project_type,model_project_type,project.group_project_user,1,0,0,0
 user_project_residents,user_project_residents,model_project_residents,project.group_project_user,1,0,0,0
@@ -31,6 +32,7 @@ user_tipo_insumo,user_tipo_insumo,model_product_tipo_insumo,project.group_projec
 user_direccion_ejecutora,user_direccion_ejecutora,model_project_direccion_ejecutora,project.group_project_user,1,0,0,0
 user_modalidad_precios,user_modalidad_precios,model_project_modalidad_precios,project.group_project_user,1,0,0,0
 user_normatividad,user_normatividad,model_project_normatividad,project.group_project_user,1,0,0,0
+user_project_piecework,user_project_piecework,model_project_piecework,group_project_catalog,1,1,1,0
 
 sales_crm_lead_type,catalog_crm_lead_type,model_crm_lead_type,sales_team.group_sale_manager,1,1,1,0
 sales_crm_analyst,sales_crm_analyst,model_crm_analyst,sales_team.group_sale_manager,1,1,1,0
