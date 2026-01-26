@@ -34,6 +34,17 @@
         </field>
     </record>
 
+    <record id="hr_employee_api_tree" model="ir.ui.view">
+        <field name="name">hr.employee.api.tree</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="before">
+                <field name="registration_number" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="hr_employee_infonavit_form" model="ir.ui.view">
         <field name="name">hr.employee.infonavit.form</field>
         <field name="model">hr.employee</field>

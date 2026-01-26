@@ -2,6 +2,7 @@
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from datetime import date, datetime, timedelta
+import json
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -62,19 +63,6 @@ class requisitionResidents(models.Model):
                 lines = {'category': 'Caja Chica', 'relacion': relacion[:-1], 'descripcion': 'Reposición de Caja Chica', 
                     'partner_id': self.employee_id.work_contact_id.id, 'amount_untaxed': total, 'amount_tax': 0.0, 'amount_total': total}
                 req_lines.append((0, 0, lines))
-        if self.destajo_ids:
-            for rec in self.destajo_ids:
-                if rec.amount_total != 0:
-                    lines = {'category': 'Destajo', 'relacion': rec.id, 'descripcion': rec.type_des, 'partner_id': self.employee_id.work_contact_id.id, 
-                        'amount_untaxed': rec.amount_total, 'amount_tax': 0.0, 'amount_total': rec.amount_total}
-                    req_lines.append((0, 0, lines))
-        if self.acarreo_ids:
-            _logger.warning('Agregar Acarreos')
-        if self.campamento_ids:
-            _logger.warning('Agregar Campamentos')
-        if self.maquinaria_ids:
-            _logger.warning('Agregar Maquinaria')
-
         if self.nom_ids:
             total = 0
             relacion = ''
@@ -86,6 +74,19 @@ class requisitionResidents(models.Model):
                 lines = {'category': 'Nómina', 'relacion': relacion[:-1], 'descripcion': 'Nómina', 'partner_id': self.employee_id.work_contact_id.id, 
                     'amount_untaxed': total, 'amount_tax': 0.0, 'amount_total': total}
                 req_lines.append((0, 0, lines))
+        
+        if self.destajo_ids:
+            for rec in self.destajo_ids:
+                if rec.amount_total != 0:
+                    lines = {'category': 'Destajo', 'relacion': rec.id, 'descripcion': rec.type_des, 'partner_id': self.employee_id.work_contact_id.id, 
+                        'amount_untaxed': rec.amount_total, 'amount_tax': 0.0, 'amount_total': rec.amount_total}
+                    req_lines.append((0, 0, lines))
+        if self.acarreo_ids:
+            _logger.warning('Agregar Acarreos')
+        if self.campamento_ids:
+            _logger.warning('Agregar Campamentos')
+        if self.maquinaria_ids:
+            _logger.warning('Agregar Maquinaria')        
 
         if self.line_ids:
             self.line_ids.unlink()
@@ -106,6 +107,7 @@ class requisitionResidents(models.Model):
 class requisitionResidentsLine(models.Model):
     _name = 'requisition.residents.line'
     _description = 'Resumen de la requisición'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
     req_id = fields.Many2one('requisition.residents', readonly=True)
     category = fields.Char(string='Categoría', readonly=True)
@@ -119,9 +121,17 @@ class requisitionResidentsLine(models.Model):
 class requisitionDestajo(models.Model):
     _name = 'requisition.destajo'
     _description = 'Destajo'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+
+    @api.depends('req_id')
+    def _compute_domain_destajo(self):
+        for record in self:
+            if record.req_id:
+                record.destajo_domain = json.dumps([('id', 'in', record.req_id.project_id.type_id.piecework_ids.ids)])
 
     req_id = fields.Many2one('requisition.residents', readonly=True)
-    type_des = fields.Char(string='Tipo de destajo')
+    destajo_id = fields.Many2one('project.piecework', string='Tipo de destajo')
+    destajo_domain = fields.Char(readonly=True, store=False, compute=_compute_domain_destajo)
     partner_id = fields.Many2one('res.partner', string='Nombre', tracking=True)
     fuerza = fields.Integer(string='No. de la cuadrilla del destajista')
     account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
@@ -322,7 +332,19 @@ class requisitionCash(models.Model):
     _name = 'requisition.cash'
     _description = 'Caja Chica'
 
+    @api.depends('req_id')
+    def _compute_domain_obra(self):
+        for record in self:
+            if record.req_id:
+                residentes = self.env['project.residents'].search([('resident_id','=',record.req_id.employee_id.id)])
+                lista = []
+                for x in residentes:
+                    lista.append(x.project_id)
+                record.project_domain = json.dumps([('id', 'in', lista)])
+
     req_id = fields.Many2one('requisition.residents', readonly=True)
+    project_id = fields.Many2one('project.project', string='Obra')
+    project_domain = fields.Char(readonly=True, store=False, compute=_compute_domain_obra)
     product_id = fields.Many2one(comodel_name='product.product', string='Elemento', change_default=True, ondelete='restrict', 
         domain="[('purchase_ok', '=', True)]")
     product_template_id = fields.Many2one(comodel_name='product.template', string='Product Template', compute='_compute_product_template_id',
@@ -333,6 +355,7 @@ class requisitionCash(models.Model):
     categoria = fields.Many2one('product.tipo.insumo', string='Categoría')
     type_comp = fields.Selection(selection=[('tiq','Tiquet'), ('fact','Factura'), ('rem','Nota de remisión')],
         string='Tipo de comprobación', default='tiq', tracking=True)
+    reference = fields.Char(string='Referencia')
     comp = fields.Boolean(string='Comprobación')
     observaciones = fields.Char(string='Observaciones')
     foto = fields.Binary(string='Foto', attachment=True)
@@ -351,6 +374,8 @@ class requisitionCash(models.Model):
         if self.fecha:
             if self.fecha > self.req_id.ffinal or self.fecha < self.req_id.finicio:
                 raise ValidationError('La fecha capturada no esta dentro del periodo capturado')
+
+    # Falta agregar la validación de que la línea no exista en otra requisición, una vez que se tengan ejemplos de captura
 
 
 class requisitionNomina(models.Model):

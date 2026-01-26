@@ -45,6 +45,7 @@
                     <group>
                         <group>
                             <field name="docto_req_id" widget="many2many_tags"/>
+                            <field name="piecework_ids" widget="many2many_tags"/>
                         </group>
                         <group>
                             <field name="docto_noreq_id" widget="many2many_tags"/>
@@ -477,15 +478,45 @@
             <form string="Normatividad">
                 <sheet>
                     <group>
-                        <group>
-                            <field name="codigo"/>
-                            <field name="nombre"/>
-                        </group>
-                        <group>
-                            <field name="active"/>
-                        </group>
+                        <field name="codigo"/>
+                        <field name="nombre"/>
+                        <field name="descripcion" placeholder="Descripción detallada de las características de la normatividad particular de cada ente público..."/>
                     </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Destajo -->
+    <record id="action_piecework" model="ir.actions.act_window">
+        <field name="name">Tipo de Destajo</field>
+        <field name="res_model">project.piecework</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_piecework_tree" model="ir.ui.view">
+        <field name="name">project.piecework.list</field>
+        <field name="model">project.piecework</field>
+        <field name="arch" type="xml">
+            <list string="Tipo de Destajo">
+                <field name="codigo"/>
+                <field name="nombre"/>
+                <field name="descripcion"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_piecework_form" model="ir.ui.view">
+        <field name="name">project.piecework.form</field>
+        <field name="model">project.piecework</field>
+        <field name="arch" type="xml">
+            <form string="Tipo de Destajo">
+                <sheet>
                     <group>
+                        <field name="codigo"/>
+                        <field name="nombre"/>
                         <field name="descripcion" placeholder="Descripción detallada de las características de la normatividad particular de cada ente público..."/>
                     </group>
                 </sheet>
@@ -505,6 +536,7 @@
         <menuitem id="menu_direccion_ejecutora" name="Dirección Gral. Ejecutora" action="action_direccion_ejecutora" sequence="8"/>
         <menuitem id="menu_modalidad_precios" name="Modalidad Precios Contrato" action="action_modalidad_precios" sequence="9"/>
         <menuitem id="menu_normatividad" name="Normatividad" action="action_normatividad" sequence="10"/>
+        <menuitem id="menu_piecework" name="Tipo de destajo" action="action_piecework" sequence="11"/>
     </menuitem>
 
     <!-- Menú Tipos de insumo en Compras → Productos -->

@@ -9,6 +9,7 @@ Extra de Productos y Precios
 ====================
 Personalización de catálogos
 Personalización de ordenes de venta
+Factura de Anticipo automática al confirmar orden de venta
     """,
     'category': 'Sales/Sales',
     'depends': ['base', 'product', 'sale_project'],
@@ -17,6 +18,7 @@ Personalización de ordenes de venta
         'views/product_views.xml',
         'views/sale_catalog_views.xml',
         'views/project_views.xml',
+        'wizard/sale_advance_invoice_wizard_views.xml',
     ],        
     'license': 'LGPL-3',
     'installable': True,
