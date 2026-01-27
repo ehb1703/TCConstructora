@@ -2,7 +2,15 @@
 import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
-
+from collections import defaultdict, Counter
+import pytz
+from pytz import timezone
+from markupsafe import Markup
+from odoo.tools import float_round, date_utils, convert_file, format_amount, float_compare, float_is_zero, plaintext2html
+from odoo.tools.safe_eval import safe_eval
+from dateutil.relativedelta import relativedelta
+from datetime import date, datetime, time
+from odoo.osv import expression
 _logger = logging.getLogger(__name__)
 
 class HrEmployeeObra(models.Model):
@@ -226,6 +234,69 @@ class hrContractInherit(models.Model):
         salary = salary.replace('UNO PESOS', 'UN PESOS') + ' ' + str(decimal).split('.')[1] + '/100 M.N.'
         return salary
 
+    def _preprocess_work_hours_data(self, work_data, date_from, date_to):
+        self.env.cr.execute("SELECT COUNT(*) num FROM (SELECT * FROM generate_series('" + str(date_from) + "'::date, '" + str(date_to) + 
+            "'::date, '1 day') as d ORDER BY 1) as t1 WHERE NOT EXISTS(SELECT * FROM resource_calendar_attendance rca WHERE rca.calendar_id = " + 
+            str(self.resource_calendar_id.id) + " AND rca.dayofweek::integer+1 = EXTRACT(dow from t1.d))")
+        descanso = self.env.cr.dictfetchall()
+        if descanso[0]['num'] > 0:
+            descanso_type = self.env['hr.work.entry.type'].search([('code', '=', 'DESC')])
+            work_data[descanso_type.id] = descanso[0]['num'] * 10
+
+        attendance_contracts = self.filtered(lambda c: c.work_entry_source == 'attendance' and c.wage_type == 'hourly')
+        overtime_work_entry_type = self.env.ref('hr_work_entry.overtime_work_entry_type', False)
+        default_work_entry_type = self.structure_type_id.default_work_entry_type_id
+
+        if not attendance_contracts or not overtime_work_entry_type or len(default_work_entry_type) != 1:
+            return
+        overtime_hours = self.env['hr.attendance.overtime']._read_group(
+            [('employee_id', 'in', self.employee_id.ids), ('date', '>=', date_from), ('date', '<=', date_to)], [], ['duration:sum'],)[0][0]
+        # unapproved overtimes should not be taken into account
+        unapproved_overtime_hours = round(self.env['hr.attendance'].sudo()._read_group([('employee_id', 'in', self.employee_id.ids), 
+            ('check_in', '>=', date_from), ('check_out', '<=', date_to), ('overtime_hours', '>', 0), ('overtime_status', '!=', 'approved')], [], 
+            ['overtime_hours:sum'],)[0][0], 2)
+        if not overtime_hours or overtime_hours < 0:
+            return
+        work_data[default_work_entry_type.id] -= overtime_hours
+        overtime_hours -= unapproved_overtime_hours
+
+        empleados = str(self.employee_id.ids)
+        self.env.cr.execute("""SELECT sum(hao.duration) duration 
+            FROM hr_attendance_overtime hao JOIN resource_calendar_leaves rcl ON hao.date = rcl.date_from::date 
+            WHERE hao.employee_id IN (""" + empleados[1:-1] + ") AND hao.DATE BETWEEN '" + str(date_from) + "' AND '" + str(date_to) + "'")
+        inh_trab = self.env.cr.dictfetchall()
+        if inh_trab:
+            overtime_hours -= inh_trab[0]['duration']
+            inhabilestrab_type = self.env['hr.work.entry.type'].search([('code', '=', 'FESTTRAB')])
+            work_data[inhabilestrab_type.id] = inh_trab[0]['duration']
+
+        self.env.cr.execute("SELECT COUNT(*) num FROM (SELECT * FROM generate_series('" + str(date_from) + "'::date, '" + str(date_to) + 
+            """'::date, '1 day') as d ORDER BY 1) as t1 WHERE EXISTS(SELECT * from resource_calendar_leaves rca where rca.date_from::date = t1.d::date)
+            AND NOT EXISTS(SELECT * FROM hr_attendance_overtime hao WHERE hao.DATE = t1.d::date AND hao.employee_id IN (""" + empleados[1:-1] + '))')
+        inhabiles = self.env.cr.dictfetchall()
+        if inhabiles[0]['num'] > 0:
+            inhabil_type = self.env['hr.work.entry.type'].search([('code', '=', 'FESTNOT')])
+            work_data[inhabiles_type.id] = inhabiles[0]['num'] * 10
+
+        if overtime_hours > 0:
+            work_data[overtime_work_entry_type.id] = overtime_hours
+        
+
+class HrPayslipInherit(models.Model):
+    _inherit = 'hr.payslip'
+
+    amount = fields.Float(string='Total a pagar', compute='_compute_amount', store=True)
+
+    @api.depends('worked_days_line_ids')
+    def _compute_amount(self):
+        for payslip in self:
+            payslip.amount = sum(payslip.worked_days_line_ids.mapped('amount'))
+
+    @api.depends('contract_id')
+    def _compute_daily_salary(self):
+        for payslip in self:
+            payslip.l10n_mx_daily_salary = payslip.contract_id.daily_wage
+
 
 class HrPayslipWorkedDaysInherit(models.Model):
     _inherit = 'hr.payslip.worked_days'
@@ -241,6 +312,10 @@ class HrPayslipWorkedDaysInherit(models.Model):
             if worked_days.payslip_id.wage_type == "hourly":
                 if worked_days.work_entry_type_id.code == 'OVERTIME':
                     worked_days.amount = worked_days.payslip_id.contract_id.hourly_wage * worked_days.number_of_hours if worked_days.is_paid else 0
+                elif worked_days.work_entry_type_id.code == 'DESC':
+                    worked_days.amount = worked_days.payslip_id.contract_id.daily_wage * round(worked_days.number_of_days, 0) if worked_days.is_paid else 0
+                elif worked_days.work_entry_type_id.code == 'FESTTRAB':
+                    worked_days.amount = worked_days.payslip_id.contract_id.daily_wage * round(worked_days.number_of_days, 0) * 2 if worked_days.is_paid else 0
                 else:
                     worked_days.amount = worked_days.payslip_id.contract_id.daily_wage * worked_days.number_of_days if worked_days.is_paid else 0
             else:

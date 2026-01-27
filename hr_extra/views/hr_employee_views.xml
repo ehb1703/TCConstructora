@@ -102,4 +102,15 @@
             </xpath>
         </field>
     </record>
+
+    <record id="hr_contract_daily_form" model="ir.ui.view">
+        <field name="name">hr.contract.daily.form</field>
+        <field name="model">hr.contract</field>
+        <field name="inherit_id" ref="hr_payroll.hr_contract_form_inherit"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='hourly_wage']" position="after">
+                <field name="daily_wage"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>
