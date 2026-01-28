@@ -340,3 +340,146 @@ class ApiChecadoresController(http.Controller):
         except Exception as e:
             _logger.error(f"API Checadores Error (schedules): {str(e)}", exc_info=True)
             return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
+
+
+    @http.route('/api/v1/attendances', type='http', auth='none', methods=['POST', 'OPTIONS'], csrf=False, cors='*')
+    def attendance_create(self, **kw):
+        """Crea un registro de asistencia en ctrol.asistencias.
+        
+        Body JSON: {
+            "employee_id": 5,
+            "check_type": "entrada",
+            "check_date": "2026-01-27T08:00:00",
+            "photo_url": "http://...",
+            "latitude": 20.67,
+            "longitude": -103.33,
+            "log_status": "pendiente",
+            "lateness_time": "00:15",
+            "left_early_time": "00:00",
+            "is_active": 1,
+            "verification_status": "auto",
+            "match_percentage": 98,
+            "log_message": "Registro exitoso"
+        }
+        
+        Returns: {
+            "status": "success",
+            "data": {...}
+        } """
+        if request.httprequest.method == 'OPTIONS':
+            return self._json_response({'status': 'ok'})
+        
+        # Validar JWT
+        is_valid, result = self._validate_jwt_token()
+        if not is_valid:
+            return result
+        
+        try:
+            # Parsear datos del body
+            data = json.loads(request.httprequest.data.decode('utf-8'))
+          
+            # Validar campos requeridos
+            if not data.get('employee_id'):
+                return self._error_response('Campo requerido: employee_id', status=400, error_code='MISSING_EMPLOYEE_ID')
+            if not data.get('check_type'):
+                return self._error_response('Campo requerido: check_type', status=400, error_code='MISSING_CHECK_TYPE')
+            if not data.get('check_date'):
+                return self._error_response('Campo requerido: check_date', status=400, error_code='MISSING_CHECK_DATE')
+            
+            # Validar que check_type sea válido
+            if data.get('check_type') not in ['entrada', 'salida']:
+                return self._error_response('check_type debe ser "entrada" o "salida"', status=400, error_code='INVALID_CHECK_TYPE')
+            
+            # Usar SUPERUSER_ID para crear registro
+            from odoo import SUPERUSER_ID
+            env = request.env(user=SUPERUSER_ID)
+            
+            # Validar que empleado existe
+            employee = env['hr.employee'].search([('id', '=', int(data['employee_id']))], limit=1)
+            if not employee:
+                return self._error_response(f'Empleado {data["employee_id"]} no encontrado', status=404, error_code='EMPLOYEE_NOT_FOUND')
+            
+            # Crear registro en ctrol.asistencias
+            CtrolAsistencias = env['ctrol.asistencias']
+            attendance = CtrolAsistencias.create_from_checador(data)
+            
+            _logger.info(f"API Checadores: Asistencia creada - ID: {attendance.id}, "
+                        f"Empleado: {data['employee_id']}, Usuario JWT: {result.get('username')}")
+            
+            return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'data': attendance.to_json()})
+            
+        except json.JSONDecodeError:
+            return self._error_response('Body JSON inválido', status=400, error_code='INVALID_JSON')
+        except Exception as e:
+            _logger.error(f"API Checadores Error (attendance_create): {str(e)}", exc_info=True)
+            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
+
+
+    @http.route('/api/v1/attendances', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    def attendance_list(self, **kw):
+        """Obtiene lista de asistencias desde ctrol.asistencias.
+        
+        Query Parameters (en body JSON para GET):
+            - employee_id: Filtrar por empleado
+            - check_type: Filtrar por tipo (entrada/salida)
+            - date_from: Fecha desde (YYYY-MM-DD)
+            - date_to: Fecha hasta (YYYY-MM-DD)
+            - log_status: Filtrar por estado (pendiente/error/importada)
+            - limit: Número máximo de registros (default 100)
+        
+        Returns: {
+            "status": "success",
+            "count": 10,
+            "data": [...]
+        } """
+        # Validar JWT
+        is_valid, result = self._validate_jwt_token()
+        if not is_valid:
+            return result
+        
+        try:
+            # Parsear filtros del body (si existen)
+            filters = {}
+            if request.httprequest.data:
+                try:
+                    filters = json.loads(request.httprequest.data.decode('utf-8'))
+                except:
+                    pass
+            
+            # Construir dominio de búsqueda
+            domain = []
+            
+            if filters.get('employee_id'):
+                domain.append(('employee_id', '=', int(filters['employee_id'])))
+            if filters.get('check_type'):
+                domain.append(('check_type', '=', filters['check_type']))
+            if filters.get('log_status'):
+                domain.append(('log_status', '=', filters['log_status']))
+            if filters.get('date_from'):
+                domain.append(('check_date', '>=', filters['date_from']))
+            if filters.get('date_to'):
+                domain.append(('check_date', '<=', filters['date_to']))
+            
+            # Límite de registros
+            limit = int(filters.get('limit', 100))
+            if limit > 1000:
+                limit = 1000  # Máximo 1000 registros por query
+            
+            # Usar SUPERUSER_ID para consultar
+            from odoo import SUPERUSER_ID
+            env = request.env(user=SUPERUSER_ID)
+            
+            # Buscar registros
+            CtrolAsistencias = env['ctrol.asistencias']
+            attendances = CtrolAsistencias.search(domain, limit=limit, order='check_date desc, id desc')
+            
+            # Convertir a JSON
+            attendances_data = [att.to_json() for att in attendances]
+            _logger.info(f"API Checadores: Consulta asistencias - Registros: {len(attendances_data)}, "
+                        f"Usuario JWT: {result.get('username')}")
+            
+            return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'count': len(attendances_data),
+                'filters_applied': filters, 'data': attendances_data})
+        except Exception as e:
+            _logger.error(f"API Checadores Error (attendance_list): {str(e)}", exc_info=True)
+            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')

@@ -3,12 +3,6 @@ import secrets
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 
-class ResUsersInherit(models.Model):
-    _inherit = 'res.users'
-
-    can_manage_api_checadores = fields.Boolean(string='Puede gestionar API de Checadores', groups='hr_extra.group_api_checadores_manager', default=False,
-        help='Permite al usuario habilitar/deshabilitar la API de checadores')
-
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 

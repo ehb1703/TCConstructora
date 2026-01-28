@@ -33,7 +33,9 @@ class hrEmployeeInherit(models.Model):
     current_project_name = fields.Char(string='Obra Actual', compute='_compute_current_project', store=True, 
         help='Obra vigente del empleado o "Oficina" si no tiene asignación')
     director_ids = fields.Many2many('hr.employee', 'hr_employee_director_rel', 'employee_id', 'director_id', string='Director/Gerente',
-        domain="[('job_id.name', 'ilike', 'Director')]")
+        domain="[('job_id.name', 'ilike', 'Director'), ('state', '!=', 'baja')]")
+    state = fields.Selection(selection=[('activo','Activo'), ('baja','Baja'), ('pensionado','Pensionado'), ('incapacidad','Incapacidad')],
+        string='Estado Actual', default='activo', tracking=True)
 
     @api.onchange('work_contact_id')
     def onchange_name(self):

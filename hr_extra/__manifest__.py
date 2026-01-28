@@ -10,6 +10,7 @@
             - Catálogo de Parentescos
             - Beneficiarios en contratos de empleados
             - Asignación de obras a empleados
+            - API de descarga de asistencias de checadores (ctrol.asistencias)
         Reportería
            - Reportes de contratos (Temporal, Obra Determinada)
            - Convenio de Confidencialidad
@@ -24,6 +25,7 @@
         'views/hr_employee_views.xml',
         'views/resource_calendar_views.xml',
         'views/res_config_settings_views.xml',
+        'views/ctrol_asistencias_views.xml',
         'report/hr_contract_report.xml',
         'report/report_hr_contract.xml',
         'report/report_convenio_confidencialidad.xml',

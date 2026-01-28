@@ -1,23 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     
-    <record id="view_users_form_api_checadores" model="ir.ui.view">
-        <field name="name">res.users.form.api.checadores</field>
-        <field name="model">res.users</field>
-        <field name="inherit_id" ref="base.view_users_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//page[@name='preferences']" position="after">
-                <page string="API Checadores" name="api_checadores">
-                    <group string="Permisos de API">
-                        <field name="can_manage_api_checadores" 
-                               widget="boolean_toggle"
-                               string="Puede gestionar API de Checadores"/>
-                    </group>
-                </page>
-            </xpath>
-        </field>
-    </record>
-
     <record id="view_api_checadores_config_settings" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.inherit.api.checadores</field>
         <field name="model">res.config.settings</field>
@@ -25,14 +8,11 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app string="API Checadores" name="hr_extra_api" groups="hr.group_hr_manager">
-                    
+                <app string="API Checadores" name="hr_extra_api" groups="hr.group_hr_manager">                    
                     <block title="API REST para Checadores Biométricos">
-                        
                         <setting id="api_checadores_enabled_setting" string="Habilitar API">
                             <field name="api_checadores_enabled" widget="boolean_toggle"/>
                         </setting>
-
                         <setting id="api_checadores_username_setting" string="Usuario del API" invisible="not api_checadores_enabled">
                             <div class="content-group">
                                 <div class="row mt16">
@@ -41,29 +21,20 @@
                                 </div>
                             </div>
                         </setting>
-
                         <setting id="api_checadores_user_management" string="Gestión de Usuario API" invisible="not api_checadores_enabled">
                             <div class="content-group">
-                                
                                 <div class="row mt16">
                                     <label for="api_checadores_user_id" string="Usuario" class="col-lg-3 o_light_label"/>
                                     <div class="col-lg-9">
-                                        <field name="api_checadores_user_id" 
-                                               widget="many2one"
-                                               domain="[('active', '=', True)]"
-                                               placeholder="Seleccionar usuario..."
-                                               options="{'no_create': True, 'no_open': True}"
-                                               class="oe_inline"/>
+                                        <field name="api_checadores_user_id" widget="many2one" domain="[('active', '=', True)]" placeholder="Seleccionar usuario..." options="{'no_create': True, 'no_open': True}" class="oe_inline"/>
                                         <button name="action_open_api_user" string="Ver" type="object" class="btn btn-link" icon="fa-external-link" invisible="not api_checadores_user_id"/>
                                     </div>
                                 </div>
-                                
                                 <div class="row mt8">
                                     <div class="col-lg-9 offset-lg-3">
                                         <button name="action_create_api_user" string="Crear Nuevo Usuario API" type="object" class="btn btn-primary" icon="fa-plus" invisible="api_checadores_user_id"/>
                                     </div>
                                 </div>
-                                
                                 <div class="row mt16" invisible="not api_checadores_user_id">
                                     <div class="col-lg-9 offset-lg-3">
                                         <div class="alert alert-success" role="alert" invisible="not api_checadores_user_active">
@@ -76,7 +47,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                
                                 <div class="row mt16" invisible="not api_checadores_user_id">
                                     <label for="api_checadores_password" string="Contraseña" class="col-lg-3 o_light_label"/>
                                     <div class="col-lg-9">
@@ -86,10 +56,8 @@
                                         </div>
                                     </div>
                                 </div>
-                                
                             </div>
                         </setting>
-
                         <setting id="api_checadores_jwt_setting" string="Clave JWT" invisible="not api_checadores_enabled">
                             <div class="content-group">
                                 <div class="row mt16">
@@ -125,7 +93,6 @@
                                 </div>
                             </div>
                         </setting>
-
                     </block>
                 </app>
             </xpath>
