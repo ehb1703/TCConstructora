@@ -1,12 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <record id="hr_employee_api_tree" model="ir.ui.view">
+        <field name="name">hr.employee.api.tree</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="before">
+                <field name="registration_number" optional="show"/>
+            </xpath>
+            <xpath expr="//field[@name='activity_ids']" position="before">
+                <field name="state"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="view_hr_employee_obras_form" model="ir.ui.view">
         <field name="name">hr.employee.obras.form</field>
         <field name="model">hr.employee</field>
         <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="priority">100</field>
         <field name="arch" type="xml">
+            <xpath expr="//header/button" position="after">
+                <field name="state" widget="statusbar"/>
+            </xpath>
             <xpath expr="//sheet/div[2]/div[1]/h1[1]" position="replace">
                 <field name="work_contact_id" />
                 <h1 class="d-flex flex-row align-items-center">
@@ -32,18 +49,7 @@
                 </page>
             </xpath>
         </field>
-    </record>
-
-    <record id="hr_employee_api_tree" model="ir.ui.view">
-        <field name="name">hr.employee.api.tree</field>
-        <field name="model">hr.employee</field>
-        <field name="inherit_id" ref="hr.view_employee_tree"/>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='name']" position="before">
-                <field name="registration_number" optional="show"/>
-            </xpath>
-        </field>
-    </record>
+    </record>    
 
     <record id="hr_employee_infonavit_form" model="ir.ui.view">
         <field name="name">hr.employee.infonavit.form</field>
@@ -61,6 +67,34 @@
                     <field name="infonavit"/>
                     <field name="fonacot"/>
                 </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hr_timesheet_inherit_form" model="ir.ui.view">
+        <field name="name">hr.timesheet.inherit.form</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr_timesheet.hr_employee_view_form_inherit_timesheet"/>
+        <field name="priority" eval="40"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_timesheet_from_employee']" position="replace">
+                <button class="oe_stat_button" type="object" name="action_timesheet_from_employee" icon="fa-calendar">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Timesheets</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hr_work_entry_inherit_view_form" model="ir.ui.view">
+        <field name="name">hr.work.entry.inherit.view.form</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr_work_entry.hr_employee_view_form"/>
+        <field name="priority" eval="90"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_open_work_entries']" position="attributes">
+                <attribute name="invisible">True</attribute>
             </xpath>
         </field>
     </record>

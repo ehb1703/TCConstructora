@@ -16,3 +16,7 @@ access_hr_contract_api,hr.contract.api,hr_contract.model_hr_contract,group_api_c
 access_res_users_api_manager,res.users.api.manager,base.model_res_users,group_api_checadores_manager,1,1,1,0
 access_res_config_settings_api_manager,res.config.settings.api.manager,base.model_res_config_settings,group_api_checadores_manager,1,1,1,0
 access_ir_config_parameter_api_manager,ir.config.parameter.api.manager,base.model_ir_config_parameter,group_api_checadores_manager,1,1,1,0
+
+access_ctrol_asistencias_api,ctrol.asistencias.api,model_ctrol_asistencias,group_api_checadores,1,1,1,0
+access_ctrol_asistencias_user,ctrol.asistencias.user,model_ctrol_asistencias,hr.group_hr_user,1,1,1,1
+access_ctrol_asistencias_manager,ctrol.asistencias.manager,model_ctrol_asistencias,hr.group_hr_manager,1,1,1,1

@@ -14,7 +14,6 @@
             <field name="name">API Checadores</field>
             <field name="category_id" ref="module_category_api_checadores"/>
             <field name="comment">Acceso de solo lectura a empleados, departamentos y horarios para el API de checadores biométricos</field>
-            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
         </record>
         
         <!-- Grupo de gestión: API Checadores - Gestor (Configurar desde UI) -->
@@ -22,7 +21,6 @@
             <field name="name">API Checadores - Gestor</field>
             <field name="category_id" ref="module_category_api_checadores"/>
             <field name="comment">Puede configurar el API desde Odoo (crear usuarios, regenerar claves)</field>
-            <field name="implied_ids" eval="[(4, ref('hr.group_hr_manager'))]"/>
         </record>
         
     </data>
