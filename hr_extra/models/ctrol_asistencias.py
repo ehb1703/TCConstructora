@@ -14,7 +14,13 @@ class CtrolAsistencias(models.Model):
 
     # Campos según documento T0040
     employee_id = fields.Integer(string='ID Empleado', required=True, help='Número de empleado desde el checador')
+    registration_number = fields.Char(string='Número de Empleado', required=True, index=True, 
+        help='Número de empleado desde el checador (identificador principal)')
     check_type = fields.Selection([('entrada', 'Entrada'), ('salida', 'Salida') ], string='Tipo de Registro', required=True, default='entrada')
+    # Campos para manejo de errores (T0049)
+    status = fields.Selection([('success', 'Exitoso'), ('error', 'Error')], string='Estado del Registro', default='success', required=True,
+       help='Indica si el registro se procesó correctamente o tiene errores')
+    observaciones = fields.Text(string='Observaciones', help='Descripción de errores o advertencias del registro')
     photo_url = fields.Char(string='URL Fotografía', help='URL de la foto tomada en el checador' )
     latitude = fields.Float(string='Latitud', digits=(10, 8), help='Coordenada GPS - Latitud')
     longitude = fields.Float(string='Longitud', digits=(11, 8), help='Coordenada GPS - Longitud')
@@ -35,14 +41,30 @@ class CtrolAsistencias(models.Model):
     date_validated = fields.Datetime(string='Fecha de Validación')
     employee_name = fields.Char(string='Nombre Empleado', compute='_compute_employee_name', store=True)
     
-    @api.depends('employee_id')
+    @api.depends('registration_number', 'employee_id')
     def _compute_employee_name(self):
         for record in self:
-            if record.employee_id:
-                employee = self.env['hr.employee'].sudo().search([('id', '=', record.employee_id)], limit=1)
-                record.employee_name = employee.name if employee else f'Empleado #{record.employee_id}'
+            employee = False
+            
+            # Intentar buscar por registration_number primero
+            if record.registration_number:
+                employee = self.env['hr.employee'].sudo().search([
+                    ('registration_number', '=', record.registration_number)
+                ], limit=1)
+            
+            # Fallback: buscar por employee_id (legacy)
+            if not employee and record.employee_id:
+                employee = self.env['hr.employee'].sudo().search([
+                    ('id', '=', record.employee_id)
+                ], limit=1)
+            
+            if employee:
+                record.employee_name = employee.name
+                # Sincronizar employee_id si no existe
+                if not record.employee_id:
+                    record.employee_id = employee.id
             else:
-                record.employee_name = ''
+                record.employee_name = f'Empleado #{record.registration_number or record.employee_id}'
     
     @api.constrains('latitude')
     def _check_latitude(self):
@@ -92,13 +114,25 @@ class CtrolAsistencias(models.Model):
     
     @api.model
     def create_from_checador(self, vals):
-        # Crea un registro desde el checador validando datos
+        """Crea un registro desde el checador validando datos.
+        
+        Busca el employee_id usando el registration_number si no viene en vals. """
+        # Buscar employee_id usando registration_number
+        if vals.get('registration_number') and not vals.get('employee_id'):
+            employee = self.env['hr.employee'].sudo().search([
+                ('registration_number', '=', vals['registration_number'])
+            ], limit=1)
+            if employee:
+                vals['employee_id'] = employee.id
+        
+        # Convertir check_date si viene en formato ISO con T
         if vals.get('check_date') and 'T' in str(vals.get('check_date')):
             vals['check_date'] = str(vals['check_date']).replace('T', ' ')
         
         # Crear registro
         record = self.create(vals)
         _logger.info(f"Asistencia creada en ctrol.asistencias - ID: {record.id}, "
-                    f"Empleado: {vals.get('employee_id')}, Tipo: {vals.get('check_type')}")
+                    f"Registration#: {vals.get('registration_number')}, "
+                    f"Tipo: {vals.get('check_type')}, Status: {vals.get('status', 'success')}")
         
         return record

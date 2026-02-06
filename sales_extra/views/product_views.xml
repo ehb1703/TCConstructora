@@ -44,4 +44,57 @@
         </field>
     </record>
 
+    <!-- Vista lista propia de product.unspsc.code con campos Grupo SAT y Segmento -->
+    <record id="view_product_unspsc_code_list_sat" model="ir.ui.view">
+        <field name="name">view.product.unspsc.code.list.sat</field>
+        <field name="model">product.unspsc.code</field>
+        <field name="arch" type="xml">
+            <list string="Productos y servicios SAT">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="grupo_sat"/>
+                <field name="segmento_sat"/>
+                <field name="applies_to"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_product_unspsc_code_form_sat" model="ir.ui.view">
+        <field name="name">view.product.unspsc.code.form.sat</field>
+        <field name="model">product.unspsc.code</field>
+        <field name="arch" type="xml">
+            <form string="Producto/Servicio SAT">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="name"/>
+                        </group>
+                        <group>
+                            <field name="applies_to"/>
+                            <field name="grupo_sat" readonly="1"/>
+                            <field name="segmento_sat" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_product_unspsc_code_products" model="ir.actions.act_window">
+        <field name="name">Productos y servicios SAT</field>
+        <field name="res_model">product.unspsc.code</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_product_unspsc_code_list_sat')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_product_unspsc_code_form_sat')})]"/>
+        <field name="domain">[('applies_to', '=', 'product')]</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Catálogo de productos y servicios SAT</p>
+            <p>Este catálogo contiene los códigos UNSPSC (Código Estándar de Productos y Servicios de las Naciones Unidas) filtrados para productos.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_product_unspsc_code_products" name="Productos y servicios SAT" parent="sale.product_menu_catalog" action="action_product_unspsc_code_products" sequence="15"/>
 </odoo>

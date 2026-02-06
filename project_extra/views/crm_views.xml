@@ -8,6 +8,20 @@
             <xpath expr="//kanban" position="attributes">
                 <attribute name="records_draggable">False</attribute>
             </xpath>
+            <xpath expr="//kanban//field[@name='expected_revenue']" position="attributes">
+                <attribute name="string">Capital</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_crm_lead_kanban_quick_create" model="ir.ui.view">
+        <field name="name">view.crm.lead.kanban.quick.create</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.quick_create_opportunity_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='expected_revenue']" position="attributes">
+                <attribute name="string">Capital</attribute>
+            </xpath>
         </field>
     </record>
     
@@ -23,19 +37,15 @@
             </xpath>
 
             <xpath expr="//field[@name='stage_id']" position="before">
-                <!-- Solicitar autorización -->
-                <field name="in_calificado" invisible="1"/>
                 <field name="stage_name" invisible="1"/>
                 <field name="stage_previous" invisible="1"/>
-                <button name="action_request_authorization" type="object" string="Solicitar autorización" class="btn-secondary" invisible="not in_calificado"/>
-                <!-- Autorizar convocatoria -->
-                <button name="action_authorize" type="object" string="Autorizar convocatoria" class="oe_highlight" groups="project_extra.group_conv_authorizer" invisible="not in_calificado"/>
-                <!-- Declinar convocatoria -->
-                <button name="action_decline" type="object" string="Declinar convocatoria" class="btn-danger" groups="project_extra.group_conv_authorizer" invisible="not in_calificado or stage_name == 'Declinado'"/>
-                <!-- Regresar etapa (visible solo cuando está en Calificado) -->
-                <button name="action_advance_stage" type="object" string="Avanzar etapa" class="btn-secondary" invisible="stage_name in ('Nuevas Convocatorias', 'Junta de Fallo', 'Declinado', 'Ganado')"/>
+                <button name="action_advance_stage" type="object" string="Avanzar etapa" class="btn-secondary" invisible="stage_name in ('Junta de Fallo', 'Declinado', 'Ganado')"/>
                 <button name="action_revert_stage" type="object" string="Regresar etapa" class="btn-secondary" invisible="stage_name in ('Nuevas Convocatorias', 'Declinado')"/>
                 <button name="action_genera_ordenventa" type="object" string="Orden de venta" class="btn-secondary" invisible="stage_name != 'Ganado'"/>
+            </xpath>
+
+            <xpath expr="//button[@name='%(crm.crm_lead_lost_action)d']" position="attributes">
+                <attribute name="invisible">stage_name != 'Junta de Fallo'</attribute>
             </xpath>
 
             <!-- Agregar botón de Documentos en la caja de botones -->
@@ -59,6 +69,7 @@
 
             <xpath expr="//notebook" position="before">
                 <group>
+                    <field name="empresa_concursante_id" string="Empresa concursante" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                     <field name="origen_id" string="Tipo de Venta" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                 </group>
                 <group string="Información Convocatoria" invisible="origen_name != 'Público'">
@@ -77,19 +88,6 @@
                         <field name="currency_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                         <field name="convocatoria_pdf_name" string="Nombre del Documento" invisible="True"/>
                         <field name="convocatoria_pdf" filename="convocatoria_pdf_name" string="Convocatoria" widget="binary"/>
-                    </group>
-                </group>
-                <group string="Criterios de aprobación" invisible="origen_name != 'Público'">
-                    <group>
-                        <group>
-                            <field name="tipo_obra_ok" readonly="stage_name not in ['Nuevas Convocatorias', 'Declinado']"/>
-                        </group>
-                        <group>
-                            <field name="dependencia_ok" readonly="stage_name not in ['Nuevas Convocatorias', 'Declinado']"/>
-                        </group>
-                    </group>
-                    <group>
-                        <field name="capital_ok" readonly="stage_name not in ['Nuevas Convocatorias', 'Declinado']"/>
                     </group>
                 </group>
             </xpath>
@@ -438,6 +436,19 @@
                                     <field name="fecha_firma" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado' and contrato_firmado"/>
                                     <field name="importe_anticipo" invisible="bases_abstinencia_anticipo"/>
                                     <field name="no_estimaciones" readonly="stage_name != 'Ganado'" string="No. De estimaciones"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group>
+                                    <field name="clave_unidad_sat_id" string="Clave unidad SAT" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="clave_producto_servicio_id" string="Clave producto/servicio" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="director_estimaciones_pagos" readonly="stage_name != 'Ganado'"/>
+                                </group>
+                                <group>
+                                    <field name="fianza_anticipo_no" readonly="stage_name != 'Ganado'"/>
+                            	    <field name="afianzadora_anticipo_id" string="Nombre afianzadora anticipo" readonly="stage_name != 'Ganado'" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="fianza_cumplimiento_no" readonly="stage_name != 'Ganado'"/>
+                                    <field name="afianzadora_cumplimiento_id" readonly="stage_name != 'Ganado'" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                 </group>
                             </group>
                         </page>

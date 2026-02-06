@@ -5,6 +5,26 @@ from odoo.exceptions import ValidationError, UserError
 
 _logger = logging.getLogger(__name__)
 
+class ProductUnspscCodeExtended(models.Model):
+    _inherit = 'product.unspsc.code'
+
+    grupo_sat = fields.Char(string='Grupo SAT', compute='_compute_grupo_segmento', store=True, help='Primeros 4 dígitos del código UNSPSC')
+    segmento_sat = fields.Char(string='Segmento', compute='_compute_grupo_segmento', store=True, help='Primeros 2 dígitos del código UNSPSC')
+
+    @api.depends('code')
+    def _compute_grupo_segmento(self):
+        for record in self:
+            if record.code and len(record.code) >= 4:
+                record.grupo_sat = record.code[:4]
+                record.segmento_sat = record.code[:2]
+            elif record.code and len(record.code) >= 2:
+                record.grupo_sat = record.code
+                record.segmento_sat = record.code[:2]
+            else:
+                record.grupo_sat = record.code or ''
+                record.segmento_sat = record.code or ''
+                
+
 class supplyProductTemplate(models.Model):
     _inherit = 'product.template'
     
