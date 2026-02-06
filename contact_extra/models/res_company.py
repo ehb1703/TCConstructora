@@ -12,6 +12,7 @@ class respartnerCurp(models.Model):
     nacionalidad = fields.Char(string='Nacionalidad')
     is_supplier = fields.Boolean(string='Es proveedor')
     is_customer = fields.Boolean(string='Es cliente')
+    is_afianzadora = fields.Boolean(string='Es afianzadora', default=False)
     clasification = fields.Selection(selection=[('gob','Gubernamental'),('priv','Privado'),('int','Interno')],
         string='Clasificación', default='gob')
     typesupplier_id = fields.Many2one('partner.type.supplier', string='Tipo de Proveedor', tracking=True)

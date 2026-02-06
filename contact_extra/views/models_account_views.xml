@@ -31,6 +31,9 @@
             <xpath expr="//field[@name='partner_id']" position="before">
                 <field name="no_tarjeta"/>
             </xpath>
+            <xpath expr="//field[@name='allow_out_payment']" position="before">
+                <field name="type_pay"/>
+            </xpath>
         </field>
     </record>
 

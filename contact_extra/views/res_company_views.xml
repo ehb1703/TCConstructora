@@ -40,6 +40,20 @@
                     <field id="company" options="{'line_breaks': False}" widget="text" class="text-break" name="name" default_focus="1" placeholder="e.g. Lumber Inc" invisible="not is_company" required="type == 'contact'" readonly="1"/>
                     <field id="individual" options="{'line_breaks': False}" widget="text" class="text-break" name="name" default_focus="1" placeholder="e.g. Brandon Freeman" invisible="is_company" required="type == 'contact'" readonly="1"/>
                 </h1>
+                <div>
+                    <span class="d-inline-flex">
+                        <field name="is_afianzadora"/>
+                        <label for="is_afianzadora"/>
+                    </span>
+                    <span class="d-inline-flex">
+                        <field name="is_supplier"/>
+                        <label for="is_supplier"/>
+                    </span>
+                    <span class="d-inline-flex">
+                        <field name="is_customer"/>
+                        <label for="is_customer"/>
+                    </span>
+                </div>
             </xpath>
             <xpath expr="//field[@name='function']" position="before">
                 <field name="responsable_id" invisible="not is_company" domain="[('is_company', '=', False)]"/>
@@ -58,8 +72,6 @@
         <field name="arch" type="xml">
             <xpath expr="//group[@name='accounting_automation']" position="after">
                 <group name="otros" string="Otros">
-                    <field name="is_customer"/>
-                    <field name="is_supplier"/>
                     <field name="area_em"/>
                     <field name="clasification"/>
                     <field name="typesupplier_id" invisible="not is_supplier"/>
