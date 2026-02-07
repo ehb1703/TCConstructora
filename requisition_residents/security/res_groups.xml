@@ -16,9 +16,13 @@
         <field name="category_id" ref="module_category_requisition"/>
     </record>
 
-    <!--record id="group_documentos" model="res.groups">
-        <field name="name">Documentos</field>
+    <record id="group_requisition_materials" model="res.groups">
+        <field name="name">Requisición de Materiales</field>
         <field name="category_id" ref="module_category_requisition"/>
-    </record-->
+    </record>
 
+    <record id="group_requisition_authorize" model="res.groups">
+        <field name="name">Autorización de requisición semanal</field>
+        <field name="category_id" ref="module_category_requisition"/>
+    </record>
 </odoo>

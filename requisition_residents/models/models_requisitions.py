@@ -1,15 +1,19 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools import html_escape
+from markupsafe import Markup
 from datetime import date, datetime, timedelta
 import json
 import logging
 
 _logger = logging.getLogger(__name__)
 
+
 class requisitionResidents(models.Model):
     _name = 'requisition.residents'
     _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'name'
     _description = 'Requisiciones de Residentes de Obras'
 
     name = fields.Char(string='Nombre')
@@ -19,9 +23,8 @@ class requisitionResidents(models.Model):
     employee_id = fields.Many2one('hr.employee', string='Responsable')
     company_id = fields.Many2one('res.company', string='Empresa', tracking=True)
     amount_untaxed = fields.Float(string='Importe sin IVA', compute='_compute_amount', store=True, readonly=True, tracking=True)
-    amount_tax = fields.Float(string='Impuestos', compute='_compute_amount', store=True, readonly=True)
     amount_total = fields.Float(string='Total', compute='_compute_amount', store=True, readonly=True)
-    state = fields.Selection(selection=[('draft','Borrador'), ('send','Enviado'), ('aprobado','Aprobado')],
+    state = fields.Selection(selection=[('draft','Borrador'), ('send','Enviado'), ('aprobado','Aprobado'), ('req','Requisición')],
         string='Estatus', default='draft', tracking=True)
     line_ids = fields.One2many('requisition.residents.line', 'req_id', string='Resumen')
     destajo_ids = fields.One2many('requisition.destajo', 'req_id', string='Destajo')
@@ -30,17 +33,16 @@ class requisitionResidents(models.Model):
     maquinaria_ids = fields.One2many('requisition.maquinaria', 'req_id', string='Maquinaria')
     cash_ids = fields.One2many('requisition.cash', 'req_id', string='Caja Chica')
     nom_ids = fields.One2many('requisition.nomina', 'req_id', string='Nomina')
+    rweekly_id = fields.Many2one('requisition.weekly', readonly=True)
 
-    @api.depends('line_ids.amount_untaxed', 'line_ids.amount_tax', 'line_ids.amount_total')
+    @api.depends('line_ids.amount_untaxed', 'line_ids.amount_total')
     def _compute_amount(self):
         for req in self:
-            total_untaxed, total_tax, total = 0.0, 0.0, 0.0
+            total_untaxed, total = 0.0, 0.0
             for line in req.line_ids:
                 total_untaxed += line.amount_untaxed
-                total_tax += line.amount_tax
                 total += line.amount_total
             req.amount_untaxed = total_untaxed
-            req.amount_tax = total_tax
             req.amount_total = total
 
     @api.onchange('finicio', 'ffinal')
@@ -52,47 +54,115 @@ class requisitionResidents(models.Model):
 
     def action_resumen(self):
         req_lines = []
-        if self.cash_ids:
-            total = 0
-            relacion = ''
-            for rec in self.cash_ids:
-                if rec.amount != 0:
-                    total += rec.amount
-                    relacion = relacion + str(rec.id) + ','
-            if relacion != '':
-                lines = {'category': 'Caja Chica', 'relacion': relacion[:-1], 'descripcion': 'Reposición de Caja Chica', 
-                    'partner_id': self.employee_id.work_contact_id.id, 'amount_untaxed': total, 'amount_tax': 0.0, 'amount_total': total}
-                req_lines.append((0, 0, lines))
         if self.nom_ids:
             total = 0
+            total_fiscal = 0
             relacion = ''
             for rec in self.nom_ids:
                 if rec.salary != 0:
-                    total += rec.salary
+                    if rec.employee_id.bank_account_id.type_pay == 'fiscal':
+                        total_fiscal += rec.salary
+                    else:
+                        total += rec.salary
                     relacion = relacion + str(rec.id) + ','
             if relacion != '':
-                lines = {'category': 'Nómina', 'relacion': relacion[:-1], 'descripcion': 'Nómina', 'partner_id': self.employee_id.work_contact_id.id, 
-                    'amount_untaxed': total, 'amount_tax': 0.0, 'amount_total': total}
+                lines = {'category': 'Nómina', 'relacion': relacion[:-1], 'description': 'Nómina', 'partner_id': self.employee_id.work_contact_id.id, 
+                    'amount_untaxed': total, 'amount_total': total_fiscal}
+                req_lines.append((0, 0, lines))
+        if self.cash_ids:
+            total = 0
+            total_fiscal = 0
+            relacion = ''
+            for rec in self.cash_ids:
+                if rec.amount != 0:
+                    if rec.type_comp == 'fact':
+                        total_fiscal += rec.amount
+                    else:
+                        total += rec.amount
+                    relacion = relacion + str(rec.id) + ','
+            if relacion != '':
+                lines = {'category': 'Caja Chica', 'relacion': relacion[:-1], 'description': 'Reposición de Caja Chica', 
+                    'partner_id': self.employee_id.work_contact_id.id, 'amount_untaxed': total, 'amount_total': total_fiscal}
+                req_lines.append((0, 0, lines))
+        if self.campamento_ids:
+            self.env.cr.execute('SELECT partner_id, SUM(price) total FROM requisition_campamentos ra WHERE req_id = ' + str(self.id) + ' GROUP BY 1')
+            campamento = self.env.cr.dictfetchall()
+            for rec in campamento:
+                lines = {'category': 'Renta', 'description': 'Renta', 'partner_id': rec['partner_id'], 'amount_untaxed': rec['total'], 'amount_total': 0.0}
+                req_lines.append((0, 0, lines))
+        if self.maquinaria_ids:
+            self.env.cr.execute('SELECT partner_id, SUM(amount) total FROM requisition_maquinaria ra WHERE req_id = ' + str(self.id) + ' GROUP BY 1')
+            maquinaria = self.env.cr.dictfetchall()
+            for rec in maquinaria:
+                lines = {'category': 'Renta', 'description': 'Maquinaria', 'partner_id': rec['partner_id'], 'amount_untaxed': rec['total'], 'amount_total': 0.0}
+                req_lines.append((0, 0, lines))
+        if self.acarreo_ids:
+            self.env.cr.execute('SELECT partner_id, SUM(amount) total FROM requisition_acarreos ra WHERE req_id = ' + str(self.id) + ' GROUP BY 1')
+            acarreo = self.env.cr.dictfetchall()
+            for rec in acarreo:
+                lines = {'category': 'Acarreos', 'description': 'Acarreos', 'partner_id': rec['partner_id'], 'amount_untaxed': rec['total'], 'amount_total': 0.0}
                 req_lines.append((0, 0, lines))
         
         if self.destajo_ids:
-            for rec in self.destajo_ids:
-                if rec.amount_total != 0:
-                    lines = {'category': 'Destajo', 'relacion': rec.id, 'descripcion': rec.type_des, 'partner_id': self.employee_id.work_contact_id.id, 
-                        'amount_untaxed': rec.amount_total, 'amount_tax': 0.0, 'amount_total': rec.amount_total}
-                    req_lines.append((0, 0, lines))
-        if self.acarreo_ids:
-            _logger.warning('Agregar Acarreos')
-        if self.campamento_ids:
-            _logger.warning('Agregar Campamentos')
-        if self.maquinaria_ids:
-            _logger.warning('Agregar Maquinaria')        
+            self.env.cr.execute('''SELECT pp.nombre, partner_id, SUM(amount_total) total 
+                FROM requisition_destajo ra LEFT JOIN project_piecework pp ON ra.DESTAJO_ID = pp.ID WHERE ra.amount_total != 0 AND req_id = ''' + 
+                str(self.id) + ' GROUP BY 1, 2')
+            destajo = self.env.cr.dictfetchall()
+            for rec in destajo:
+                lines = {'category': 'Destajo', 'description': rec['nombre'], 'partner_id': rec['partner_id'], 'amount_untaxed': rec['total'], 
+                    'amount_total': 0.0}
+                req_lines.append((0, 0, lines))
 
         if self.line_ids:
             self.line_ids.unlink()
 
-        _logger.warning(req_lines)
+        self.write({'line_ids': req_lines})
 
+
+    def _get_emails_from_group(self, grupo):
+        emails = set()
+        group = self.env.ref(grupo, raise_if_not_found=False)
+        if group:
+            for user in group.users.filtered(lambda u: u.active and u.partner_id and u.partner_id.email):
+                emails.add(user.partner_id.email.strip())
+        return sorted(e for e in emails if '@' in e)
+
+    def _post_html(self, title, old_stage=None, new_stage=None):
+        parts = [f'<p>{html_escape(title)}</p>']
+        if old_stage or new_stage:
+            parts.append(
+                f'<p>{html_escape(_('De'))} <b>{html_escape((old_stage and old_stage.name) or '-')}</b> '
+                f'{html_escape(_('a'))} <b>{html_escape((new_stage and new_stage.name) or '-')}</b>.</p>')
+        body = '<div>' + ''.join(parts) + '</div>'
+        self.message_post(body=Markup(body), message_type='comment', subtype_xmlid='mail.mt_note')
+
+    def action_send(self):
+        self.action_resumen()
+        # Generar archivo y adjuntarlo
+        correos_list = self._get_emails_from_group('requisition_residents.group_requisition_admin')
+        template = self.env.ref('requisition_residents.mail_tmpl_requisition_residents', raise_if_not_found=False)
+
+        try:
+            correos = ', '.join(correos_list)
+            email_values = {'model': 'requisition_residents', 'email_to': correos}
+            template.send_mail(self.id, force_send=True, email_values=email_values)
+            self._post_html(_('Se envió correo a: ') + correos)
+        except Exception:
+            self._post_html(_('Error al enviar el correo'))
+        self.state = 'send'
+
+    def action_confirm(self):
+        c = 0
+        ccamp = len(self.campamento_ids.filtered(lambda u: not u.account_id))
+        cmaq = len(self.maquinaria_ids.filtered(lambda u: not u.account_id))
+        ccar = len(self.acarreo_ids.filtered(lambda u: not u.account_id))
+        cdest = len(self.destajo_ids.filtered(lambda u: not u.account_id))
+        c = ccamp + cmaq + ccar + cdest
+        if c != 0:
+            raise ValidationError('Hay información sin la cuenta bancaria a depositar, favor de revisar.')
+
+        self.action_resumen()
+        self.state = 'aprobado'
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -115,7 +185,6 @@ class requisitionResidentsLine(models.Model):
     description = fields.Char(string='Descripción')
     partner_id = fields.Many2one('res.partner', string='Nombre', tracking=True)
     amount_untaxed = fields.Float(string='Importe sin IVA')
-    amount_tax = fields.Float(string='Impuestos')
     amount_total = fields.Float(string='Total')
 
 class requisitionDestajo(models.Model):
@@ -140,6 +209,7 @@ class requisitionDestajo(models.Model):
     cotizacion_id = fields.One2many('ir.attachment', 'res_id', string='Cotización o presupuesto')
     amount_total = fields.Float(string='Total', compute='_compute_amount', store=True, readonly=True)
     line_ids = fields.One2many('requisition.destajo.line', 'destajo_id')
+    state = fields.Selection(related='req_id.state', string='Estatus')
 
     _sql_constraints = [('req_partner_uniq', 'unique (req_id, partner_id)', 'Solo debe de haber un destajo por destajista')]
 
@@ -154,6 +224,7 @@ class requisitionDestajo(models.Model):
 
 class requisitionDestajoLine(models.Model):
     _name = 'requisition.destajo.line'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Líneas de Destajo'
 
     destajo_id = fields.Many2one('requisition.destajo', readonly=True)
@@ -203,6 +274,7 @@ class requisitionDestajoLine(models.Model):
 
 class requisitionAcarreos(models.Model):
     _name = 'requisition.acarreos'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Acarreos'
 
     req_id = fields.Many2one('requisition.residents', readonly=True)
@@ -219,8 +291,8 @@ class requisitionAcarreos(models.Model):
     price = fields.Float(string='Precio Unitario')
     qty = fields.Float(string='Cantidad')
     amount = fields.Float(string='Importe')
-
-    #amount = price * qty
+    account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
+    state = fields.Selection(related='req_id.state', string='Estatus')
 
     @api.depends('product_id')
     def _compute_product_template_id(self):
@@ -244,6 +316,7 @@ class requisitionAcarreos(models.Model):
 
 class requisitionCampamentos(models.Model):
     _name = 'requisition.campamentos'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Renta de campamentos'
 
     req_id = fields.Many2one('requisition.residents', readonly=True)
@@ -258,6 +331,8 @@ class requisitionCampamentos(models.Model):
     price = fields.Float(string='Total Renta')
     periodo = fields.Char(string='Periodo')
     deposito = fields.Char(string='Depósito en garantía')
+    account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
+    state = fields.Selection(related='req_id.state', string='Estatus')
 
     @api.depends('product_id')
     def _compute_product_template_id(self):
@@ -270,6 +345,7 @@ class requisitionCampamentos(models.Model):
 
 class requisitionMaquinaria(models.Model):
     _name = 'requisition.maquinaria'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Maquinaria'
 
     req_id = fields.Many2one('requisition.residents', readonly=True)
@@ -288,6 +364,8 @@ class requisitionMaquinaria(models.Model):
     autoriza_id = fields.Many2one('hr.employee', string='Persona que autoriza renta y precio')
     line_ids = fields.One2many('requisition.maquinaria.line', 'maquinaria_id')
     horometro = fields.Float(string='Horometro Inicial')
+    account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
+    state = fields.Selection(related='req_id.state', string='Estatus')
     
     @api.onchange('days', 'time_out')
     def onchange_days(self):
@@ -302,6 +380,7 @@ class requisitionMaquinaria(models.Model):
 
 class requisitionMaquinariaLine(models.Model):
     _name = 'requisition.maquinaria.line'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Desglose de uso de la maquinaria'
 
     maquinaria_id = fields.Many2one('requisition.maquinaria', readonly=True)
@@ -330,6 +409,7 @@ class requisitionMaquinariaLine(models.Model):
 
 class requisitionCash(models.Model):
     _name = 'requisition.cash'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Caja Chica'
 
     @api.depends('req_id')
@@ -380,6 +460,7 @@ class requisitionCash(models.Model):
 
 class requisitionNomina(models.Model):
     _name = 'requisition.nomina'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Nómina'
 
     req_id = fields.Many2one('requisition.residents', readonly=True)
@@ -400,3 +481,66 @@ class requisitionNomina(models.Model):
     def onchange_employee(self):
         if self.employee_id:
             self.job_id = self.employee_id.job_id
+
+
+class requisitionWeekly(models.Model):
+    _name = 'requisition.weekly'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _description = 'Requisiciones Semanales'
+
+    name = fields.Char(string='Nombre')
+    finicio = fields.Date(string='Periodo Inicial')
+    amount_total = fields.Float(string='Total Adeudo', compute='_compute_amount', store=True, readonly=True)
+    amount_pago = fields.Float(string='Total Pago', compute='_compute_amount', store=True, readonly=True)
+    line_ids = fields.One2many('requisition.weekly.line', 'weekly_id', string='Resumen')
+    reqres_ids = fields.One2many('requisition.residents', 'rweekly_id', string='Requisición Residente')
+    state = fields.Selection(selection=[('draft','Borrador'), ('rev','Revisión'), ('apr','Aprobado'), ('done', 'Pagado')],
+        string='Estatus', default='draft', tracking=True)
+
+    @api.depends('line_ids.adeudo', 'line_ids.importe')
+    def _compute_amount(self):
+        for req in self:
+            total, pago = 0.0, 0.0
+            for line in req.line_ids:
+                total += line.adeudo
+                pago += line.importe
+            req.amount_total = total
+            req.amount_pago = pago
+
+    def action_send_rev(self):
+        self.write({'state': 'rev'})
+
+    def action_confirm(self):
+        if not self.env.user.has_group('requisition_residents.group_requisition_authorize'):
+            raise UserError('El usuario no tiene las facultades para realizar esta acción')
+
+        for rec in self.line_ids:
+            if not rec.aprobado and rec.importe == 0.0:
+                raise ValidationError('El registro del concepto %s no esta aprobado, favor de revisar'% rec.concepto)
+            if not rec.aprobado and rec.importe != 0.0 and rec.importe > rec.adeudo:
+                raise ValidationError('El registro del concepto %s tiene un importe mayor al aprobado, favor de revisar'% rec.concepto)
+
+        self.write({'state': 'apr'})
+
+    def action_pay(self):
+        _logger.warning('Esta pendiente el proceso')
+
+
+class requisitionWeeklyLine(models.Model):
+    _name = 'requisition.weekly.line'
+    _description = 'Movimientos'
+    _order = 'company_id asc, project_id asc, id asc'
+
+    weekly_id = fields.Many2one('requisition.weekly', readonly=True)
+    company_id = fields.Many2one('res.company', string='Empresa', tracking=True)
+    project_id = fields.Many2one('project.project', string='Obra')
+    concepto = fields.Char(string='Concepto')
+    partner_id = fields.Many2one('res.partner', string='Proveedor')
+    fuerza = fields.Integer(string='Fuerza de trabajo')
+    type_pay = fields.Char(string='Forma de pago')
+    adeudo = fields.Float(string='Adeudo')
+    aprobado = fields.Boolean(string='Adeudo aprobado', default=False)
+    importe = fields.Float(string='Abono', default='0.0')
+    accountbank_id = fields.Many2one('requisition.bank.account', string='Cuenta bancaria', domain="[('obsolete', '=', False)]")
+    debt_id = fields.Many2one('requisition.debt.line', string='Linea de adeudo')
+    state = fields.Selection(related='weekly_id.state', string='Estatus')

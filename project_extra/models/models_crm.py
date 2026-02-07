@@ -45,7 +45,7 @@ class CrmLead(models.Model):
     tipo_obra_ok = fields.Boolean('Tipo de obra cumple', tracking=True)
     dependencia_ok = fields.Boolean('Dependencia emisora cumple', tracking=True)
     capital_ok = fields.Boolean('Capital contable cumple', tracking=True)
-    in_calificado = fields.Boolean(string='En calificado', compute='_compute_botones', store=False)
+    in_calificado = fields.Boolean(string='En calificado', default=False)
     oc_ids = fields.One2many('purchase.order', 'lead_id', string='Ordenes de compra relacionada')
     revert_log_ids = fields.One2many('crm.revert.log', 'lead_id', string='Bitácora de reversiones', readonly=True)
     revert_log_count = fields.Integer(compute='_compute_revert_log_count', string='Reversiones')
@@ -86,7 +86,7 @@ class CrmLead(models.Model):
     visita_notif_manual_sent = fields.Boolean(string='Notif. Manual enviada', default=False)
     # Junta de Aclaración de dudas
     junta_obligatoria = fields.Boolean(string='Asistencia obligatoria')
-    junta_personas_ids = fields.Many2many('hr.employee','crm_lead_junta_employee_rel','lead_id','employee_id',string='Personas asignadas')
+    junta_personas_ids = fields.Many2many('hr.employee', 'crm_lead_junta_employee_rel', 'lead_id', 'employee_id', string='Personas asignadas')
     junta_fecha = fields.Datetime(string='Fecha y hora de junta')
     junta_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la junta de aclaración de dudas')
     junta_fecha_limite_dudas = fields.Date(string='Fecha límite para envío de dudas')
@@ -157,6 +157,18 @@ class CrmLead(models.Model):
     es_siop = fields.Boolean('Es SIOP', compute='_compute_es_siop', store=False)
     orden_trabajo_doc = fields.Binary('Orden de trabajo', attachment=True, help='Documento de orden de trabajo entregado por la dependencia')
     orden_trabajo_doc_name = fields.Char('Nombre orden de trabajo')
+    # Nuevos campos etapa Ganado
+    empresa_concursante_id = fields.Many2one('res.company', string='Empresa concursante', help='Empresa del grupo que participa en la licitación')
+    clave_unidad_sat_id = fields.Many2one('uom.uom', string='Clave unidad SAT', help='Clave de unidad de medida SAT para facturación')
+    clave_producto_servicio_id = fields.Many2one('product.unspsc.code', string='Clave producto/Servicio',
+        domain="[('segmento_sat', '=', '72')]")
+    fianza_anticipo_no = fields.Char(string='Fianza anticipo No.', size=100, help='Número de fianza del anticipo')
+    afianzadora_anticipo_id = fields.Many2one('res.partner', string='Nombre afianzadora', domain="[('is_afianzadora', '=', True), ('is_company', '=', True)]")
+    fianza_cumplimiento_no = fields.Char(string='Fianza cumplimiento No.', size=100, help='Número de fianza de cumplimiento')
+    afianzadora_cumplimiento_id = fields.Many2one('res.partner', string='Nombre afianzadora cumplimiento', 
+        domain="[('is_afianzadora', '=', True), ('is_company', '=', True)]")
+    director_estimaciones_pagos = fields.Char(string='Director(a) de estimaciones y pagos', size=100, 
+        help='Nombre del director responsable de estimaciones y pagos')
     #Propuesta Técnica y Económica
     documents_folder_id = fields.Many2one('documents.document', string="Folder", copy=False,domain="[('type', '=', 'folder'), ('shortcut_document_id', '=', False), '|', ('company_id', '=', False), ('company_id', '=', company_id)]",)
     documents_count = fields.Integer('Documentos', compute='_compute_documents_count', readonly=True)
@@ -189,16 +201,6 @@ class CrmLead(models.Model):
         for record in self:
             record.req_bases = bool(getattr(record.origen_id, 'bases', False))
             record.origen_name = record.origen_id.name if record.origen_id else False
-
-    @api.onchange('tipo_obra_ok', 'dependencia_ok', 'capital_ok')
-    def _compute_botones(self):
-        for rec in self:
-            rec.in_calificado = False
-            if (rec.tipo_obra_ok and rec.dependencia_ok and rec.capital_ok):
-                if rec.stage_id.name == 'Nuevas Convocatorias':
-                    rec.in_calificado = True
-                if rec.stage_id.name == 'Declinado' and rec.stage_previous == 'Nuevas Convocatorias':
-                    rec.in_calificado = True
 
     @api.depends('revert_log_ids')
     def _compute_revert_log_count(self):
@@ -302,77 +304,6 @@ class CrmLead(models.Model):
     def _log_stage_change(self, old_stage, new_stage, reason_id, reason_text=''):
         self.env['crm.revert.log'].sudo().create({'lead_id': self.id, 'user_id': self.env.user.id, 'old_stage_id': old_stage.id if old_stage else False,
             'new_stage_id': new_stage.id if new_stage else False, 'reason_id': reason_id, 'reason_text': reason_text or False,})
-
-    # ----------------- Acciones -----------------
-    def action_request_authorization(self):
-        # Envía notificación de autorización.
-        for lead in self:
-            if not lead.in_calificado:
-                raise UserError(_('Debe marcar los 3 criterios para solicitar autorización.'))
-
-            correos_list = lead._get_authorizer_emails_from_group('project_extra.group_conv_authorizer')
-            template = self.env.ref('project_extra.calif_mail_tmpl_convocatoria_autorizacion', raise_if_not_found=False)
-
-            faltantes = []
-            if not template:
-                faltantes.append(_('plantilla'))
-            if not correos_list:
-                faltantes.append(_('destinatarios con permiso'))
-
-            if faltantes:
-                lead._post_html(_('Solicitud de autorización lista, pero faltan: ') + ', '.join(faltantes))
-                if not correos_list:
-                    raise UserError(_('''No hay usuarios configurados con permiso para autorizar (o no tienen correo).
-                        Agregue usuarios al grupo “Puede autorizar convocatorias”.'''))
-                if not template:
-                    raise UserError(_('No se encontró la plantilla de correo para solicitar autorización.'))
-                continue
-
-            try:
-                correos = ', '.join(correos_list)
-                email_values = {'model': 'crm.lead', 'email_to': correos}
-                template.send_mail(lead.id, force_send=True, email_values=email_values)
-                lead._post_html(_('Se envió correo a: ') + correos)
-            except Exception:
-                lead._post_html(_('Error al enviar el correo'))
-
-    def action_authorize(self):
-        # Autoriza la convocatoria y mueve a 'Calificado'.
-        self.ensure_one()
-        if not self.env.user.has_group('project_extra.group_conv_authorizer'):
-            raise UserError(_('No tiene permisos para autorizar.'))
-        if not self.in_calificado:
-            raise UserError(_('No puede autorizar sin los 3 criterios marcados.'))
-        # Etapa destino
-        dest_stage = self._get_stage_by_name('Calificado')
-        if not dest_stage:
-            raise UserError(_('No se encontró la etapa CALIFICADO'))
-
-        old_stage = self.stage_id
-        if old_stage.id != dest_stage.id:
-            self.write({'stage_id': dest_stage.id, 'stage_previous': old_stage.name})
-
-        self._log_stage_change(old_stage, dest_stage, False, 'Autorizado')
-        self._post_html(_('Convocatoria autorizada.'), old_stage, dest_stage)
-
-    def action_decline(self):
-        # Declinar convocatoria.
-        self.ensure_one()
-        if not self.env.user.has_group('project_extra.group_conv_authorizer'):
-            raise UserError(_('No tiene permisos para declinar.'))
-        if not self.in_calificado:
-            raise UserError(_('Debe evaluar los tres criterios antes de declinar.'))
-
-        dest_stage = self._get_stage_by_name('Declinado')
-        if not dest_stage:
-            raise UserError('No se encontró la etapa DECLINADO')
-
-        old_stage = self.stage_id
-        if old_stage.id != dest_stage.id:
-            self.write({'stage_id': dest_stage.id, 'stage_previous': old_stage.name})
-
-        self._log_stage_change(old_stage, dest_stage, False, 'Declinado')
-        self._post_html(_('Declinada por %s.') % self.env.user.display_name, old_stage, dest_stage)
 
     def _sync_pe_doc_lines(self):
         # Sincroniza la tabla de Propuesta Económica con los documentos seleccionados en pedcto_ids.
@@ -1688,7 +1619,6 @@ class crmComboLine(models.Model):
     combo_ex = fields.Boolean(string='Combo relacionado', default=False)
 
 class CrmPropuestaTecnicaDoc(models.Model):
-
     _name = 'crm.propuesta.tecnica.doc'
     _description = 'Documentos Propuesta Técnica (CRM)'
     _rec_name = 'docto_id'

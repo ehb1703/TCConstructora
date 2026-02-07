@@ -5,7 +5,6 @@ from odoo.exceptions import ValidationError, UserError
 
 _logger = logging.getLogger(__name__)
 
-
 class accountInherit(models.Model):
     _inherit = 'account.account'
     
@@ -21,3 +20,5 @@ class partnerBankInherit(models.Model):
     _inherit = 'res.partner.bank'
 
     no_tarjeta = fields.Char(string='No. de Tarjeta')
+    type_pay = fields.Selection(selection=[('estrategia','Estrategia'), ('fiscal','Fiscal')],
+        string='Tipo', default='estrategia')    

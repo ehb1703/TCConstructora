@@ -11,6 +11,7 @@
             - Beneficiarios en contratos de empleados
             - Asignación de obras a empleados
             - API de descarga de asistencias de checadores (ctrol.asistencias)
+            - Mejoras API - paginación completa, validaciones de fecha
         Reportería
            - Reportes de contratos (Temporal, Obra Determinada)
            - Convenio de Confidencialidad

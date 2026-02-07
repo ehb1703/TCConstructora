@@ -5,17 +5,18 @@
         <field name="name">ctrol.asistencias.tree</field>
         <field name="model">ctrol.asistencias</field>
         <field name="arch" type="xml">
-            <list string="Asistencias Checadores" decoration-success="log_status=='importada'" 
-                  decoration-danger="log_status=='error'" decoration-warning="log_status=='pendiente'">
+            <list string="Asistencias Checadores" decoration-success="log_status=='importada' and status=='success'" decoration-danger="log_status=='error' or status=='error'" decoration-warning="log_status=='pendiente'">
                 <field name="id"/>
-                <field name="employee_id"/>
+                <field name="registration_number"/>
                 <field name="employee_name"/>
                 <field name="check_type"/>
                 <field name="check_date"/>
+                <field name="status" decoration-success="status=='success'" decoration-danger="status=='error'" widget="badge"/>
                 <field name="log_status"/>
                 <field name="lateness_time"/>
                 <field name="verification_status"/>
                 <field name="match_percentage"/>
+                <field name="observaciones" optional="hide"/>
                 <field name="createdAt"/>
             </list>
         </field>
@@ -31,13 +32,23 @@
                     <field name="log_status" widget="statusbar" statusbar_visible="pendiente,importada"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <widget name="web_ribbon" title="Error" bg_color="text-bg-danger" invisible="status != 'error'"/>
+                    </div>
                     <group>
                         <group string="Información del Empleado">
-                            <field name="employee_id"/>
+                            <field name="registration_number"/>
+                            <field name="employee_id" invisible="1"/>
                             <field name="employee_name"/>
                             <field name="check_type"/>
                             <field name="check_date"/>
                         </group>
+                        <group string="Estado de Validación">
+                            <field name="status" widget="badge" decoration-success="status=='success'" decoration-danger="status=='error'"/>
+                            <field name="observaciones" placeholder="Detalles del error o advertencia..."/>
+                        </group>
+                    </group>
+                    <group>
                         <group string="Tiempo y Estado">
                             <field name="lateness_time"/>
                             <field name="left_early_time"/>
@@ -45,13 +56,9 @@
                             <field name="verification_status"/>
                             <field name="match_percentage"/>
                         </group>
-                    </group>
-                    <group string="Ubicación GPS">
-                        <group>
+                        <group string="Ubicación GPS">
                             <field name="latitude"/>
                             <field name="longitude"/>
-                        </group>
-                        <group>
                             <field name="photo_url" widget="url"/>
                         </group>
                     </group>
@@ -80,22 +87,29 @@
         <field name="model">ctrol.asistencias</field>
         <field name="arch" type="xml">
             <search string="Buscar Asistencias">
-                <field name="employee_id"/>
+                <field name="registration_number" string="Núm. Empleado"/>
                 <field name="employee_name"/>
                 <field name="check_date"/>
+                <field name="observaciones"/>
+                <separator/>
                 <filter string="Entrada" name="entrada" domain="[('check_type', '=', 'entrada')]"/>
                 <filter string="Salida" name="salida" domain="[('check_type', '=', 'salida')]"/>
                 <separator/>
                 <filter string="Pendiente" name="pendiente" domain="[('log_status', '=', 'pendiente')]"/>
                 <filter string="Importada" name="importada" domain="[('log_status', '=', 'importada')]"/>
-                <filter string="Error" name="error" domain="[('log_status', '=', 'error')]"/>
+                <filter string="Error Log" name="error_log" domain="[('log_status', '=', 'error')]"/>
+                <separator/>
+                <filter string="Validación OK" name="status_success" domain="[('status', '=', 'success')]"/>
+                <filter string="Validación Error" name="status_error" domain="[('status', '=', 'error')]"/>
                 <separator/>
                 <filter string="Hoy" name="today" domain="[('check_date', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')), ('check_date', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
                 <filter string="Esta Semana" name="this_week" domain="[('check_date', '&gt;=', (context_today() - relativedelta(weeks=1)).strftime('%Y-%m-%d')), ('check_date', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
                 <group expand="0" string="Agrupar Por">
-                    <filter string="Empleado" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Núm. Empleado" name="group_registration" context="{'group_by': 'registration_number'}"/>
+                    <filter string="Empleado" name="group_employee" context="{'group_by': 'employee_name'}"/>
                     <filter string="Tipo" name="group_type" context="{'group_by': 'check_type'}"/>
-                    <filter string="Estado" name="group_status" context="{'group_by': 'log_status'}"/>
+                    <filter string="Estado Log" name="group_log_status" context="{'group_by': 'log_status'}"/>
+                    <filter string="Estado Validación" name="group_status" context="{'group_by': 'status'}"/>
                     <filter string="Fecha" name="group_date" context="{'group_by': 'check_date:day'}"/>
                 </group>
             </search>

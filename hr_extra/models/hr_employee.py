@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 from collections import defaultdict, Counter
@@ -11,6 +10,8 @@ from odoo.tools.safe_eval import safe_eval
 from dateutil.relativedelta import relativedelta
 from datetime import date, datetime, time
 from odoo.osv import expression
+import logging
+
 _logger = logging.getLogger(__name__)
 
 class HrEmployeeObra(models.Model):
@@ -34,6 +35,10 @@ class hrEmployeeInherit(models.Model):
         help='Obra vigente del empleado o "Oficina" si no tiene asignación')
     director_ids = fields.Many2many('hr.employee', 'hr_employee_director_rel', 'employee_id', 'director_id', string='Director/Gerente',
         domain="[('job_id.name', 'ilike', 'Director'), ('state', '!=', 'baja')]")
+    parent_id = fields.Many2one('hr.employee', 'Manager', 
+        domain="['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids), ('state', '!=', 'baja')]")
+    coach_id = fields.Many2one('hr.employee', 'Coach', 
+        domain="['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids), ('state', '!=', 'baja')]")
     state = fields.Selection(selection=[('activo','Activo'), ('baja','Baja'), ('pensionado','Pensionado'), ('incapacidad','Incapacidad')],
         string='Estado Actual', default='activo', tracking=True)
 

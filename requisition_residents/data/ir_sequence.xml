@@ -8,5 +8,22 @@
             <field name="padding">5</field>
             <field name="company_id" eval="False"></field>
         </record>
+
+        <record id="seq_requisition_materials" model="ir.sequence">
+            <field name="name">Requisition Material</field>
+            <field name="code">requisition.materials.name</field>
+            <field name="prefix">RM</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"></field>
+        </record>
+
+        <record id="seq_requisition_weekly" model="ir.sequence">
+            <field name="name">Requisition Semanal</field>
+            <field name="code">requisition.weekly.name</field>
+            <field name="prefix">RS</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"></field>
+        </record>
+
     </data>
 </odoo>

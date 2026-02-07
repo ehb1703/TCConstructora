@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="wizard_generate_requisition_form" model="ir.ui.view">
+        <field name="name">wizard.generate.requisition.form</field>
+        <field name="model">generate.requisition.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generación de Requisición Semanal">
+                <div>
+                    <group>
+                        <field name="fecha" required="1"/>
+                    </group>
+                </div>
+                <separator string="Requisiciones"/>
+                <field name="requisition_ids" nolabel="1" widget="requisition_line_many2many" context="{'list_view_ref' : 'view_requisition_residents_list'}">
+                    <list>
+                        <field name="name"/>
+                        <field name="finicio"/>
+                        <field name="project_id"/>
+                        <field name="employee_id"/>
+                        <field name="amount_untaxed"/>
+                        <field name="amount_total"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="generate_requisition" string="Generar requisición" type="object" class="oe_highlight" />
+                    <button string="Cancelar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
