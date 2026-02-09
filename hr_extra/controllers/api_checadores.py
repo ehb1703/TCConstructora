@@ -3,12 +3,11 @@ import json
 import logging
 from datetime import datetime, timedelta
 from functools import wraps
-
 from odoo import http, SUPERUSER_ID
 from odoo.http import request, Response
 from odoo.exceptions import AccessDenied
 
-# Intentar importar PyJWT
+# Verificar disponibilidad de PyJWT al cargar el módulo
 try:
     import jwt
     JWT_AVAILABLE = True
@@ -196,6 +195,7 @@ class ApiChecadoresController(http.Controller):
             Authorization: Bearer <token>
         
         Query Parameters:
+            - search: Búsqueda por nombre o número de empleado
             - department_id: Filtrar por ID de departamento
             - registration_number: Buscar empleado específico por número
             - with_contract: Solo empleados con contrato vigente (true/false)
@@ -523,7 +523,6 @@ class ApiChecadoresController(http.Controller):
                 )
             
             # Usar SUPERUSER_ID para crear registro
-            from odoo import SUPERUSER_ID
             env = request.env(user=SUPERUSER_ID)
             
             # Validar que empleado existe por registration_number
@@ -596,7 +595,7 @@ class ApiChecadoresController(http.Controller):
 
     @http.route('/api/v1/attendances', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     def attendance_list(self, **kw):
-        """Obtiene lista de asistencias desde ctrol.asistencias.
+        """Obtiene lista de asistencias desde ctrol.asistencias con paginación.
         
         Query Parameters (en body JSON para GET):
             - registration_number: Filtrar por número de empleado
@@ -669,6 +668,7 @@ class ApiChecadoresController(http.Controller):
             # Usar SUPERUSER_ID para consultar
             env = request.env(user=SUPERUSER_ID)
             
+            # Modelo de asistencias
             CtrolAsistencias = env['ctrol.asistencias']
             
             # Obtener total de registros que coinciden (para paginación)
