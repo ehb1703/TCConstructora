@@ -126,6 +126,20 @@ class hrEmployeeInherit(models.Model):
         if contract and hasattr(contract, 'work_entry_source'):
             work_entry_type = contract.work_entry_source or ''
         
+        # Obtener foto del empleado (image_1920 es el campo nativo de Odoo)
+        photo_base64 = None
+        if self.image_1920:
+            # image_1920 ya está en base64
+            photo_base64 = self.image_1920.decode('utf-8') if isinstance(self.image_1920, bytes) else str(self.image_1920)
+        
+        # Obtener company (nombre de la compañía)
+        company_name = self.company_id.name if self.company_id else ''
+        
+        # Asegurar que project nunca esté vacío
+        project_name = self.current_project_name or 'Oficina'
+        if not project_name or project_name.strip() == '':
+            project_name = 'Oficina'
+        
         return {
             'id': self.id,
             'registration_number': self.registration_number or '',
@@ -134,38 +148,86 @@ class hrEmployeeInherit(models.Model):
             'last_name': self.work_contact_id.apaterno if self.work_contact_id else '',
             'mother_last_name': self.work_contact_id.amaterno if self.work_contact_id else '',
             'department': self.department_id.name if self.department_id else '',
+            'department_id': self.department_id.id if self.department_id else None,
             'job_position': self.job_id.name if self.job_id else '',
+            'job_id': self.job_id.id if self.job_id else None,
             'manager': self.parent_id.name if self.parent_id else '',
             'work_location': self.work_location_id.name if self.work_location_id else '',
-            'project': self.current_project_name or 'Oficina',
+            'project': project_name,
+            'company': company_name,
             'work_entry_type': work_entry_type,
+            'schedule_id': self.resource_calendar_id.id if self.resource_calendar_id else None,
             'schedule_name': self.resource_calendar_id.name if self.resource_calendar_id else '',
             'schedules': self.get_schedules_for_api(),
             'active': self.active,
             'work_email': self.work_email or '',
             'work_phone': self.work_phone or '',
-            'mobile_phone': self.mobile_phone or '',}
+            'mobile_phone': self.mobile_phone or '',
+            'photo': photo_base64,  # Foto en base64 (puede ser None si no tiene)
+        }
 
 
     @api.model
     def get_employees_for_api(self, filters=None):
+        """Obtiene empleados para la API con paginación y búsqueda.
+        
+        Args:
+            filters (dict): Diccionario con filtros opcionales:
+                - active_only (bool): Solo empleados activos (default True)
+                - department_id (int): Filtrar por departamento
+                - registration_number (str): Buscar por número de empleado
+                - with_contract (bool): Solo con contrato vigente
+                - search (str): Búsqueda por nombre o número de empleado
+                - limit (int): Límite de resultados (default 100, max 1000)
+                - offset (int): Desplazamiento para paginación (default 0)
+        
+        Returns:
+            dict: Diccionario con employees, total_count, limit, offset
+        """
         filters = filters or {}
         domain = []
         
+        # Filtro de activos
         if filters.get('active_only', True):
             domain.append(('active', '=', True))
         
+        # Filtro por departamento
         if filters.get('department_id'):
             domain.append(('department_id', '=', int(filters['department_id'])))
         
+        # Filtro por número de registro
         if filters.get('registration_number'):
             domain.append(('registration_number', '=', filters['registration_number']))
         
+        # Filtro con contrato
         if filters.get('with_contract'):
             domain.append(('contract_id', '!=', False))
             domain.append(('contract_id.state', '=', 'open'))
         
-        employees = self.search(domain)
+        # Búsqueda por nombre o número de empleado
+        if filters.get('search'):
+            search_term = filters['search'].strip()
+            search_domain = ['|', '|', '|', ('name', 'ilike', search_term), ('registration_number', 'ilike', search_term), 
+                ('work_contact_id.name', 'ilike', search_term), ('work_contact_id.vat', 'ilike', search_term)]
+            domain = expression.AND([domain, search_domain])
+        
+        # Paginación
+        limit = int(filters.get('limit', 100))
+        offset = int(filters.get('offset', 0))
+        
+        # Validar límites
+        if limit > 1000:
+            limit = 1000
+        if limit < 1:
+            limit = 100
+        if offset < 0:
+            offset = 0
+        
+        # Buscar empleados con límite y offset
+        employees = self.search(domain, limit=limit, offset=offset, order='id asc')
+        
+        # Contar total (para paginación)
+        total_count = self.search_count(domain)
         
         result = []
         for emp in employees:
@@ -175,7 +237,13 @@ class hrEmployeeInherit(models.Model):
                 _logger.error(f"Error obteniendo datos del empleado {emp.id}: {str(e)}")
                 continue
         
-        return result
+        return {
+            'employees': result,
+            'total_count': total_count,
+            'limit': limit,
+            'offset': offset,
+            'returned_count': len(result)
+        }
 
 
 class hrContractInherit(models.Model):
