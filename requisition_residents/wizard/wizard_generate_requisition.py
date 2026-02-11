@@ -46,38 +46,40 @@ class GenerateRequisitionWizard(models.TransientModel):
             else:
                 proveedor = self.env['requisition.debt'].create({'partner_id': rec['partner_id']})
 
-            consulta = ("""SELECT rr.id, rr.name, rr.project_id, rr.finicio, ra.partner_id, 'ACARREO ' category, 
+            consulta = ("""SELECT rr.id, rr.name, rr.project_id, rr.finicio, ra.partner_id, 'ACARREO ' category, type_pay, 
                     STRING_AGG(pt.name->>'es_MX'::text, ',') CONCEPTO, count(*) count, sum(qty) cantidad, sum(ra.amount) precio
                   FROM requisition_residents rr JOIN requisition_acarreos ra ON rr.id = ra.req_id 
                                                 JOIN product_product pp ON ra.product_id = pp.id
                                                 JOIN product_template pt ON pp.product_tmpl_id = pt.id
                  WHERE rr.id in """ + child + " AND ra.partner_id = " + str(rec['partner_id']) + """
-                 GROUP BY 1, 2, 3, 4, 5, 6
+                 GROUP BY 1, 2, 3, 4, 5, 6, 7
                 UNION ALL 
-                SELECT rr.id, rr.name, rr.project_id, rr.finicio, rd.partner_id, 'DESTAJO' category, STRING_AGG(pt.name->>'es_MX'::text, ','), count(*), sum(rdl.volumen), sum(rdl.amount)
+                SELECT rr.id, rr.name, rr.project_id, rr.finicio, rd.partner_id, 'DESTAJO' category, type_pay, STRING_AGG(pt.name->>'es_MX'::text, ','), 
+                    count(*), sum(rdl.volumen), sum(rdl.amount)
                   from requisition_residents rr JOIN requisition_destajo rd ON rr.id = rd.req_id 
                                                 JOIN requisition_destajo_line rdl ON rd.id = rdl.destajo_id 
                                                 JOIN product_product pp ON rdl.product_id = pp.id
                                                 JOIN product_template pt ON pp.product_tmpl_id = pt.id
                  WHERE rr.id in """ + child + " AND rd.partner_id = " + str(rec['partner_id']) + """
-                 GROUP BY 1, 2, 3, 4, 5, 6
+                 GROUP BY 1, 2, 3, 4, 5, 6, 7
                 UNION ALL
-                SELECT rr.id, rr.name, rr.project_id, rr.finicio, rm.partner_id, 'MAQUINARIA' category, STRING_AGG(rm.MAQUINARIA||' '||coalesce(no_serie, ''), ','), 
-                       count(*), sum(rm.total_days), sum(rm.amount)
+                SELECT rr.id, rr.name, rr.project_id, rr.finicio, rm.partner_id, 'MAQUINARIA' category, type_pay, 
+                    STRING_AGG(rm.MAQUINARIA||' '||coalesce(no_serie, ''), ','), count(*), sum(rm.total_days), sum(rm.amount)
                   from requisition_residents rr JOIN requisition_maquinaria rm ON rr.id = rm.req_id
                  WHERE rr.id in """ + child + " AND rm.partner_id = " + str(rec['partner_id']) + """
-                 GROUP BY 1, 2, 3, 4, 5, 6
+                 GROUP BY 1, 2, 3, 4, 5, 6, 7
                  UNION ALL
-                 SELECT rr.id, rr.name, rr.project_id, rr.finicio, rc.partner_id, 'RENTA ' category, STRING_AGG(pt.name->>'es_MX'::text, ',') CONCEPTO, count(*), 0, sum(rc.price)
+                 SELECT rr.id, rr.name, rr.project_id, rr.finicio, rc.partner_id, 'RENTA ' category, type_pay, STRING_AGG(pt.name->>'es_MX'::text, ',') CONCEPTO, 
+                    count(*), 0, sum(rc.price)
                   from requisition_residents rr JOIN requisition_campamentos rc ON rr.id = rc.req_id 
                                                 JOIN product_product pp ON rc.product_id = pp.id
                                                 JOIN product_template pt ON pp.product_tmpl_id = pt.id
-                 WHERE rr.id in """ + child + " AND rc.partner_id = " + str(rec['partner_id']) + " GROUP BY 1, 2, 3, 4, 5, 6 ORDER BY 1 ")
+                 WHERE rr.id in """ + child + " AND rc.partner_id = " + str(rec['partner_id']) + " GROUP BY 1, 2, 3, 4, 5, 6, 7 ORDER BY 1 ")
             self.env.cr.execute(consulta)
             cargos = self.env.cr.dictfetchall()
             for ca in cargos:
                 lines = {'project_id': ca['project_id'], 'fecha': ca['finicio'], 'debit': ca['precio'], 'origen': ca['name'], 'reqres_id': ca['id'], 
-                    'concepto': ca['category'] + ' ' + ca['concepto'] + ' ' + str(ca['count']) + ' ' + str(ca['cantidad'])}
+                    'type_pay': ca['type_pay'], 'concepto': ca['category'] + ' ' + ca['concepto'] + ' ' + str(ca['count']) + ' ' + str(ca['cantidad'])}
                 req_lines.append((0, 0, lines))
             
             proveedor.write({'line_ids': req_lines})
@@ -85,6 +87,7 @@ class GenerateRequisitionWizard(models.TransientModel):
 
     def generate_weekly(self):
         req_lines = []
+        child = str(self.requisition_ids.ids).replace('[','(').replace(']',')')
         name = self.env['ir.sequence'].next_by_code('requisition.weekly.name')
 
         #Caja chica
@@ -103,18 +106,37 @@ class GenerateRequisitionWizard(models.TransientModel):
                 lines = {'company_id': rec.req_id.company_id.id, 'project_id': rec.req_id.project_id.id, 'concepto': concepto, 'type_pay': 'FISCAL',
                     'partner_id': rec.req_id.employee_id.work_contact_id.id, 'fuerza': 0, 'adeudo': rec.amount_total}
                 req_lines.append((0, 0, lines))
+
+        #Adeudo anterior
+        consulta = ('''SELECT t1.project_id, rr.company_id, t1.concepto, rd.partner_id, rd.id supplier_id, t1.id, t1.type_pay, rw.name, 
+                (t1.debit - t1.credit) debit 
+            FROM (SELECT project_id, req_id, concepto, reqres_id, MIN(type_pay) type_pay, MIN(id) id, SUM(debit) debit, SUM(credit) credit 
+                    FROM requisition_debt_line rdl 
+                    WHERE req_id IS NOT NULL AND reqres_id NOT IN ''' + child + ''' GROUP BY 1, 2, 3, 4) as t1 
+                JOIN requisition_residents rr ON t1.reqres_id = rr.id JOIN requisition_debt rd on t1.req_id = rd.id
+                JOIN requisition_weekly rw ON rr.rweekly_id = rw.id
+            WHERE (t1.credit - t1.debit) != 0''')
+        self.env.cr.execute(consulta)
+        cargos = self.env.cr.dictfetchall()
+        for rec in cargos:
+            lines = {'company_id': rec['company_id'], 'project_id': rec['project_id'], 'concepto': rec['concepto'], 'origen': rec['name'],
+                'partner_id': rec['partner_id'], 'supplier_id': rec['supplier_id'], 'fuerza': 0, 'type_pay': rec['type_pay'], 'adeudo': rec['debit'], 
+                'debt_id': rec['id']}
+            req_lines.append((0, 0, lines))
         
         #Distinto a caja chica y nómina
         conceptos = self.env['requisition.debt.line'].search([('reqres_id','in',self.requisition_ids.ids), ('debit','!=',0)])
         for rec in conceptos:
-            lines = {'company_id': rec.reqres_id.company_id.id, 'project_id': rec.project_id.id, 'concepto': rec.concepto, 'partner_id': rec.req_id.id, 'fuerza': 0, 
-                'type_pay': 'EFECTIVO', 'adeudo': rec.debit, 'debt_id': rec.id}
+            lines = {'company_id': rec.reqres_id.company_id.id, 'project_id': rec.project_id.id, 'concepto': rec.concepto, 
+                'partner_id': rec.req_id.partner_id.id, 'supplier_id': rec.req_id.id, 'fuerza': 0, 'type_pay': rec.type_pay, 'adeudo': rec.debit, 
+                'debt_id': rec.id}
             req_lines.append((0, 0, lines))
         
         weekly = self.env['requisition.weekly'].create({'name': name, 'finicio': self.fecha, 'state': 'draft', 'line_ids': req_lines, 
             'reqres_ids': self.requisition_ids.ids})
         for rec in self.requisition_ids:
             rec.write({'state': 'req', 'rweekly_id': weekly.id})
+        return weekly
 
 
     def generate_requisition(self):
@@ -124,7 +146,8 @@ class GenerateRequisitionWizard(models.TransientModel):
                 WHERE rr.state NOT IN ('aprobado', 'req') AND rr.finicio = '""" + str(self.fecha) + """' 
             /*UNION ALL 
             SELECT 'Obras sin requisición: '||COUNT(*), COUNT(*) num 
-                FROM project_project pp JOIN project_project_stage pps ON pp.stage_id = pps.id AND pps.name->>'es_MX' NOT IN ('Terminada', 'Cancelada') 
+                FROM project_project pp JOIN project_project_stage pps ON pp.stage_id = pps.id 
+                                                                    AND pps.name->>'es_MX' NOT IN ('Terminada', 'Cancelada', 'Detenida') 
                 WHERE NOT EXISTS(SELECT * FROM requisition_residents rr WHERE pp.id = rr.project_id AND rr.finicio = '""" + str(self.fecha) + "')*/")
         pendientes = self.env.cr.dictfetchall()
         for rec in pendientes:

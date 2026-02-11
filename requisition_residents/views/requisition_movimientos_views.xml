@@ -2,7 +2,7 @@
 <odoo>
 
     <record id="action_requisition_debt" model="ir.actions.act_window">
-        <field name="name">Adeudo</field>
+        <field name="name">Estado de Cuenta</field>
         <field name="res_model">requisition.debt</field>
         <field name="view_mode">list,kanban,form</field>
     </record>
@@ -12,7 +12,7 @@
         <field name="model">requisition.debt</field>
         <field name="priority" eval="1"/>
         <field name="arch" type="xml">
-            <list string="Adeudo" create="0" delete="0" edit="0">
+            <list string="Estado de Cuenta" create="0" delete="0" edit="1">
                 <field name="partner_id"/>
                 <field name="amount_total"/>
             </list>
@@ -23,22 +23,25 @@
         <field name="name">view.requisition.debt.form</field>
         <field name="model">requisition.debt</field>
         <field name="arch" type="xml">
-            <form string="Adeudo" create="0" delete="0" edit="0">
+            <form string="Estado de Cuenta" create="0" delete="0" edit="1">
                 <sheet>
                     <group>
-                        <field name="partner_id"/>
-                        <field name="amount_total"/>
+                        <field name="partner_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                        <field name="amount_total" readonly="1"/>
                     </group>
                     <notebook>
                         <page string="Movimientos">
                             <field name="line_ids" widget="one2many_list">
-                                <list create="false" delete="false" edit="false">
-                                    <field name="project_id"/>
-                                    <field name="fecha"/>
-                                    <field name="debit"/>
-                                    <field name="credit"/>
-                                    <field name="origen"/>
-                                    <field name="concepto"/>
+                                <list create="false" delete="false" editable="bottom">
+                                    <field name="recibo_name" column_invisible="True"/>
+                                    <field name="project_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="fecha" readonly="1"/>
+                                    <field name="debit" readonly="1"/>
+                                    <field name="credit" readonly="1"/>
+                                    <field name="origen" readonly="1"/>
+                                    <field name="concepto" readonly="1"/>
+                                    <field name="type_pay" readonly="1"/>
+                                    <field name="recibo" filename="recibo_name" widget="binary" invisible="debit > 0.00"/>
                                 </list>
                                 <form><p>Información no disponible a través de esta vista</p></form>
                             </field>
@@ -51,7 +54,7 @@
     </record>
 
     <record id="action_requisition_bank_account" model="ir.actions.act_window">
-        <field name="name">Cuentas bancarias</field>
+        <field name="name">Diario - Cuentas bancarias</field>
         <field name="res_model">requisition.bank.account</field>
         <field name="view_mode">list,kanban,form</field>
     </record>
@@ -61,10 +64,11 @@
         <field name="model">requisition.bank.account</field>
         <field name="priority" eval="1"/>
         <field name="arch" type="xml">
-            <list string="Cuentas bancarias" create="0" delete="0" edit="1">
+            <list string="Diario - Cuentas bancarias" create="0" delete="0" edit="1">
                 <field name="company_id"/>
                 <field name="res_bank"/>
                 <field name="res_partner_bank"/>
+                <field name="balance" widget="monetary"/>
                 <field name="obsolete"/>
             </list>
         </field>
@@ -74,7 +78,10 @@
         <field name="name">view.requisition.bank.account.form</field>
         <field name="model">requisition.bank.account</field>
         <field name="arch" type="xml">
-            <form string="Cuentas bancarias" create="0" delete="0" edit="1">
+            <form string="Diario - Cuentas bancarias" create="0" delete="0" edit="1">
+                <header>
+                    <button string="Agregar" name="action_agregar" type="object" class="btn-primary"/>
+                </header>
                 <sheet>
                     <group>
                         <group>
@@ -86,14 +93,60 @@
                             <field name="obsolete" readonly="1"/>
                         </group>
                     </group>
+                    <notebook>
+                        <page string="Movimientos">
+                            <field name="line_ids" widget="one2many_list">
+                                <list create="False" delete="False" editable="bottom" context="{'default_mov_id': id}">
+                                    <field name="fecha" readonly="1"/>
+                                    <field name="debit" readonly="1"/>
+                                    <field name="credit" readonly="1"/>
+                                    <field name="concepto" readonly="1"/>
+                                    <field name="description" readonly="1"/>
+                                    <field name="origen" readonly="1"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
+                            </field>
+                            <group>
+                                <group/>
+                                <group class="oe_subtotal_footer">
+                                    <field name="balance" widget="monetary" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
                 </sheet>
                 <chatter/>
             </form>
         </field>
     </record>
 
+    <record id="action_requisition_general" model="ir.actions.act_window">
+        <field name="name">Pagos generales</field>
+        <field name="res_model">requisition.general.payments</field>
+        <field name="view_mode">list,kanban,form</field>
+    </record>
+
+    <record id="view_requisition_general_list" model="ir.ui.view">
+        <field name="name">view.requisition.general.list</field>
+        <field name="model">requisition.general.payments</field>
+        <field name="arch" type="xml">
+            <list editable="top" create="1" delete="1" multi_edit="1" string="Pagos generales"  open_form_view="True">
+                <field name="partner_id"/>
+                <field name="type_comp"/>
+                <field name="reference"/>
+                <field name="accountbank_id"/>
+                <field name="fecha"/>
+                <field name="product_id"/>
+                <field name="product_template_id" column_invisible="True"/>
+                <field name="amount"/>
+                <field name="state" readonly="1"/>
+            </list>
+        </field>
+    </record>
+
     <menuitem id="menu_movimientos" name="Movimientos" groups="group_requisition_admin" parent="reports_menu_root" sequence="20">
-        <menuitem id="menu_requisition_bank_account" name="Cuentas bancarias" action="action_requisition_bank_account" sequence="1"/>
+        <menuitem id="menu_requisition_bank_account" name="Diario - Cuentas bancarias" action="action_requisition_bank_account" sequence="1"/>
+        <menuitem id="menu_requisition_general" name="Pagos Generales" action="action_requisition_general" sequence="5"/>
         <menuitem id="menu_requisition_debt" name="Adeudo" action="action_requisition_debt" sequence="10"/>
     </menuitem>
 </odoo>

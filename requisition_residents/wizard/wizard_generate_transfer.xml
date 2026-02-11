@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="wizard_generate_transfer_form" model="ir.ui.view">
+        <field name="name">wizard.generate.transfer.form</field>
+        <field name="model">requisition.transfer.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generación de Movimiento">
+                <div>
+                    <group>
+                        <group>
+                            <field name="raccount_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                            <field name="type_mov"/>
+                            <field name="fecha"/>
+                        </group>
+                        <group>
+                            <field name="account_id" invisible="type_mov != 'trans'" options="{'no_open':True, 'no_create':True, 'no_edit':True}" domain="[('id','!=',raccount_id)]"/>
+                            <field name="authorize"/>
+                            <field name="amount"/>
+                        </group>
+                    </group>
+                    <group col="2">
+                        <field name="description"/>
+                    </group>
+                </div>
+                <footer>
+                    <button name="action_confirm" string="Confirmar" type="object" class="oe_highlight" />
+                    <button string="Cancelar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

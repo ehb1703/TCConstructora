@@ -45,13 +45,13 @@
                     <group>
                         <group>
                             <field name="employee_id" invisible="state == 'draft'" readonly="state != 'draft'"/>
-                            <field name="project_id"/>
-                            <field name="company_id"/>
+                            <field name="project_id" domain="project_domain" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                            <field name="company_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                         </group>
                         <group>
                             <label for="finicio" string="Periodo"/>
                             <div class="o_row">
-                                <field name="finicio" nolabel="1"/><i class="fa fa-long-arrow-right mx-2" title=" hasta "/><field name="ffinal" nolabel="1"/>
+                                <field name="finicio" nolabel="1" readonly="state != 'draft'"/><i class="fa fa-long-arrow-right mx-2" title=" hasta "/><field name="ffinal" nolabel="1" readonly="state != 'draft'"/>
                             </div>
                         </group>
                     </group>
@@ -115,11 +115,13 @@
                                     <field name="partner_id"/>
                                     <field name="fuerza"/>
                                     <field name="account_id"/>
+                                    <field name="type_pay" invisible="not account_id"/>
                                     <field name="amount_total" sum="amount_total"/>
                                 </list>
                                 <form>
                                     <field name="req_id" invisible="1"/>
                                     <field name="destajo_domain" invisible="1"/>
+                                    <field name="type_pay" invisible="1"/>
                                     <group>
                                         <group>
                                             <field name="destajo_id" domain="destajo_domain"/>
@@ -218,6 +220,7 @@
                                 </list>
                                 <form>
                                     <field name="req_id" invisible="1"/>
+                                    <field name="type_pay" invisible="1"/>
                                     <group>
                                         <group>
                                             <field name="sequence"/>
@@ -227,16 +230,17 @@
                                             <field name="finicio"/>
                                             <field name="ffinal"/>
                                             <field name="days"/>
-                                            <field name="account_id" domain="[('partner_id', '=', partner_id)]" readonly="state == 'draft' or state == False"/>
+                                            <field name="time_out"/>
                                         </group>
                                         <group>
-                                            <field name="time_out"/>
                                             <field name="total_days"/>
                                             <field name="rmountly"/>
                                             <field name="amount"/>
                                             <field name="justification"/>
                                             <field name="autoriza_id"/>
                                             <field name="horometro"/>
+                                            <field name="account_id" domain="[('partner_id', '=', partner_id)]" readonly="state == 'draft' or state == False"/>
+                                            <field name="type_pay" invisible="not account_id"/>
                                         </group>        
                                     </group>
                                     <group>
@@ -254,55 +258,6 @@
                                         </field>
                                     </group>
                                 </form>
-                            </field>
-                        </page>
-                    </notebook>
-                </sheet>
-                <chatter/>
-            </form>
-        </field>
-    </record>
-
-    <record id="action_requisition_debt" model="ir.actions.act_window">
-        <field name="name">Adeudo</field>
-        <field name="res_model">requisition.debt</field>
-        <field name="view_mode">list,kanban,form</field>
-    </record>
-
-    <record id="view_requisition_debt_list" model="ir.ui.view">
-        <field name="name">view.requisition.debt.list</field>
-        <field name="model">requisition.debt</field>
-        <field name="priority" eval="1"/>
-        <field name="arch" type="xml">
-            <list string="Adeudo" create="0" delete="0" edit="0">
-                <field name="partner_id"/>
-                <field name="amount_total"/>
-            </list>
-        </field>
-    </record>
-
-    <record id="view_requisition_debt_form" model="ir.ui.view">
-        <field name="name">view.requisition.debt.form</field>
-        <field name="model">requisition.debt</field>
-        <field name="arch" type="xml">
-            <form string="Adeudo" create="0" delete="0" edit="0">
-                <sheet>
-                    <group>
-                        <field name="partner_id"/>
-                        <field name="amount_total"/>
-                    </group>
-                    <notebook>
-                        <page string="Movimientos">
-                            <field name="line_ids" widget="one2many_list">
-                                <list create="false" delete="false" edit="false">
-                                    <field name="project_id"/>
-                                    <field name="fecha"/>
-                                    <field name="debit"/>
-                                    <field name="credit"/>
-                                    <field name="origen"/>
-                                    <field name="concepto"/>
-                                </list>
-                                <form><p>Información no disponible a través de esta vista</p></form>
                             </field>
                         </page>
                     </notebook>
@@ -370,18 +325,19 @@
                         <page string="Movimientos">
                             <field name="line_ids" widget="one2many_list">
                                 <list create="False" delete="False" editable="bottom" context="{'default_weekly_id': id}">
-                                    <field name="company_id" readonly="1"/>
-                                    <field name="project_id" readonly="1"/>
+                                    <field name="company_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="project_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="concepto" readonly="1"/>
-                                    <field name="partner_id" readonly="1"/>
+                                    <field name="partner_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="fuerza" readonly="1"/>
                                     <field name="type_pay" readonly="1"/>
+                                    <field name="origen" readonly="1"/>
                                     <field name="adeudo" readonly="1"/>
                                     <field name="aprobado" readonly="state != 'rev'"/>
                                     <field name="importe" readonly="state != 'rev'"/>
-                                    <field name="accountbank_id" readonly="state != 'apr'"/>
+                                    <field name="accountbank_id" readonly="state != 'apr'" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="supplier_id" readonly="1" context="{'special_display_name': True}" options="{'no_create':True, 'no_edit':True}"/>
                                 </list>
-                                <form><p>Información no disponible a través de esta vista</p></form>
                             </field>
                         </page>
 

@@ -159,9 +159,10 @@ class CrmLead(models.Model):
     orden_trabajo_doc_name = fields.Char('Nombre orden de trabajo')
     # Nuevos campos etapa Ganado
     empresa_concursante_id = fields.Many2one('res.company', string='Empresa concursante', help='Empresa del grupo que participa en la licitación')
-    clave_unidad_sat_id = fields.Many2one('uom.uom', string='Clave unidad SAT', help='Clave de unidad de medida SAT para facturación')
+    clave_unidad_sat_id = fields.Many2one('product.unspsc.code', string='Clave Unidad de Medida',
+        domain="[('applies_to', '=', 'uom')]")
     clave_producto_servicio_id = fields.Many2one('product.unspsc.code', string='Clave producto/Servicio',
-        domain="[('segmento_sat', '=', '72')]")
+        domain="[('segmento_sat', '=', '72'), ('applies_to', '=', 'product')]")
     fianza_anticipo_no = fields.Char(string='Fianza anticipo No.', size=100, help='Número de fianza del anticipo')
     afianzadora_anticipo_id = fields.Many2one('res.partner', string='Nombre afianzadora', domain="[('is_afianzadora', '=', True), ('is_company', '=', True)]")
     fianza_cumplimiento_no = fields.Char(string='Fianza cumplimiento No.', size=100, help='Número de fianza de cumplimiento')
