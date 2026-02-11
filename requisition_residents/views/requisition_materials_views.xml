@@ -76,5 +76,5 @@
         </field>
     </record>
 
-    <menuitem id="menu_requisition_materials" name="Materiales" action="action_requisition_materials" sequence="20"/>
+    <menuitem id="menu_requisition_materials" name="Materiales" action="action_requisition_materials" parent="menu_requisiciones" sequence="20"/>
 </odoo>
