@@ -12,6 +12,7 @@
             - Asignación de obras a empleados
             - API de descarga de asistencias de checadores (ctrol.asistencias)
             - Mejoras API - paginación completa, validaciones de fecha
+	    - Procesamiento automático de asistencias a Odoo (hr.attendance, hr.attendance.overtime, hr.work.entry)
         Reportería
            - Reportes de contratos (Temporal, Obra Determinada)
            - Convenio de Confidencialidad
@@ -20,6 +21,7 @@
     'application': True,
     'depends': ['hr_payroll', 'hr_contract', 'project', 'project_extra'],
     'data': [
+        #'data/ir_cron_attendance.xml',
         'security/res_groups.xml',
         'security/ir.model.access.csv',
         'views/hr_catalogs_views.xml',
@@ -27,6 +29,7 @@
         'views/resource_calendar_views.xml',
         'views/res_config_settings_views.xml',
         'views/ctrol_asistencias_views.xml',
+        'views/checador_sync_log_views.xml',
         'report/hr_contract_report.xml',
         'report/report_hr_contract.xml',
         'report/report_convenio_confidencialidad.xml',

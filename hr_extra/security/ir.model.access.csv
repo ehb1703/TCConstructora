@@ -20,3 +20,7 @@ access_ir_config_parameter_api_manager,ir.config.parameter.api.manager,base.mode
 access_ctrol_asistencias_api,ctrol.asistencias.api,model_ctrol_asistencias,group_api_checadores,1,1,1,0
 access_ctrol_asistencias_user,ctrol.asistencias.user,model_ctrol_asistencias,hr.group_hr_user,1,1,1,1
 access_ctrol_asistencias_manager,ctrol.asistencias.manager,model_ctrol_asistencias,hr.group_hr_manager,1,1,1,1
+
+access_checador_sync_log_api,checador.sync.log.api,model_checador_sync_log,group_api_checadores,1,1,1,0
+access_checador_sync_log_user,checador.sync.log.user,model_checador_sync_log,hr.group_hr_user,1,0,0,0
+access_checador_sync_log_manager,checador.sync.log.manager,model_checador_sync_log,hr.group_hr_manager,1,1,1,1

@@ -631,7 +631,6 @@ class ApiChecadoresController(http.Controller):
             
             # Construir dominio de búsqueda
             domain = []
-            
             # Filtrar por registration_number (v2.4.0)
             if filters.get('registration_number'):
                 domain.append(('registration_number', '=', filters['registration_number']))
@@ -675,12 +674,7 @@ class ApiChecadoresController(http.Controller):
             total_count = CtrolAsistencias.search_count(domain)
             
             # Buscar registros con paginación
-            attendances = CtrolAsistencias.search(
-                domain, 
-                limit=limit, 
-                offset=offset, 
-                order='check_date desc, id desc'
-            )
+            attendances = CtrolAsistencias.search(domain, limit=limit, offset=offset, order='check_date desc, id desc')
             
             # Convertir a JSON
             attendances_data = [att.to_json() for att in attendances]
@@ -690,17 +684,120 @@ class ApiChecadoresController(http.Controller):
                         f"Limit: {limit}, Offset: {offset}, "
                         f"Usuario JWT: {result.get('username')}")
             
-            return self._json_response({
-                'status': 'success',
-                'timestamp': datetime.now().isoformat(),
-                'count': len(attendances_data),
-                'total': total_count,
-                'limit': limit,
-                'offset': offset,
-                'filters_applied': filters,
-                'data': attendances_data
-            })
-            
+            return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'count': len(attendances_data), 'total': total_count,
+                'limit': limit, 'offset': offset, 'filters_applied': filters, 'data': attendances_data})
         except Exception as e:
             _logger.error(f"API Checadores Error (attendance_list): {str(e)}", exc_info=True)
+            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
+
+    
+    @http.route('/api/v1/employees/sync', type='http', auth='none', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
+    def employees_sync(self, **kw):
+        """Sincronización incremental de empleados.
+        
+        Devuelve solo empleados modificados desde la última sincronización exitosa.
+        Registra cada sincronización en checador.sync.log para tracking.
+        
+        Query Parameters:
+            - device_id: Identificador del dispositivo (opcional, para tracking por dispositivo)
+            - limit: Límite de resultados (default 1000)
+            - offset: Desplazamiento para paginación
+        
+        Headers:
+            Authorization: Bearer <token>
+        
+        Lógica:
+            1. Busca última sincronización exitosa en checador.sync.log
+            2. Si no existe (primera vez), devuelve TODOS los empleados
+            3. Si existe, devuelve empleados con write_date > última_sync
+            4. Registra la sincronización actual en el log
+        
+        Returns:
+            {
+                "status": "success",
+                "sync_id": 45,
+                "last_sync": "2026-02-05T18:00:00",
+                "current_sync": "2026-02-06T10:00:00",
+                "is_first_sync": false,
+                "count": 3,
+                "total": 3,
+                "data": [...]} """
+        if request.httprequest.method == 'OPTIONS':
+            return self._json_response({'status': 'ok'})
+        
+        # Validar JWT
+        is_valid, result = self._validate_jwt_token()
+        if not is_valid:
+            return result
+        
+        try:
+            # Obtener parámetros
+            device_id = kw.get('device_id', '')
+            limit = min(int(kw.get('limit', 1000)), 1000)
+            offset = int(kw.get('offset', 0))
+            
+            if limit < 1:
+                limit = 1000
+            if offset < 0:
+                offset = 0
+            
+            # Usar SUPERUSER_ID
+            env = request.env(user=SUPERUSER_ID)
+            SyncLog = env['checador.sync.log']
+            Employee = env['hr.employee']
+            
+            # Obtener última sincronización exitosa
+            last_sync_date = SyncLog.get_last_successful_sync(sync_type='employees', device_id=device_id if device_id else None)
+            current_sync_date = datetime.now()
+            is_first_sync = last_sync_date is None
+            
+            # Construir dominio de búsqueda
+            if is_first_sync:
+                # Primera sincronización: todos los empleados activos
+                domain = [('active', '=', True)]
+                _logger.info(f"API Sync: Primera sincronización para device_id={device_id or 'global'}")
+            else:
+                # Sincronización incremental: solo modificados desde última sync
+                # Incluye activos e inactivos (para detectar bajas)
+                domain = [('write_date', '>', last_sync_date)]
+                _logger.info(f"API Sync: Sincronización incremental desde {last_sync_date} para device_id={device_id or 'global'}")
+            
+            total_count = Employee.search_count(domain)
+            employees = Employee.search(domain, limit=limit, offset=offset, order='write_date desc')
+            
+            # Convertir a JSON con campo write_date adicional
+            employees_data = []
+            for emp in employees:
+                emp_data = emp.get_employee_data_for_api()
+                emp_data['write_date'] = emp.write_date.isoformat() if emp.write_date else ''
+                emp_data['create_date'] = emp.create_date.isoformat() if emp.create_date else ''
+                employees_data.append(emp_data)
+            
+            # Registrar sincronización exitosa
+            sync_record = SyncLog.register_sync(sync_type='employees', device_id=device_id, records_count=len(employees_data), status='success',
+                ip_address=request.httprequest.remote_addr, user_jwt=result.get('username', ''), last_sync_ref=last_sync_date,
+                notes=f"Sincronización {'inicial' if is_first_sync else 'incremental'}. Total modificados: {total_count}")
+            
+            _logger.info(f"API Sync: Sincronización exitosa - "
+                        f"sync_id={sync_record.id}, "
+                        f"device_id={device_id or 'global'}, "
+                        f"registros={len(employees_data)}/{total_count}, "
+                        f"primera_sync={is_first_sync}")
+            
+            return self._json_response({'status': 'success', 'timestamp': current_sync_date.isoformat(), 'sync_id': sync_record.id, 
+                'last_sync': last_sync_date.isoformat() if last_sync_date else None, 'current_sync': current_sync_date.isoformat(),
+                'is_first_sync': is_first_sync, 'count': len(employees_data), 'total': total_count, 'limit': limit, 'offset': offset,
+                'device_id': device_id or None, 'data': employees_data})
+            
+        except Exception as e:
+            _logger.error(f"API Checadores Error (employees_sync): {str(e)}", exc_info=True)
+            # Intentar registrar error en log
+            try:
+                env = request.env(user=SUPERUSER_ID)
+                env['checador.sync.log'].register_sync(sync_type='employees', device_id=kw.get('device_id', ''), records_count=0, status='error',
+                    ip_address=request.httprequest.remote_addr, user_jwt=result.get('username', '') if isinstance(result, dict) else '',
+                    notes=f"Error: {str(e)}")
+            except:
+                pass  # Si falla el log de error, no interrumpir
+            
             return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista List -->
+    <record id="view_checador_sync_log_list" model="ir.ui.view">
+        <field name="name">checador.sync.log.list</field>
+        <field name="model">checador.sync.log</field>
+        <field name="arch" type="xml">
+            <list string="Log de Sincronizaciones" default_order="sync_date desc">
+                <field name="sync_date"/>
+                <field name="sync_type"/>
+                <field name="device_id"/>
+                <field name="records_synced"/>
+                <field name="status" decoration-success="status == 'success'" decoration-danger="status == 'error'" widget="badge"/>
+                <field name="ip_address"/>
+                <field name="user_jwt"/>
+                <field name="last_sync_reference"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Vista Form -->
+    <record id="view_checador_sync_log_form" model="ir.ui.view">
+        <field name="name">checador.sync.log.form</field>
+        <field name="model">checador.sync.log</field>
+        <field name="arch" type="xml">
+            <form string="Detalle de Sincronización">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="display_name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Información de Sincronización">
+                            <field name="sync_date"/>
+                            <field name="sync_type"/>
+                            <field name="status"/>
+                            <field name="records_synced"/>
+                        </group>
+                        <group string="Dispositivo">
+                            <field name="device_id"/>
+                            <field name="ip_address"/>
+                            <field name="user_jwt"/>
+                        </group>
+                    </group>
+                    <group string="Referencias">
+                        <field name="last_sync_reference"/>
+                        <field name="notes"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista Search -->
+    <record id="view_checador_sync_log_search" model="ir.ui.view">
+        <field name="name">checador.sync.log.search</field>
+        <field name="model">checador.sync.log</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Sincronizaciones">
+                <field name="device_id"/>
+                <field name="user_jwt"/>
+                <field name="ip_address"/>
+                <separator/>
+                <filter string="Exitosas" name="success" domain="[('status', '=', 'success')]"/>
+                <filter string="Con Error" name="error" domain="[('status', '=', 'error')]"/>
+                <separator/>
+                <filter string="Empleados" name="employees" domain="[('sync_type', '=', 'employees')]"/>
+                <filter string="Asistencias" name="attendances" domain="[('sync_type', '=', 'attendances')]"/>
+                <separator/>
+                <filter string="Hoy" name="today" domain="[('sync_date', '>=', (context_today()).strftime('%Y-%m-%d'))]"/>
+                <filter string="Última Semana" name="week" domain="[('sync_date', '>=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Dispositivo" name="group_device" context="{'group_by': 'device_id'}"/>
+                    <filter string="Tipo" name="group_type" context="{'group_by': 'sync_type'}"/>
+                    <filter string="Estado" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Fecha" name="group_date" context="{'group_by': 'sync_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Acción -->
+    <record id="action_checador_sync_log" model="ir.actions.act_window">
+        <field name="name">Log de Sincronizaciones</field>
+        <field name="res_model">checador.sync.log</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_success': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No hay sincronizaciones registradas</p>
+            <p>Aquí aparecerán los registros de sincronización de los checadores biométricos.</p>
+        </field>
+    </record>
+
+    <!-- Menú -->
+    <menuitem id="menu_checador_sync_log" name="Log de Sincronizaciones" parent="menu_api_checadores" action="action_checador_sync_log" sequence="20" groups="hr.group_hr_manager"/>
+</odoo>

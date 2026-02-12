@@ -39,8 +39,11 @@ class ResConfigSettings(models.TransientModel):
             jwt_secret = secrets.token_urlsafe(32)
             IrConfigParam.set_param('api_checadores.jwt_secret', jwt_secret)
         
-        res.update({'api_checadores_enabled': IrConfigParam.get_param('api_checadores.enabled', 'False').lower() == 'true',
-            'api_checadores_username': IrConfigParam.get_param('api_checadores.username', ''), 'api_checadores_jwt_secret': jwt_secret,})
+        res.update({
+            'api_checadores_enabled': IrConfigParam.get_param('api_checadores.enabled', 'False').lower() == 'true',
+            'api_checadores_username': IrConfigParam.get_param('api_checadores.username', ''),
+            'api_checadores_jwt_secret': jwt_secret,
+        })
         return res
 
 
@@ -51,6 +54,43 @@ class ResConfigSettings(models.TransientModel):
         IrConfigParam.set_param('api_checadores.username', self.api_checadores_username or '')
         if self.api_checadores_jwt_secret:
             IrConfigParam.set_param('api_checadores.jwt_secret', self.api_checadores_jwt_secret)
+
+    def action_view_attendance_logs(self):
+        # Abre la vista de Control de Asistencias (ctrol.asistencias)
+        self.ensure_one()
+        # Obtener el ID de la acción existente
+        action = self.env.ref('hr_extra.action_ctrol_asistencias').read()[0]
+        # Actualizar el nombre
+        action['name'] = 'Control de Asistencias'
+        return action
+    
+    def action_view_attendance_statistics(self):
+        # Muestra estadísticas en tiempo real
+        self.ensure_one()
+        # Obtener estadísticas
+        stats = self.env['ctrol.asistencias'].get_import_statistics()
+        # Formatear mensaje simple (sin HTML, solo texto)
+        message = f"""
+ESTADÍSTICAS DE PROCESAMIENTO
+
+    Registros Pendientes: {stats['pendientes']}
+    Importadas Hoy: {stats['importadas_hoy']}
+    Errores Hoy: {stats['errores_hoy']}
+    Tasa de Éxito: {stats['tasa_exito']}%
+    Último Procesamiento: {stats['ultimo_procesamiento'] or 'Nunca'}
+    Empleados con Errores: {stats['empleados_con_errores']}
+
+ Los registros se procesan automáticamente cada {self.attendance_process_interval or 10} minutos. """
+        
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Estadísticas de Asistencias',
+                'message': message,
+                'sticky': True,
+                'type': 'info',}}
+                
 
     def action_regenerate_jwt_secret(self):
         self.ensure_one()
@@ -117,7 +157,6 @@ class ResConfigSettings(models.TransientModel):
         self.ensure_one()
         if not self.api_checadores_user_id:
             raise UserError('No hay usuario configurado.')
-        
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'res.users',
@@ -125,7 +164,6 @@ class ResConfigSettings(models.TransientModel):
             'view_mode': 'form',
             'view_id': self.env.ref('base.view_users_form').id,
             'target': 'new',}
-
 
     @api.constrains('api_checadores_enabled', 'api_checadores_username')
     def _check_api_configuration(self):

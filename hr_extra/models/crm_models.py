@@ -27,3 +27,8 @@ class CrmPropuestaEconomicaRevisionInherit(models.Model):
     
     employee_ids = fields.Many2many('hr.employee', 'crm_pe_revision_employee_rel', 'revision_id', 'employee_id', string='Nombre', 
         domain="[('state', '!=', 'baja')]")
+
+class projectResidentes(models.Model):
+    _inherit = 'project.residents'
+    
+    resident_id = fields.Many2one('hr.employee', string='Residente de Obra', domain="[('state', '!=', 'baja'), ('job_id.name', 'ilike', 'RESIDENTE')]")

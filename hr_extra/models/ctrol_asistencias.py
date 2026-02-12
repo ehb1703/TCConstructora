@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+import logging
+from datetime import datetime
 
 _logger = logging.getLogger(__name__)
 
@@ -93,6 +94,7 @@ class CtrolAsistencias(models.Model):
         return {
             'id': self.id,
             'employee_id': self.employee_id,
+            'registration_number': self.registration_number or '',
             'employee_name': self.employee_name,
             'check_type': self.check_type,
             'photo_url': self.photo_url or '',
@@ -100,6 +102,8 @@ class CtrolAsistencias(models.Model):
             'longitude': self.longitude,
             'check_date': self.check_date.strftime('%Y-%m-%d %H:%M:%S') if self.check_date else '',
             'log_status': self.log_status,
+            'status': self.status,
+            'observaciones': self.observaciones or '',
             'lateness_time': self.lateness_time or '',
             'left_early_time': self.left_early_time or '',
             'is_active': self.is_active,
@@ -136,3 +140,303 @@ class CtrolAsistencias(models.Model):
                     f"Tipo: {vals.get('check_type')}, Status: {vals.get('status', 'success')}")
         
         return record
+    
+
+    @staticmethod
+    def _convert_time_to_hours(time_str):
+        # Convertir horas
+        if not time_str or not isinstance(time_str, str):
+            return 0.0
+        
+        try:
+            time_str = time_str.strip()
+            if ':' not in time_str:
+                return 0.0
+            
+            parts = time_str.split(':')
+            if len(parts) != 2:
+                return 0.0
+            
+            hours = int(parts[0])
+            minutes = int(parts[1])
+            if hours < 0 or minutes < 0 or minutes >= 60:
+                return 0.0
+            
+            return hours + (minutes / 60.0)
+        except (ValueError, AttributeError):
+            return 0.0
+
+
+    def _get_employee_from_registration(self):
+        # Busca el empleado usando registration_number.
+        self.ensure_one()
+        if not self.registration_number:
+            employee = self.env['hr.employee'].sudo().search([('registration_number', '=', self.registration_number)], limit=1)
+            return employee if employee else False
+        else:
+            return False
+    
+    def _validate_for_import(self):
+        """ Valida que el registro pueda importarse a Odoo. 
+            1. employee_id existe en hr.employee
+            2. check_date no es nulo y formato correcto
+            3. check_type está en {entrada, salida} """
+        self.ensure_one()
+        
+        employee = self._get_employee_from_registration()
+        if not employee:
+            return (False, f'Empleado no encontrado | Registration: {self.registration_number}')
+        if not self.check_date:
+            return (False, 'Formato de fecha inválido | check_date es nulo')
+        if not isinstance(self.check_date, datetime):
+            return (False, f'Formato de fecha inválido | check_date debe ser datetime, recibido: {type(self.check_date)}')
+        if self.check_type not in ['entrada', 'salida']:
+            return (False, f'check_type inválido | Valor recibido: "{self.check_type}" | Valores permitidos: entrada, salida')
+        
+        return (True, '')
+
+    
+    def _map_to_attendance(self):
+        """ Mapea el registro a hr.attendance.
+            - Si check_type='entrada': Crea nuevo hr.attendance con check_in
+            - Si check_type='salida': Busca attendance abierto y actualiza check_out """
+        self.ensure_one()        
+        employee = self._get_employee_from_registration()
+        if not employee:
+            return (False, f'Empleado no encontrado | Registration: {self.registration_number}')
+        
+        AttendanceModel = self.env['hr.attendance'].sudo()        
+        if self.check_type == 'entrada':
+            open_attendance = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '=', False)], limit=1)
+            if open_attendance:
+                return (False, f'Entrada ya existe | Attendance ID: {open_attendance.id} | Fecha: {open_attendance.check_in}')
+            
+            try:
+                attendance = AttendanceModel.create({'employee_id': employee.id, 'check_in': self.check_date, })
+                return (attendance, f'Entrada registrada | Attendance ID: {attendance.id} | Check-in: {self.check_date}')
+            except Exception as e:
+                return (False, f'Error al crear entrada | Error: {str(e)}')
+        elif self.check_type == 'salida':
+            # Buscar entrada previa sin salida
+            open_attendance = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '=', False), ('check_in', '<=', self.check_date)], 
+                order='check_in desc', limit=1)
+            
+            if not open_attendance:
+                return (False, f'Salida sin entrada previa | Employee: {employee.name} | Fecha: {self.check_date}')
+            if self.check_date <= open_attendance.check_in:
+                return (False, f'Salida debe ser posterior a entrada | Check-in: {open_attendance.check_in} | Check-out intentado: {self.check_date}')
+            
+            try:
+                open_attendance.write({'check_out': self.check_date, })
+                # worked_hours se calcula automáticamente en hr.attendance
+                worked_hours = open_attendance.worked_hours
+                return (open_attendance, f'Salida registrada | Attendance ID: {open_attendance.id} | Horas trabajadas: {worked_hours:.2f}')
+            except Exception as e:
+                return (False, f'Error al registrar salida | Error: {str(e)}')
+        
+        return (False, f'check_type inválido | Valor: {self.check_type}')
+    
+
+    def _map_to_overtime(self, attendance_id):
+        # Crea registro de hora extra/retraso si lateness_time > umbral.
+        self.ensure_one()
+        if not self.lateness_time:
+            return (False, 'No hay lateness_time registrado')
+        
+        # Obtener umbral desde configuración (default: 00:15)
+        config = self.env['ir.config_parameter'].sudo()
+        threshold_str = config.get_param('hr_extra.attendance_lateness_threshold', '00:15')
+        
+        # Convertir ambos a horas
+        lateness_hours = self._convert_time_to_hours(self.lateness_time)
+        threshold_hours = self._convert_time_to_hours(threshold_str)
+        
+        if lateness_hours <= threshold_hours:
+            return (False, f'Retraso ({self.lateness_time}) no supera umbral ({threshold_str})')
+        
+        # Buscar empleado
+        employee = self._get_employee_from_registration()
+        if not employee:
+            return (False, 'Empleado no encontrado')
+        
+        OvertimeModel = self.env['hr.attendance.overtime'].sudo()        
+        # Crear registro de overtime
+        try:
+            overtime = OvertimeModel.create({
+                'employee_id': employee.id,
+                'attendance_id': attendance_id,
+                'date': self.check_date.date() if self.check_date else False,
+                'duration': lateness_hours,
+                'reason': f'Retraso en entrada: {self.lateness_time}'
+            })
+            
+            return (overtime, f'Overtime creado | ID: {overtime.id} | Retraso: {lateness_hours:.2f} horas')
+        
+        except Exception as e:
+            _logger.error(f"Error al crear overtime: {str(e)}")
+            return (False, f'Error al crear overtime | Error: {str(e)}')
+    
+    def _map_to_work_entry(self, attendance_id):
+        # Crea hr.work.entry basado en los datos de asistencia.
+        self.ensure_one()
+        employee = self._get_employee_from_registration()
+        if not employee:
+            return (False, 'Empleado no encontrado')
+        
+        WorkEntryModel = self.env['hr.work.entry'].sudo()
+        attendance = self.env['hr.attendance'].sudo().browse(attendance_id)
+        if not attendance.exists():
+            return (False, f'Attendance ID {attendance_id} no encontrado')
+        
+        # Determinar tipo de entrada
+        if self.check_type == 'entrada' and not attendance.check_out:
+            # Entrada sin salida - No crear work entry hasta que se complete
+            return (False, 'Entrada sin salida - Work entry se creará al registrar salida')
+        
+        if self.check_type == 'salida' and attendance.check_in and attendance.check_out:
+            try:
+                # Buscar tipo de work entry (WORK100 = Asistencia normal)
+                work_entry_type = self.env.ref('hr_work_entry.work_entry_type_attendance', raise_if_not_found=False)
+                
+                if not work_entry_type:
+                    work_entry_type = self.env['hr.work.entry.type'].sudo().search([('code', '=', 'WORK100')], limit=1)
+                
+                work_entry = WorkEntryModel.create({
+                    'employee_id': employee.id,
+                    'name': f'Asistencia {attendance.check_in.date()}',
+                    'date_start': attendance.check_in,
+                    'date_stop': attendance.check_out,
+                    'work_entry_type_id': work_entry_type.id if work_entry_type else False,
+                    'state': 'draft',
+                })
+                
+                return (work_entry, f'Work Entry creado | ID: {work_entry.id} | Tipo: Jornada Normal')
+            
+            except Exception as e:
+                _logger.error(f"Error al crear work entry: {str(e)}")
+                return (False, f'Error al crear work entry | Error: {str(e)}')
+        
+        return (False, 'Condiciones no cumplidas para crear work entry')
+    
+    @api.model
+    def process_pending_logs(self):
+        # Procesa registros pendientes de importación a Odoo.
+        _logger.info("="*80)
+        _logger.info("INICIANDO PROCESAMIENTO DE ASISTENCIAS PENDIENTES - TAREA 0051")
+        _logger.info("="*80)
+        
+        start_time = datetime.now()
+        
+        # 1. EXTRACCIÓN: Obtener registros pendientes
+        pending_records = self.search([('log_status', '=', 'pendiente')], order='check_date asc, id asc')
+        
+        total_records = len(pending_records)
+        _logger.info(f"Total de registros pendientes encontrados: {total_records}")
+        
+        if total_records == 0:
+            _logger.info("No hay registros pendientes para procesar")
+            return {'total_procesados': 0, 'exitosos': 0, 'errores': 0, 'detalles_errores': [], 'tiempo_ejecucion': '0 segundos'}
+        
+        exitosos = 0
+        errores = 0
+        detalles_errores = []
+        
+        for record in pending_records:
+            try:
+                _logger.info(f"\n--- Procesando registro ID: {record.id} | Employee: {record.registration_number} | Tipo: {record.check_type} | Fecha: {record.check_date}")
+                
+                # 2.1 VALIDACIÓN
+                is_valid, validation_message = record._validate_for_import()
+                if not is_valid:
+                    # Marcar como error
+                    record.write({'log_status': 'error', 'log_message': validation_message})
+                    errores += 1
+                    detalles_errores.append({'id': record.id, 'employee': record.registration_number, 'error': validation_message})
+                    _logger.warning(f"Validación fallida: {validation_message}")
+                    continue
+                
+                # 2.2 MAPEO A hr.attendance
+                attendance, attendance_message = record._map_to_attendance()
+                if not attendance:
+                    # Error al crear/actualizar attendance
+                    record.write({'log_status': 'error', 'log_message': attendance_message })
+                    errores += 1
+                    detalles_errores.append({'id': record.id, 'employee': record.registration_number, 'error': attendance_message})
+                    _logger.warning(f"Error en attendance: {attendance_message}")
+                    continue
+                
+                # Registro exitoso hasta ahora
+                messages = [attendance_message]
+                # 2.3 MAPEO A hr.attendance.overtime (si aplica)
+                if record.check_type == 'entrada' and record.lateness_time:
+                    overtime, overtime_message = record._map_to_overtime(attendance.id)
+                    if overtime:
+                        messages.append(overtime_message)
+                        _logger.info(f"Overtime creado: {overtime_message}")
+                    else:
+                        # No es error, solo información
+                        _logger.info(f"Overtime no creado: {overtime_message}")
+                
+                # 2.4 MAPEO A hr.work.entry (si aplica)
+                if record.check_type == 'salida':
+                    work_entry, work_entry_message = record._map_to_work_entry(attendance.id)
+                    if work_entry:
+                        messages.append(work_entry_message)
+                        _logger.info(f"Work Entry creado: {work_entry_message}")
+                    else:
+                        # No es error, solo información
+                        _logger.info(f"Work Entry: {work_entry_message}")
+                
+                # 2.5 ACTUALIZACIÓN DE ESTADO: Marcar como importada
+                final_message = ' | '.join(messages)
+                record.write({'log_status': 'importada', 'log_message': final_message})
+                exitosos += 1
+                _logger.info(f"Registro procesado exitosamente: {final_message}")
+            
+            except Exception as e:
+                # Capturar cualquier error no controlado
+                error_msg = f'Error inesperado durante procesamiento | Error: {str(e)}'
+                record.write({'log_status': 'error', 'log_message': error_msg})
+                errores += 1
+                detalles_errores.append({'id': record.id, 'employee': record.registration_number, 'error': error_msg})
+                _logger.error(f"Error inesperado en registro {record.id}: {str(e)}", exc_info=True)
+        
+        # 3. ESTADÍSTICAS FINALES
+        end_time = datetime.now()
+        execution_time = (end_time - start_time).total_seconds()
+        result = {'total_procesados': total_records, 'exitosos': exitosos, 'errores': errores, 'detalles_errores': detalles_errores, 
+            'tiempo_ejecucion': f'{execution_time:.2f} segundos'}
+        
+        _logger.info("\n" + "="*80)
+        _logger.info("RESUMEN DE PROCESAMIENTO:")
+        _logger.info(f"Total procesados: {total_records}")
+        _logger.info(f"Exitosos: {exitosos}")
+        _logger.info(f"Errores: {errores}")
+        _logger.info(f"Tasa de éxito: {(exitosos/total_records*100) if total_records > 0 else 0:.2f}%")
+        _logger.info(f"Tiempo de ejecución: {execution_time:.2f} segundos")
+        _logger.info("="*80 + "\n")
+        return result
+
+    
+    @api.model
+    def get_import_statistics(self):
+        # Obtiene estadísticas de importación para dashboard/reportes.
+        today = datetime.now().date()
+        
+        # Contadores por estado
+        pendientes = self.search_count([('log_status', '=', 'pendiente')])
+        importadas_hoy = self.search_count([('log_status', '=', 'importada'), ('updatedAt', '>=', datetime.combine(today, datetime.min.time()))])
+        errores_hoy = self.search_count([('log_status', '=', 'error'), ('updatedAt', '>=', datetime.combine(today, datetime.min.time()))])
+        
+        total_hoy = importadas_hoy + errores_hoy
+        tasa_exito = (importadas_hoy / total_hoy * 100) if total_hoy > 0 else 0
+        
+        # Último procesamiento
+        ultimo_importado = self.search([('log_status', '=', 'importada')], order='updatedAt desc', limit=1)
+        ultimo_procesamiento = ultimo_importado.updatedAt if ultimo_importado else False
+        
+        # Empleados con errores recurrentes
+        errores_recurrentes = self.read_group([('log_status', '=', 'error')], ['registration_number'], ['registration_number'])
+        
+        return {'pendientes': pendientes, 'importadas_hoy': importadas_hoy, 'errores_hoy': errores_hoy, 'tasa_exito': round(tasa_exito, 2),
+            'ultimo_procesamiento': ultimo_procesamiento, 'empleados_con_errores': len(errores_recurrentes)}
