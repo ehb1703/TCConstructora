@@ -116,7 +116,6 @@ class requisitionBankAccount(models.Model):
 class requisitionBankMovements(models.Model):
     _name = 'requisition.bank.movements'
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _rec_name = 'res_partner_bank'
     _description = 'Movimientos bancarios'
 
     mov_id = fields.Many2one('requisition.bank.account', readonly=True)
