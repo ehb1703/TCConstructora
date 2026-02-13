@@ -21,7 +21,7 @@
     'application': True,
     'depends': ['hr_payroll', 'hr_contract', 'project', 'project_extra'],
     'data': [
-        #'data/ir_cron_attendance.xml',
+        'data/ir_cron_attendance.xml',
         'security/res_groups.xml',
         'security/ir.model.access.csv',
         'views/hr_catalogs_views.xml',

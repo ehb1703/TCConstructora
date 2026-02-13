@@ -30,13 +30,15 @@ class CtrolAsistencias(models.Model):
         string='Estado', default='pendiente', required=True)
     lateness_time = fields.Char(string='Tiempo de Retraso', help='Formato HH:MM - Ejemplo: 07:15')
     left_early_time = fields.Char(string='Salida Anticipada', help='Formato HH:MM - Ejemplo: 00:30')
-    is_active = fields.Boolean(tring='Activo', default=True)
+    is_active = fields.Boolean(string='Activo', default=True)
     createdAt = fields.Datetime(string='Fecha Creación', help='Fecha de creación en formato aaaa/mm/dd hh:mm', default=fields.Datetime.now)
     updatedAt = fields.Datetime(string='Fecha Actualización', help='Fecha de actualización en formato aaaa/mm/dd hh:mm', default=fields.Datetime.now)
     verification_status = fields.Selection([('auto', 'Automático'), ('manual_review', 'Revisión Manual'), ('approved', 'Aprobado'), ('rejected', 'Rechazado')], 
         string='Estado de Verificación')
     match_percentage = fields.Integer(string='Porcentaje de Coincidencia', help='Porcentaje de coincidencia biométrica (0-100)')
-    log_message = fields.Text(string='Mensaje de Log', help='Mensaje o descripción del registro')    
+    log_message = fields.Text(string='Mensaje de Log', help='Mensaje o descripción del registro')
+    attendance_id = fields.Many2one('hr.attendance', string='Asistencia Generada', ondelete='set null',
+        help='Registro hr.attendance generado al importar esta asistencia. Permite trazar directamente el origen del registro.')
     sigob_log_folio = fields.Char(string='Folio Log SIGOB')
     user_valid_id = fields.Integer(string='ID Usuario Validador')
     date_validated = fields.Datetime(string='Fecha de Validación')
@@ -112,6 +114,7 @@ class CtrolAsistencias(models.Model):
             'verification_status': self.verification_status or '',
             'match_percentage': self.match_percentage or 0,
             'log_message': self.log_message or '',
+            'attendance_id': self.attendance_id.id if self.attendance_id else None,
             'sigob_log_folio': self.sigob_log_folio or '',
             'user_valid_id': self.user_valid_id or 0,
             'date_validated': self.date_validated.strftime('%Y-%m-%d %H:%M:%S') if self.date_validated else ''}
@@ -170,7 +173,7 @@ class CtrolAsistencias(models.Model):
     def _get_employee_from_registration(self):
         # Busca el empleado usando registration_number.
         self.ensure_one()
-        if not self.registration_number:
+        if self.registration_number:
             employee = self.env['hr.employee'].sudo().search([('registration_number', '=', self.registration_number)], limit=1)
             return employee if employee else False
         else:
@@ -198,8 +201,8 @@ class CtrolAsistencias(models.Model):
     
     def _map_to_attendance(self):
         """ Mapea el registro a hr.attendance.
-            - Si check_type='entrada': Crea nuevo hr.attendance con check_in
-            - Si check_type='salida': Busca attendance abierto y actualiza check_out """
+            - Si check_type='entrada': Crea nuevo hr.attendance con check_in + coordenadas GPS entrada
+            - Si check_type='salida': Busca attendance abierto y actualiza check_out + coordenadas GPS salida """
         self.ensure_one()        
         employee = self._get_employee_from_registration()
         if not employee:
@@ -209,10 +212,30 @@ class CtrolAsistencias(models.Model):
         if self.check_type == 'entrada':
             open_attendance = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '=', False)], limit=1)
             if open_attendance:
-                return (False, f'Entrada ya existe | Attendance ID: {open_attendance.id} | Fecha: {open_attendance.check_in}')
+                # Verificar si la entrada abierta es del MISMO día que la nueva
+                open_date = open_attendance.check_in.date() if open_attendance.check_in else None
+                new_date = self.check_date.date() if self.check_date else None
+
+                if open_date and new_date and open_date == new_date:
+                    # Mismo día: es una entrada duplicada real → error
+                    return (False, f'Entrada ya existe | Attendance ID: {open_attendance.id} | Fecha: {open_attendance.check_in}')
+                else:
+                    # Día distinto: hay una entrada vieja sin cerrar → cerrar automáticamente
+                    # Se cierra con el mismo check_in (0 horas trabajadas) para no bloquear la nueva entrada
+                    _logger.warning(
+                        f'T0051: Entrada abierta de día anterior detectada | '
+                        f'Attendance ID: {open_attendance.id} | Fecha antigua: {open_attendance.check_in} | '
+                        f'Cerrando automáticamente para crear nueva entrada del {new_date}'
+                    )
+                    open_attendance.write({'check_out': open_attendance.check_in})
             
             try:
-                attendance = AttendanceModel.create({'employee_id': employee.id, 'check_in': self.check_date, })
+                attendance = AttendanceModel.create({
+                    'employee_id': employee.id,
+                    'check_in': self.check_date,
+                    'in_latitude': self.latitude or 0.0,
+                    'in_longitude': self.longitude or 0.0,
+                })
                 return (attendance, f'Entrada registrada | Attendance ID: {attendance.id} | Check-in: {self.check_date}')
             except Exception as e:
                 return (False, f'Error al crear entrada | Error: {str(e)}')
@@ -227,7 +250,11 @@ class CtrolAsistencias(models.Model):
                 return (False, f'Salida debe ser posterior a entrada | Check-in: {open_attendance.check_in} | Check-out intentado: {self.check_date}')
             
             try:
-                open_attendance.write({'check_out': self.check_date, })
+                open_attendance.write({
+                    'check_out': self.check_date,
+                    'out_latitude': self.latitude or 0.0,
+                    'out_longitude': self.longitude or 0.0,
+                })
                 # worked_hours se calcula automáticamente en hr.attendance
                 worked_hours = open_attendance.worked_hours
                 return (open_attendance, f'Salida registrada | Attendance ID: {open_attendance.id} | Horas trabajadas: {worked_hours:.2f}')
@@ -243,33 +270,48 @@ class CtrolAsistencias(models.Model):
         if not self.lateness_time:
             return (False, 'No hay lateness_time registrado')
         
-        # Obtener umbral desde configuración (default: 00:15)
-        config = self.env['ir.config_parameter'].sudo()
-        threshold_str = config.get_param('hr_extra.attendance_lateness_threshold', '00:15')
-        
-        # Convertir ambos a horas
-        lateness_hours = self._convert_time_to_hours(self.lateness_time)
-        threshold_hours = self._convert_time_to_hours(threshold_str)
-        
-        if lateness_hours <= threshold_hours:
-            return (False, f'Retraso ({self.lateness_time}) no supera umbral ({threshold_str})')
-        
-        # Buscar empleado
+        # Buscar empleado primero (necesario para obtener su compañía y horario)
         employee = self._get_employee_from_registration()
         if not employee:
             return (False, 'Empleado no encontrado')
         
-        OvertimeModel = self.env['hr.attendance.overtime'].sudo()        
-        # Crear registro de overtime
+        # Obtener umbral desde configuración de Asistencias (NO del parámetro attendance_lateness_threshold)
+        threshold_hours = 15 / 60.0  # fallback
         try:
-            overtime = OvertimeModel.create({
+            company = employee.company_id or self.env.company
+            threshold_minutes = getattr(company, 'overtime_company_threshold', None)
+            if threshold_minutes is not None and threshold_minutes >= 0:
+                threshold_hours = threshold_minutes / 60.0
+                _logger.info(f'T0051: Umbral desde Asistencias → Configuración: {threshold_minutes} min')
+            elif employee.resource_calendar_id:
+                cal_tolerance = getattr(employee.resource_calendar_id, 'tolerance_minutes', None)
+                if cal_tolerance is not None and cal_tolerance >= 0:
+                    threshold_hours = cal_tolerance / 60.0
+                    _logger.info(f'T0051: Umbral desde horario {employee.resource_calendar_id.name}: {cal_tolerance} min')
+        except Exception as e:
+            _logger.warning(f'T0051: No se pudo obtener umbral, usando 15 min: {str(e)}')
+        
+        # Convertir lateness_time a horas y comparar
+        lateness_hours = self._convert_time_to_hours(self.lateness_time)
+        if lateness_hours <= threshold_hours:
+            threshold_min = round(threshold_hours * 60)
+            return (False, f'Retraso ({self.lateness_time}) no supera umbral ({threshold_min} min)')
+        
+        OvertimeModel = self.env['hr.attendance.overtime'].sudo()        
+        # Crear registro de overtime con attendance_id y reason (agregados por este módulo)
+        try:
+            overtime_vals = {
                 'employee_id': employee.id,
                 'attendance_id': attendance_id,
                 'date': self.check_date.date() if self.check_date else False,
                 'duration': lateness_hours,
-                'reason': f'Retraso en entrada: {self.lateness_time}'
-            })
+            }
+            if 'attendance_id' in OvertimeModel._fields:
+                overtime_vals['attendance_id'] = attendance_id
+            if 'reason' in OvertimeModel._fields:
+                overtime_vals['reason'] = f'Retraso en entrada: {self.lateness_time}'
             
+            overtime = OvertimeModel.create(overtime_vals)
             return (overtime, f'Overtime creado | ID: {overtime.id} | Retraso: {lateness_hours:.2f} horas')
         
         except Exception as e:
@@ -389,7 +431,11 @@ class CtrolAsistencias(models.Model):
                 
                 # 2.5 ACTUALIZACIÓN DE ESTADO: Marcar como importada
                 final_message = ' | '.join(messages)
-                record.write({'log_status': 'importada', 'log_message': final_message})
+                write_vals = {'log_status': 'importada', 'log_message': final_message}
+                # Guardar referencia al attendance generado para trazabilidad rápida
+                if attendance and hasattr(attendance, 'id'):
+                    write_vals['attendance_id'] = attendance.id
+                record.write(write_vals)
                 exitosos += 1
                 _logger.info(f"Registro procesado exitosamente: {final_message}")
             

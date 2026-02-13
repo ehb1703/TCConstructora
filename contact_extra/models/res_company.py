@@ -23,6 +23,7 @@ class respartnerCurp(models.Model):
     apaterno = fields.Char(string='Apellido Paterno', tracking=True)
     amaterno = fields.Char(string='Apellido Materno', tracking=True)
     nombre = fields.Char(string='Nombre(s)', tracking=True)
+    country_id = fields.Many2one('res.country', string='País', default=lambda self: self.env.company.country_id)
 
     @api.constrains('curp')
     def _check_curp(self):
@@ -53,11 +54,17 @@ class respartnerCurp(models.Model):
         _logger.warning(vals_list)
         for vals in vals_list:
             if any(field in vals for field in ['nombre', 'apaterno', 'amaterno']):
-                company = vals.get('is_company')
-                if not company:
-                    name = vals.get('nombre') + ' ' + vals.get('apaterno') + ' ' + vals.get('amaterno')
+                if vals.get('apaterno'):
+                    apaterno = ' ' + vals.get('apaterno') 
                 else:
-                    name = vals.get('nombre')
+                    apaterno = ''
+
+                if vals.get('amaterno'):
+                    amaterno = ' ' + vals.get('amaterno')
+                else:
+                    amaterno = ''
+                
+                name = vals.get('nombre') + apaterno + amaterno
                 vals['name'] = name
         return super().create(vals_list)
 

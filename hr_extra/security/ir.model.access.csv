@@ -24,3 +24,8 @@ access_ctrol_asistencias_manager,ctrol.asistencias.manager,model_ctrol_asistenci
 access_checador_sync_log_api,checador.sync.log.api,model_checador_sync_log,group_api_checadores,1,1,1,0
 access_checador_sync_log_user,checador.sync.log.user,model_checador_sync_log,hr.group_hr_user,1,0,0,0
 access_checador_sync_log_manager,checador.sync.log.manager,model_checador_sync_log,hr.group_hr_manager,1,1,1,1
+
+access_hr_attendance_extra_user,hr.attendance.extra.user,hr_attendance.model_hr_attendance,hr.group_hr_user,1,1,1,0
+access_hr_attendance_extra_manager,hr.attendance.extra.manager,hr_attendance.model_hr_attendance,hr.group_hr_manager,1,1,1,1
+access_hr_attendance_overtime_extra_user,hr.attendance.overtime.extra.user,hr_attendance.model_hr_attendance_overtime,hr.group_hr_user,1,1,1,0
+access_hr_attendance_overtime_extra_manager,hr.attendance.overtime.extra.manager,hr_attendance.model_hr_attendance_overtime,hr.group_hr_manager,1,1,1,1

@@ -8,8 +8,6 @@ class crmInheritState(models.Model):
         domain="[('state', '!=', 'baja')]")
     bases_supervisor_id = fields.Many2one('hr.employee', string='Supervisor general', tracking=True, 
         domain="[('state', '!=', 'baja')]")
-    junta_personas_ids = fields.Many2many('hr.employee', 'crm_lead_junta_employee_rel', 'lead_id', 'employee_id', string='Personas junta', 
-        domain="[('state', '!=', 'baja')]")
     tecnico_documental_id = fields.Many2one('hr.employee', 'Técnico/documental', tracking=True, domain="[('state', '!=', 'baja')]")
     economico_operativo_id = fields.Many2one('hr.employee', 'Económico/operativo', tracking=True, domain="[('state', '!=', 'baja')]")
     apertura_personas_ids = fields.Many2many('hr.employee', 'crm_lead_apertura_employee_rel', 'lead_id', 'employee_id', string='Personas Apertura', 

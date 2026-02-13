@@ -3,7 +3,7 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import html_escape
 from markupsafe import Markup
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 import json
 import logging
 
@@ -16,13 +16,19 @@ class requisitionResidents(models.Model):
     _rec_name = 'name'
     _description = 'Requisiciones de Residentes de Obras'
 
+    @api.depends('finicio')
     def _compute_domain_project(self):
+        lista = []
         for record in self:
-            employee = self.env['hr.employee'].search([('user_id','=',record.env.user.id)])
-            residentes = self.env['project.residents'].search([('resident_id','=',employee.id)])
-            lista = []
-            for x in residentes:
-                lista.append(x.project_id.id)
+            if self.env.user.has_group('requisition_residents.group_requisition_admin'):
+                projects = self.env['project.project'].search([('stage_id.name','!=','Cancelada')])
+                for x in projects:
+                    lista.append(x.id)
+            else:
+                employee = self.env['hr.employee'].search([('user_id','=',self.env.user.id)])
+                residentes = self.env['project.residents'].search([('resident_id','=',employee.id)])
+                for x in residentes:
+                    lista.append(x.project_id.id)
             record.project_domain = json.dumps([('id', 'in', lista)])
 
     name = fields.Char(string='Nombre')
@@ -34,6 +40,7 @@ class requisitionResidents(models.Model):
     company_id = fields.Many2one('res.company', string='Empresa', tracking=True)
     amount_untaxed = fields.Float(string='Importe sin IVA', compute='_compute_amount', store=True, readonly=True, tracking=True)
     amount_total = fields.Float(string='Importe con IVA', compute='_compute_amount', store=True, readonly=True)
+    out_time = fields.Boolean(string='Fuera de tiempo', default=False)
     state = fields.Selection(selection=[('draft','Borrador'), ('send','Enviado'), ('aprobado','Aprobado'), ('req','Requisición')],
         string='Estatus', default='draft', tracking=True)
     line_ids = fields.One2many('requisition.residents.line', 'req_id', string='Resumen')
@@ -72,6 +79,15 @@ class requisitionResidents(models.Model):
             dias = self.ffinal - self.finicio
             if dias.days > 6:
                 raise ValidationError('El periodo seleccionado es mayor a una semana.')
+
+    @api.onchange('project_id')
+    @api.depends('project_id')
+    def validar_obra(self):
+        if self.finicio:
+            existe = self.env['requisition.residents'].search([('finicio','=',self.finicio), ('project_id','!=',self.project_id.id), ('id','!=',self.id)])
+            if existe:
+                self.project_id = None
+                raise ValidationError('Ya existe una requisición para la obra en el periodo seleccionado')
 
     def action_resumen(self):
         req_lines = []
@@ -153,13 +169,25 @@ class requisitionResidents(models.Model):
         self.write({'line_ids': req_lines})
 
 
-    def _get_emails_from_group(self, grupo):
+    def _get_emails(self, grupo=None):
         emails = set()
         group = self.env.ref(grupo, raise_if_not_found=False)
         if group:
             for user in group.users.filtered(lambda u: u.active and u.partner_id and u.partner_id.email):
                 emails.add(user.partner_id.email.strip())
+
+        for rec in self.project_id.type_id.technicalcat_id.email_ids:
+            if rec.work_email:
+                emails.add(rec.work_email.strip())
+            elif rec.private_email:
+                emails.add(rec.private_email.strip())
+            elif rec.address_id.email:
+                emails.add(rec.address_id.email.strip())
+            else:
+                raise UserError(('No existen correos configurados del empleado %s') % rec.name)
+
         return sorted(e for e in emails if '@' in e)
+
 
     def _post_html(self, title, old_stage=None, new_stage=None):
         parts = [f'<p>{html_escape(title)}</p>']
@@ -171,6 +199,13 @@ class requisitionResidents(models.Model):
         self.message_post(body=Markup(body), message_type='comment', subtype_xmlid='mail.mt_note')
 
     def action_send(self):
+        existe = self.env['requisition.residents'].search([('finicio','=',self.finicio), ('project_id','!=',self.project_id.id), ('id','!=',self.id)])
+        if existe:
+            self.project_id = None
+            raise ValidationError('Ya existe una requisición para la obra en el periodo seleccionado')
+        if (self.amount_untaxed + self.amount_total) in (0, 0.0):
+            raise ValidationError('No existe información en la requisición.')
+        
         semana = self.env['requisition.residents'].search([('finicio','=',self.finicio), ('state','=','req')])
         if len(semana) >= 1:
             self.finicio = None
@@ -181,7 +216,7 @@ class requisitionResidents(models.Model):
 
         self.action_resumen()
         # Generar archivo y adjuntarlo
-        correos_list = self._get_emails_from_group('requisition_residents.group_requisition_admin')
+        correos_list = self._get_emails('requisition_residents.group_requisition_admin')
         template = self.env.ref('requisition_residents.mail_tmpl_requisition_residents', raise_if_not_found=False)
 
         try:
@@ -191,6 +226,13 @@ class requisitionResidents(models.Model):
             self._post_html(_('Se envió correo a: ') + correos)
         except Exception:
             self._post_html(_('Error al enviar el correo'))
+
+        fecha = datetime.combine(self.ffinal, time())
+        normal = fecha + timedelta(days=1, hours=15)
+        hoy = datetime.now()
+        if hoy > normal:
+            self.out_time = True
+
         self.state = 'send'
 
     def action_confirm(self):

@@ -78,11 +78,11 @@
                         <field name="partner_emisor_id" options="{'no_open':True, 'no_create':True}"/>
                         <field name="no_licitacion"/>
                         <field name="desc_licitacion"/>
-                        <field name="tipo_obra_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                        <field name="especialidad_ids" widget="many2many_tags" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                         <field name="zona_geografica_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                     </group>
                     <group>
-                        <field name="especialidad_ids" widget="many2many_tags" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                        <field name="tipo_obra_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                         <field name="fecha_convocatoria"/>
                         <field name="fecha_limite_inscripcion"/>
                         <field name="currency_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
@@ -116,9 +116,6 @@
                                 <field name="bases_supervisor_id" readonly="stage_name != 'Inscripción/Compra de bases'"/>
                                 <field name="fecha_apertura" string="Fecha de apertura" readonly="stage_name != 'Inscripción/Compra de bases'"/>
                                 <field name="bases_cost" string="Costo de las bases" readonly="stage_name != 'Inscripción/Compra de bases'" invisible="not bases_pay"/>
-                            </group>
-                            <group>
-                                <field name="bases_abstinencia_anticipo" readonly="stage_name != 'Inscripción/Compra de bases'"/>
                             </group>
                             <group>
                                 <field name="bases_anticipo_porcentaje" readonly="stage_name != 'Inscripción/Compra de bases'"/>
@@ -175,39 +172,66 @@
                         </group>
                     </group>
                     <group string="Junta de Aclaración de Dudas">
-                        <field name="junta_docto_dudas_name" invisible="1"/>
-                        <field name="junta_acta_name" invisible="1"/>
-                        <field name="junta_notificacion_1_name" invisible="1"/>
-                        <field name="junta_notificacion_2_name" invisible="1"/>
                         <group>
                             <group>
                                 <field name="junta_obligatoria" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
                             </group>
                             <group>
                                 <list editable="bottom" invisible="stage_name != 'Junta de Aclaración de Dudas'">
-                                    <button name="action_send_junta_reminder_manual" string="Enviar" type="object" icon="fa-envelope"/>
+                                    <button name="action_send_junta_reminder_manual" string="Enviar notif. manual" type="object" icon="fa-envelope"/>
                                 </list>
                             </group>
-                            <group colspan="2">
-                                <field name="junta_personas_ids" widget="many2many_tags" readonly="stage_name != 'Junta de Aclaración de Dudas'" required="junta_obligatoria and stage_name == 'Junta de Aclaración de Dudas'"/>
-                                <field name="junta_fecha" string="Fecha y hora de junta" readonly="stage_name != 'Junta de Aclaración de Dudas'" required="junta_obligatoria and stage_name == 'Junta de Aclaración de Dudas'"/>
-                                <field name="junta_fecha_limite_dudas" string="Fecha límite" readonly="stage_name != 'Junta de Aclaración de Dudas'" required="junta_obligatoria and stage_name == 'Junta de Aclaración de Dudas'"/>
-                                <field name="junta_acta" filename="junta_acta_name" widget="binary" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
-                            </group>
                         </group>
-                        <group>
-                            <group>
-                                <field name="junta_notif_auto_sent" readonly="1"/>
-                            </group>
-                            <group>
-                                <field name="junta_notif_manual_sent" readonly="1"/>
-                            </group>
-                            <group colspan="2">
-                                <field name="junta_lugar_reunion" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
-                                <field name="junta_docto_dudas" filename="junta_docto_dudas_name" widget="binary" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
-                                <field name="junta_notificacion_1" filename="junta_notificacion_1_name" widget="binary" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
-                                <field name="junta_notificacion_2" filename="junta_notificacion_2_name" widget="binary" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
-                            </group>
+                        <group colspan="2" string="Junta de Aclaración de Dudas">
+                            <field name="junta_line_ids" nolabel="1" readonly="stage_name != 'Junta de Aclaración de Dudas'">
+                                <list editable="bottom" string="Juntas">
+                                    <field name="fecha_hora" string="Fecha y hora" required="1"/>
+                                    <field name="descripcion" string="Descripción"/>
+                                    <field name="lugar_reunion" string="Lugar de reunión"/>
+                                    <field name="asistente_ids" widget="many2many_tags" string="Asistentes" options="{'no_create':True, 'no_edit':True}"/>
+                                    <field name="notif_auto" string="Notif. Autom." widget="boolean_toggle"/>
+                                    <field name="notif_manual" string="Notif. Manual" widget="boolean_toggle"/>
+                                    <field name="fecha_limite_preguntas" string="Fecha y hora límite para envío de preguntas"/>
+                                    <field name="docto_preguntas_name" column_invisible="1"/>
+                                    <field name="docto_preguntas" string="Docto. Preguntas" widget="binary" filename="docto_preguntas_name"/>
+                                    <field name="acta_junta_name" column_invisible="1"/>
+                                    <field name="acta_junta" string="Acta de la junta" widget="binary" filename="acta_junta_name"/>
+                                </list>
+                                <form string="Junta de Aclaración de Dudas">
+                                    <group>
+                                        <field name="fecha_hora" required="1"/>
+                                        <field name="descripcion"/>
+                                        <field name="lugar_reunion"/>
+                                        <field name="asistente_ids" widget="many2many_tags" options="{'no_create':True, 'no_edit':True}"/>
+                                        <field name="notif_auto"/>
+                                        <field name="notif_manual"/>
+                                        <field name="fecha_limite_preguntas"/>
+                                        <field name="docto_preguntas_name" invisible="1"/>
+                                        <field name="docto_preguntas" widget="binary" filename="docto_preguntas_name"/>
+                                        <field name="acta_junta_name" invisible="1"/>
+                                        <field name="acta_junta" widget="binary" filename="acta_junta_name"/>
+                                    </group>
+                                </form>
+                            </field>
+                        </group>
+                        <!-- PUNTO 1 T0050: Lista de circulares y documentos de dependencia -->
+                        <group colspan="2" string="CIRCULARES">
+                            <field name="circular_ids" nolabel="1" readonly="stage_name != 'Junta de Aclaración de Dudas'">
+                                <list editable="bottom" string="Circulares">
+                                    <field name="fecha_hora" string="Fecha y hora" required="1"/>
+                                    <field name="descripcion" string="Descripción"/>
+                                    <field name="documento_name" column_invisible="1"/>
+                                    <field name="documento" string="Documento" widget="binary" filename="documento_name"/>
+                                </list>
+                                <form string="Circular / Documento">
+                                    <group>
+                                        <field name="fecha_hora" required="1"/>
+                                        <field name="descripcion"/>
+                                        <field name="documento_name" invisible="1"/>
+                                        <field name="documento" widget="binary" filename="documento_name"/>
+                                    </group>
+                                </form>
+                            </field>
                         </group>
                     </group>
                     <group>
@@ -433,6 +457,7 @@
                                     <field name="orden_trabajo_doc" filename="orden_trabajo_doc_name" readonly="stage_name != 'Ganado'" string="Orden de trabajo"/>
                                 </group>
                                 <group>
+                                    <field name="bases_abstinencia_anticipo" readonly="stage_name != 'Ganado'" string="Renuncia de anticipo"/>
                                     <field name="fecha_firma" readonly="stage_name != 'Ganado'" required="stage_name == 'Ganado' and contrato_firmado"/>
                                     <field name="importe_anticipo" invisible="bases_abstinencia_anticipo"/>
                                     <field name="no_estimaciones" readonly="stage_name != 'Ganado'" string="No. De estimaciones"/>

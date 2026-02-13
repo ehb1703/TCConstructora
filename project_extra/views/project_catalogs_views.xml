@@ -121,6 +121,7 @@
                     <group>
                         <field name="name"/>
                         <field name="description"/>
+                        <field name="email_ids" widget="many2many_tags"/>
                     </group>
                 </sheet>
                 <chatter/>

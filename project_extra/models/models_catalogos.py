@@ -50,6 +50,7 @@ class projectTechnicalCategory(models.Model):
 
     name = fields.Char(string='Nombre')
     description = fields.Char(string='Descripción')
+    email_ids = fields.Many2many('hr.employee', string='Distribución de correo')
     active = fields.Boolean(string='Activo', default=True, required=True)    
 
 

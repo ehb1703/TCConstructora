@@ -336,11 +336,11 @@ class hrContractInherit(models.Model):
         overtime_hours -= unapproved_overtime_hours
 
         empleados = str(self.employee_id.ids)
-        self.env.cr.execute("""SELECT sum(hao.duration) duration 
+        self.env.cr.execute("""SELECT coalesce(sum(hao.duration), 0.0) duration 
             FROM hr_attendance_overtime hao JOIN resource_calendar_leaves rcl ON hao.date = rcl.date_from::date 
             WHERE hao.employee_id IN (""" + empleados[1:-1] + ") AND hao.DATE BETWEEN '" + str(date_from) + "' AND '" + str(date_to) + "'")
         inh_trab = self.env.cr.dictfetchall()
-        if inh_trab:
+        if inh_trab[0]['duration'] != 0.0:
             overtime_hours -= inh_trab[0]['duration']
             inhabilestrab_type = self.env['hr.work.entry.type'].search([('code', '=', 'FESTTRAB')])
             work_data[inhabilestrab_type.id] = inh_trab[0]['duration']
