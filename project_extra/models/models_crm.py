@@ -86,20 +86,11 @@ class CrmLead(models.Model):
     visita_notif_manual_sent = fields.Boolean(string='Notif. Manual enviada', default=False)
     # Junta de Aclaración de dudas
     junta_obligatoria = fields.Boolean(string='Asistencia obligatoria')
-    junta_personas_ids = fields.Many2many('hr.employee', 'crm_lead_junta_employee_rel', 'lead_id', 'employee_id', string='Personas asignadas')
-    junta_fecha = fields.Datetime(string='Fecha y hora de junta')
     junta_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la junta de aclaración de dudas')
-    junta_fecha_limite_dudas = fields.Date(string='Fecha límite para envío de dudas')
-    junta_docto_dudas = fields.Binary(string='Docto. de dudas', attachment=True)
-    junta_docto_dudas_name = fields.Char(string='Nombre docto. de dudas')
-    junta_acta = fields.Binary(string='Acta de la junta', attachment=True)
-    junta_acta_name = fields.Char(string='Nombre acta de la junta')
     junta_notif_auto_sent = fields.Boolean(string='Notif. Automática enviada', default=False)
     junta_notif_manual_sent = fields.Boolean(string='Notif. Manual enviada', default=False)
-    junta_notificacion_1 = fields.Binary(string='Notificación 1', attachment=True)
-    junta_notificacion_1_name = fields.Char(string='Nombre notificación 1')
-    junta_notificacion_2 = fields.Binary(string='Notificación 2', attachment=True)
-    junta_notificacion_2_name = fields.Char(string='Nombre notificación 2')
+    junta_line_ids = fields.One2many('crm.junta.line', 'lead_id', string='Juntas de aclaración de dudas')
+    circular_ids = fields.One2many('crm.circular.line', 'lead_id', string='Circulares')
     # Asignación de responsable
     tecnico_documental_id = fields.Many2one('hr.employee', 'Técnico/documental', tracking=True)
     analista_id = fields.Many2one('crm.analyst', 'Analista', tracking=True)
@@ -377,8 +368,10 @@ class CrmLead(models.Model):
                 raise ValidationError('Falta cargar el Acta de la Visita')
 
         if self.stage_name == 'Junta de Aclaración de Dudas':
-            if not self.junta_acta:
-                raise ValidationError('Falta cargar el Acta de la Junta de Aclaración de Dudas.')
+            if self.junta_line_ids:
+                for junta in self.junta_line_ids:
+                    if junta.asistente_ids and not junta.acta_junta:
+                        raise ValidationError('Falta cargar el Acta de la Junta "%s" (Junta de Aclaración de Dudas).'% (junta.descripcion or junta.fecha_hora))
 
         if self.stage_name == 'Cotización de insumos y trabajos especiales':
             if not self.input_ids:
@@ -404,6 +397,16 @@ class CrmLead(models.Model):
         if self.stage_name == 'Junta de Fallo':
             if not self.fallo_acta:
                 raise ValidationError('Falta cargar el Acta de Fallo.')
+            if not self.fallo_ganado:
+                raise ValidationError(
+                    'Debe marcar la casilla "Ganado" para avanzar a la siguiente etapa. '
+                    'Si la licitación no fue ganada, use el botón "Marcar como Perdido".'
+                )
+
+            if not self.fallo_notif_directores_manual_sent and not self.fallo_notif_directores_auto_sent:
+                raise ValidationError(
+                    'Debe enviar la notificación a los directores antes de avanzar a etapa Ganado.'
+                )
 
         sequence = self.stage_id.sequence
         reason = self.env['crm.revert.reason'].search([('name','=','Avance')])
@@ -414,7 +417,10 @@ class CrmLead(models.Model):
 
         self._log_stage_change(self.stage_id, new_stage, reason.id, 'Avance de etapa')
         self.stage_previous = self.stage_id.name
+        old_stage_name = self.stage_name
         self.stage_id = new_stage.id
+        if old_stage_name == 'Junta de Fallo' and self.fallo_ganado:
+            return self.action_set_won_rainbowman()
 
 
     def action_revert_stage(self):
@@ -579,12 +585,14 @@ class CrmLead(models.Model):
 
         if self.stage_name == 'Visita de Obra':
             correos = self.visita_personas_ids
-        elif self.stage_name == 'Junta de Aclaración de Dudas':
-            correos = self.junta_personas_ids
         elif self.stage_name == 'Junta de Fallo':
             correos = self.fallo_personas_ids
         else:
             correos = self.apertura_personas_ids
+
+        """ pendiente cambios tarea 0050
+        elif self.stage_name == 'Junta de Aclaración de Dudas':
+            correos = self.junta_personas_ids """
 
         if not correos:
             raise UserError(_('Debe asignar al menos una persona para la %s') % self.stage_name)
@@ -635,8 +643,8 @@ class CrmLead(models.Model):
             raise UserError(_('Debe asignar al menos una persona para la Visita de Obra.'))
         self._send_visita_reminder(manual=True)
 
-    # Funciones de actualización de los campos relacionados con la junta
-    @api.onchange('junta_obligatoria', 'junta_personas_ids', 'junta_fecha')
+    # Pendiente tarea 0050
+    """@api.onchange('junta_obligatoria', 'junta_personas_ids', 'junta_fecha')
     def _junta_notif(self):
         for rec in self:
             if rec.junta_obligatoria and rec.junta_personas_ids:
@@ -647,7 +655,7 @@ class CrmLead(models.Model):
     def _validate_junta_fields(self):
         for rec in self:
             if rec.junta_fecha and rec.junta_fecha_limite_dudas and rec.junta_fecha.date() < rec.junta_fecha_limite_dudas:
-                raise UserError(_('La fecha límite para enviar dudas no puede ser posterior a la fecha de la junta.'))
+                raise UserError(_('La fecha límite para enviar dudas no puede ser posterior a la fecha de la junta.')) """
 
     def _send_junta_reminder(self, manual=False):
         template = self.env.ref('project_extra.mail_tmpl_junta_recordatorio', raise_if_not_found=False)
@@ -655,10 +663,11 @@ class CrmLead(models.Model):
             raise UserError(_('No se encontró la plantilla de correo para recordatorio de la Junta de Aclaración de Dudas.'))
 
         for lead in self:
-            if not lead.junta_fecha:
+            # Pendiente tarea 0050
+            """if not lead.junta_fecha:
                 raise UserError(_('Debe capturar la fecha de la junta de aclaración de dudas.'))
             if not lead.junta_personas_ids:
-                raise UserError(_('Debe asignar al menos una persona para la Junta de Aclaración de Dudas.'))
+                raise UserError(_('Debe asignar al menos una persona para la Junta de Aclaración de Dudas.'))"""
 
             email_to = ', '.join(lead._get_emails())
             email_values = {'email_to': email_to}
@@ -674,10 +683,11 @@ class CrmLead(models.Model):
 
     def action_send_junta_reminder_manual(self):
         self.ensure_one()
-        if not self.junta_fecha:
+        # Pendiente tarea 0050
+        """if not self.junta_fecha:
             raise UserError(_('Debe capturar la fecha de la Junta de Aclaración de Dudas.'))
         if not self.junta_personas_ids:
-            raise UserError(_('Debe asignar al menos una persona para la Junta de Aclaración de Dudas.'))
+            raise UserError(_('Debe asignar al menos una persona para la Junta de Aclaración de Dudas.'))"""
         self._send_junta_reminder(manual=True)
 
     def _send_junta_dudas_deadline_reminder(self):
@@ -686,7 +696,7 @@ class CrmLead(models.Model):
             raise UserError(_('No se encontró la plantilla de recordatorio de fecha límite de dudas.'))
 
         for lead in self:
-            if not (lead.junta_obligatoria and lead.junta_fecha_limite_dudas):
+            if not lead.junta_obligaboria: # Pendiente tarea 0050    (lead.junta_obligatoria and lead.junta_fecha_limite_dudas):
                 continue
 
             if lead.stage_name == 'Junta de Aclaración de Dudas':
@@ -796,7 +806,7 @@ class CrmLead(models.Model):
         today = fields.Date.context_today(self)
         target = today + relativedelta(days=1)
 
-        domain = [('junta_obligatoria','=',True), ('junta_fecha','=',target), ('junta_notif_auto_sent','=',False), 
+        domain = [('junta_obligatoria','=',True), ('junta_notif_auto_sent','=',False), #Pendiente 0050 ('junta_fecha','=',target),
             ('stage_name','=','Junta de Aclaración de Dudas')]
         leads = self.search(domain)
         for rec in leads:
@@ -808,7 +818,7 @@ class CrmLead(models.Model):
         # Cron: envía recordatorio un día antes de la fecha límite de dudas.
         today = fields.Date.context_today(self)
         target = today + relativedelta(days=1)
-        domain = [('junta_obligatoria','=',True), ('junta_fecha_limite_dudas','=',target), ('junta_dudas_notif_auto_sent','=',False), 
+        domain = [('junta_obligatoria','=',True), ('junta_dudas_notif_auto_sent','=',False), #Pendietne 0050 ('junta_fecha_limite_dudas','=',target),
             ('stage_name','=','Junta de Aclaración de Dudas')]
         leads = self.search(domain)
         for rec in leads:
@@ -1517,7 +1527,6 @@ class CrmLead(models.Model):
             for lead in self:
                 if not previous_fallo.get(lead.id) and lead.fallo_ganado:
                     lead._send_fallo_notification(manual=False)
-                    lead.action_set_won_rainbowman()
 
         # Sincronizar documentos de Propuesta Técnica
         if change_pt_docs:
@@ -1709,3 +1718,33 @@ class CrmPropuestaEconomicaRevision(models.Model):
                 lead_id.pe_autorizado = False
 
         return super().write(values)
+
+
+class CrmJuntaLine(models.Model):
+    _name = 'crm.junta.line'
+    _description = 'Junta de Aclaración de Dudas'
+    _order = 'fecha_hora asc'
+
+    lead_id = fields.Many2one('crm.lead', string='Oportunidad', required=True, ondelete='cascade')
+    fecha_hora = fields.Datetime(string='Fecha y hora', required=True,)
+    descripcion = fields.Char(string='Descripción', size=250)
+    lugar_reunion = fields.Char(string='Lugar de reunión', size=300)
+    asistente_ids = fields.Many2many('hr.employee', 'crm_junta_line_employee_rel', 'junta_id', 'employee_id', string='Asistentes')
+    notif_auto = fields.Boolean(string='Notif. Autom.', default=False)
+    notif_manual = fields.Boolean(string='Notif. Manual', default=False)
+    fecha_limite_preguntas = fields.Datetime(string='Fecha y hora límite para envío de preguntas')
+    docto_preguntas = fields.Binary(string='Docto. Preguntas', attachment=True)
+    docto_preguntas_name = fields.Char(string='Nombre docto. preguntas')
+    acta_junta = fields.Binary(string='Acta de la junta', attachment=True)
+    acta_junta_name = fields.Char(string='Nombre acta de la junta')
+
+class CrmCircularLine(models.Model):
+    _name = 'crm.circular.line'
+    _description = 'Circular / Documento de dependencia'
+    _order = 'fecha_hora asc'
+
+    lead_id = fields.Many2one('crm.lead', string='Oportunidad', required=True, ondelete='cascade')
+    fecha_hora = fields.Datetime(string='Fecha y hora', required=True)
+    descripcion = fields.Char(string='Descripción', size=500)
+    documento = fields.Binary(string='Documento', attachment=True)
+    documento_name = fields.Char(string='Nombre del documento')

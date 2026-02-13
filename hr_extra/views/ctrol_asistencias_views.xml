@@ -13,6 +13,7 @@
                 <field name="check_date"/>
                 <field name="status" decoration-success="status=='success'" decoration-danger="status=='error'" widget="badge"/>
                 <field name="log_status"/>
+                <field name="attendance_id" optional="show" string="Asistencia Odoo"/>
                 <field name="lateness_time"/>
                 <field name="verification_status"/>
                 <field name="match_percentage"/>
@@ -64,6 +65,7 @@
                     </group>
                     <group string="Información de Log">
                         <field name="log_message" colspan="2"/>
+                        <field name="attendance_id" string="Asistencia Odoo Generada" invisible="attendance_id == False"/>
                         <field name="sigob_log_folio"/>
                         <field name="user_valid_id"/>
                         <field name="date_validated"/>

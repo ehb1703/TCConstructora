@@ -4,3 +4,4 @@ from . import res_config_settings
 from . import ctrol_asistencias
 from . import crm_models
 from . import checador_sync_log
+from . import hr_attendance_extra

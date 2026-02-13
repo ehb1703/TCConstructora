@@ -23,6 +23,7 @@ class respartnerCurp(models.Model):
     apaterno = fields.Char(string='Apellido Paterno', tracking=True)
     amaterno = fields.Char(string='Apellido Materno', tracking=True)
     nombre = fields.Char(string='Nombre(s)', tracking=True)
+    country_id = fields.Many2one('res.country', string='País', default=lambda self: self.env.company.country_id)
 
     @api.constrains('curp')
     def _check_curp(self):
