@@ -127,6 +127,7 @@ class projectObra(models.Model):
 
 class projectResidentes(models.Model):
     _name = 'project.residents'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Residentes de obra'
 
     project_id = fields.Many2one('project.project', string='Proyecto', readonly=True)

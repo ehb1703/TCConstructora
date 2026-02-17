@@ -86,7 +86,6 @@ class CrmLead(models.Model):
     visita_notif_manual_sent = fields.Boolean(string='Notif. Manual enviada', default=False)
     # Junta de Aclaración de dudas
     junta_obligatoria = fields.Boolean(string='Asistencia obligatoria')
-    junta_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la junta de aclaración de dudas')
     junta_notif_auto_sent = fields.Boolean(string='Notif. Automática enviada', default=False)
     junta_notif_manual_sent = fields.Boolean(string='Notif. Manual enviada', default=False)
     junta_line_ids = fields.One2many('crm.junta.line', 'lead_id', string='Juntas de aclaración de dudas')
@@ -112,6 +111,7 @@ class CrmLead(models.Model):
     input_ids = fields.One2many('crm.input.line', 'lead_id', string='Insumos')
     input_file = fields.Binary(string='Archivo', attachment=True)
     input_filename = fields.Char(string='Nombre del archivo', tracking=True)
+    no_cotizar_insumos = fields.Boolean(string='No se necesita cotizar insumos', default=False)
     # Junta de Apertura de Propuestas
     apertura_obligatoria = fields.Boolean('Asistencia obligatoria')
     apertura_personas_ids = fields.Many2many('hr.employee', 'crm_lead_apertura_employee_rel', 'lead_id', 'employee_id', 'Personas asignadas')
@@ -171,6 +171,12 @@ class CrmLead(models.Model):
     pe_doc_line_ids = fields.One2many('crm.propuesta.economica.doc', 'lead_id', string='Documentos Propuesta Económica')
     pe_revision_ids = fields.One2many('crm.propuesta.economica.revision', 'lead_id', string='Revisiones Propuesta Económica')
     pe_autorizado = fields.Boolean(string='PE Autorizada', default=False)
+    #Campos de Autorización de Presupuesto
+    pe_presupuesto_subtotal = fields.Float(string='Subtotal', readonly=True, digits=(16, 2))
+    pe_presupuesto_iva = fields.Float(string='IVA', readonly=True, digits=(16, 2))
+    pe_presupuesto_total = fields.Float(string='Total', readonly=True, digits=(16, 2))
+    pe_presupuesto_revisado = fields.Boolean(string='Revisado', default=False)
+    pe_presupuesto_autorizado = fields.Boolean(string='Autorizado', default=False)
 
     @api.depends('importe_contratado', 'bases_anticipo_porcentaje', 'bases_abstinencia_anticipo')
     def _compute_importe_anticipo(self):
@@ -374,12 +380,15 @@ class CrmLead(models.Model):
                         raise ValidationError('Falta cargar el Acta de la Junta "%s" (Junta de Aclaración de Dudas).'% (junta.descripcion or junta.fecha_hora))
 
         if self.stage_name == 'Cotización de insumos y trabajos especiales':
-            if not self.input_ids:
-                raise ValidationError('Falta cargar información de los conceptos de trabajo y/o insumos')
+            if not self.no_cotizar_insumos:
+                if not self.input_ids:
+                    raise ValidationError('Falta cargar información de los conceptos de trabajo y/o insumos. '
+                                        'Si no es requerido cotizar, marque la casilla "No se necesita cotizar insumos".')
 
-            count = len(self.oc_ids.filtered(lambda u: u.type_purchase == 'ins'))
-            if self.input_ids and count == 0:
-                raise ValidationError('No se han creado cotizaciones de insumos')
+                count = len(self.oc_ids.filtered(lambda u: u.type_purchase == 'ins'))
+                if self.input_ids and count == 0:
+                    raise ValidationError('No se han creado cotizaciones de insumos. '
+                                        'Si no es requerido cotizar, marque la casilla "No se necesita cotizar insumos".')
 
         if self.stage_name == 'Propuesta Técnica':
             self.check_doctos('tecnica')
@@ -389,6 +398,9 @@ class CrmLead(models.Model):
             self.check_doctos('economica')
             if not self.pe_revision_ids.filtered(lambda r: r.autorizado):
                 raise ValidationError('Debe tener al menos una revisión AUTORIZADA en Propuesta Económica para avanzar de etapa.')
+            if not self.pe_presupuesto_autorizado:
+                raise ValidationError('Debe AUTORIZAR el presupuesto de la propuesta económica para avanzar de etapa. '
+                                    'Cargue los datos del documento Económico 2, marque como Revisado y luego Autorice.')
 
         if self.stage_name == 'Junta de Apertura de Propuestas':
             if not self.apertura_acta:
@@ -590,10 +602,6 @@ class CrmLead(models.Model):
         else:
             correos = self.apertura_personas_ids
 
-        """ pendiente cambios tarea 0050
-        elif self.stage_name == 'Junta de Aclaración de Dudas':
-            correos = self.junta_personas_ids """
-
         if not correos:
             raise UserError(_('Debe asignar al menos una persona para la %s') % self.stage_name)
 
@@ -643,32 +651,12 @@ class CrmLead(models.Model):
             raise UserError(_('Debe asignar al menos una persona para la Visita de Obra.'))
         self._send_visita_reminder(manual=True)
 
-    # Pendiente tarea 0050
-    """@api.onchange('junta_obligatoria', 'junta_personas_ids', 'junta_fecha')
-    def _junta_notif(self):
-        for rec in self:
-            if rec.junta_obligatoria and rec.junta_personas_ids:
-                rec.junta_notif_auto_sent = False
-                rec.junta_notif_manual_sent = False
-
-    @api.onchange('junta_fecha', 'junta_fecha_limite_dudas')
-    def _validate_junta_fields(self):
-        for rec in self:
-            if rec.junta_fecha and rec.junta_fecha_limite_dudas and rec.junta_fecha.date() < rec.junta_fecha_limite_dudas:
-                raise UserError(_('La fecha límite para enviar dudas no puede ser posterior a la fecha de la junta.')) """
-
     def _send_junta_reminder(self, manual=False):
         template = self.env.ref('project_extra.mail_tmpl_junta_recordatorio', raise_if_not_found=False)
         if not template:
             raise UserError(_('No se encontró la plantilla de correo para recordatorio de la Junta de Aclaración de Dudas.'))
 
         for lead in self:
-            # Pendiente tarea 0050
-            """if not lead.junta_fecha:
-                raise UserError(_('Debe capturar la fecha de la junta de aclaración de dudas.'))
-            if not lead.junta_personas_ids:
-                raise UserError(_('Debe asignar al menos una persona para la Junta de Aclaración de Dudas.'))"""
-
             email_to = ', '.join(lead._get_emails())
             email_values = {'email_to': email_to}
 
@@ -680,15 +668,46 @@ class CrmLead(models.Model):
                 lead.junta_notif_auto_sent = True
 
             lead.message_post(body=_("Se envió recordatorio de junta a: %s") % email_to)
+            
 
     def action_send_junta_reminder_manual(self):
         self.ensure_one()
-        # Pendiente tarea 0050
-        """if not self.junta_fecha:
-            raise UserError(_('Debe capturar la fecha de la Junta de Aclaración de Dudas.'))
-        if not self.junta_personas_ids:
-            raise UserError(_('Debe asignar al menos una persona para la Junta de Aclaración de Dudas.'))"""
+        # Si hay líneas de junta, usar el nuevo sistema
+        if self.junta_line_ids:
+            today = fields.Date.context_today(self)
+            
+            # Filtrar juntas con fecha >= hoy que no hayan sido notificadas manualmente
+            juntas_pendientes = self.junta_line_ids.filtered(lambda j: j.fecha_hora and j.fecha_hora.date() >= today and not j.notif_manual 
+                and j.asistente_ids)
+            
+            if not juntas_pendientes:
+                raise UserError(_('No hay juntas pendientes de notificar. '
+                                'Las juntas deben tener fecha igual o posterior a hoy, asistentes asignados y no haber sido notificadas previamente.'))
+            
+            errores = []
+            enviados = 0
+            for junta in juntas_pendientes:
+                try:
+                    junta._send_junta_line_reminder(manual=True)
+                    enviados += 1
+                except Exception as e:
+                    errores.append(f"{junta.descripcion or 'Junta sin descripción'}: {str(e)}")
+            
+            if errores:
+                self.message_post(body=_('Se enviaron %d notificaciones. Errores: %s') % (enviados, ', '.join(errores)))
+                raise UserError(_('Se enviaron %d notificaciones con algunos errores:\n%s') % (enviados, '\n'.join(errores)))
+            
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Notificaciones enviadas'),
+                    'message': _('Se enviaron %d notificaciones correctamente.') % enviados,
+                    'type': 'success',
+                    'sticky': False,}}
+        
         self._send_junta_reminder(manual=True)
+
 
     def _send_junta_dudas_deadline_reminder(self):
         template = self.env.ref('project_extra.mail_tmpl_junta_dudas_deadline', raise_if_not_found=False)
@@ -823,6 +842,91 @@ class CrmLead(models.Model):
         leads = self.search(domain)
         for rec in leads:
             rec._send_junta_dudas_deadline_reminder()
+
+    @api.model
+    def cron_send_junta_line_reminders(self):
+        """
+        T0050 - Cron: envía recordatorio de Juntas de Aclaración de Dudas.
+        Solo envía a juntas con fecha IGUAL O POSTERIOR a hoy que no hayan sido notificadas.
+        NO envía a juntas con fechas pasadas.
+        """
+        today = fields.Date.context_today(self)
+        
+        _logger.info("Ejecutando cron_send_junta_line_reminders para fecha >= %s", today)
+        
+        leads = self.search([
+            ('junta_obligatoria', '=', True),
+            ('stage_name', '=', 'Junta de Aclaración de Dudas')
+        ])
+        
+        enviados = 0
+        errores = 0
+        
+        for lead in leads:
+            for junta_line in lead.junta_line_ids:
+                # Solo juntas con fecha >= hoy, no notificadas automáticamente y con asistentes
+                if (junta_line.fecha_hora and 
+                    junta_line.fecha_hora.date() >= today and 
+                    not junta_line.notif_auto and
+                    junta_line.asistente_ids):
+                    try:
+                        junta_line._send_junta_line_reminder(manual=False)
+                        enviados += 1
+                    except Exception as e:
+                        errores += 1
+                        _logger.error(
+                            "Error al enviar recordatorio automático de junta (Lead: %s, Junta: %s): %s",
+                            lead.id, junta_line.id, str(e)
+                        )
+        
+        _logger.info("Cron junta line finalizado: %d enviados, %d errores", enviados, errores)
+
+    @api.model
+    def cron_send_junta_line_deadline_reminders(self):
+        """
+        T0050 - Cron: envía recordatorio de fecha límite de preguntas.
+        Solo envía a juntas con fecha límite IGUAL O POSTERIOR a hoy que no hayan sido notificadas.
+        NO envía a juntas con fechas pasadas.
+        """
+        today = fields.Date.context_today(self)
+        
+        _logger.info("Ejecutando cron_send_junta_line_deadline_reminders para fecha >= %s", today)
+        
+        template = self.env.ref('project_extra.mail_tmpl_junta_line_deadline', raise_if_not_found=False)
+        if not template:
+            _logger.warning("No se encontró la plantilla mail_tmpl_junta_line_deadline")
+            return
+        
+        leads = self.search([
+            ('junta_obligatoria', '=', True),
+            ('stage_name', '=', 'Junta de Aclaración de Dudas')
+        ])
+        
+        enviados = 0
+        
+        for lead in leads:
+            for junta_line in lead.junta_line_ids:
+                # Solo juntas con fecha límite >= hoy y con asistentes
+                if (junta_line.fecha_limite_preguntas and 
+                    junta_line.fecha_limite_preguntas.date() >= today and
+                    junta_line.asistente_ids):
+                    try:
+                        emails = junta_line._get_asistente_emails()
+                        if emails:
+                            email_to = ', '.join(emails)
+                            template.send_mail(junta_line.id, force_send=True, email_values={'email_to': email_to})
+                            lead.message_post(
+                                body=_("Se envió recordatorio de FECHA LÍMITE DE PREGUNTAS para junta '%s' a: %s") 
+                                    % (junta_line.descripcion or 'Sin descripción', email_to)
+                            )
+                            enviados += 1
+                    except Exception as e:
+                        _logger.error(
+                            "Error al enviar recordatorio de fecha límite (Lead: %s, Junta: %s): %s",
+                            lead.id, junta_line.id, str(e)
+                        )
+        
+        _logger.info("Cron fecha límite finalizado: %d enviados", enviados)
     
     def _sync_pt_doc_lines(self):
         # Sincroniza la tabla de Propuesta Técnica con los documentos seleccionados en ptdcto_ids.
@@ -905,7 +1009,7 @@ class CrmLead(models.Model):
                     cargar = True
 
                 if cargar:
-                    if col1 != '' and col8 != '':
+                    if col1 != '' and col8 != '' and col1.upper() != 'CÓDIGO':
                         registro = {'col1': col1, 'col2': col2, 'col3': col3, 'col4': col4, 'col5': col5, 'col6': col6, 'col7': col7, 'col8': col8}
                         registros.append((0, 0, registro))
 
@@ -1112,6 +1216,74 @@ class CrmLead(models.Model):
         for rec in self.concept_ids.filtered(lambda u: u.concept_ex):
             if rec.concept_id.property_account_income_id:
                 rec.write({'account_ex': True})
+
+    def action_cargar_presupuesto_economico(self):
+        self.ensure_one()
+        docto = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',self.id), 
+                ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', ('name','ilike','E02'), ('name','ilike','Economico 2')])
+        if not docto:
+            raise ValidationError('El documento E02 no se encuentra cargado, favor de revisar la documentación.')
+
+        attachment = docto.attachment_id
+        if not attachment or not attachment.datas:
+            raise ValidationError(_('El documento Económico 2 no tiene contenido.'))
+
+        decoded_data = base64.b64decode(attachment.datas)
+        workbook = openpyxl.load_workbook(filename=io.BytesIO(decoded_data), data_only=True)
+        sheet = workbook.active
+        subtotal, iva, total = 0.0, 0.0, 0.0
+
+        for row in range(len([row for row in sheet if any(cell.value is not None for cell in row)]), sheet.max_row + 1):
+            for col in range(1, sheet.max_column + 1):
+                cell = sheet.cell(row=row, column=col)
+                if cell.value and isinstance(cell.value, str):
+                    val_upper = cell.value.upper().strip()
+                    value_cell = sheet.cell(row=row, column=col + 1)
+                    
+                    if 'SUBTOTAL' in val_upper and 'M. N.' in val_upper:
+                        if value_cell.value and isinstance(value_cell.value, (int, float)):
+                            subtotal = float(value_cell.value)
+                    elif 'IVA' in val_upper and 'M. N.' in val_upper:
+                        if value_cell.value and isinstance(value_cell.value, (int, float)):
+                            iva = float(value_cell.value)
+                    elif 'TOTAL' in val_upper and 'M. N.' in val_upper and 'SUBTOTAL' not in val_upper:
+                        if value_cell.value and isinstance(value_cell.value, (int, float)):
+                            total = float(value_cell.value)
+        
+        if subtotal ==  iva ==  total == 0.0:
+            raise ValidationError(_('No se encontraron los valores de SUBTOTAL, IVA y TOTAL. Verifique que el archivo tenga el formato correcto.'))
+        
+        self.write({'pe_presupuesto_subtotal': subtotal, 'pe_presupuesto_iva': iva, 'pe_presupuesto_total': total,})
+        
+
+    def action_autorizar_presupuesto(self):
+        self.ensure_one()
+        if not self.pe_presupuesto_revisado:
+            raise ValidationError(_('Debe marcar el campo "Revisado" antes de poder autorizar el presupuesto.'))
+        if self.pe_presupuesto_total <= 0:
+            raise ValidationError(_('Debe cargar los datos del presupuesto antes de autorizar. '
+                            'Use el botón "Cargar datos" para extraer la información del documento Económico 2.'))
+        
+        self.write({'pe_presupuesto_autorizado': True})
+        """return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Presupuesto Autorizado'),
+                'message': _('El presupuesto ha sido autorizado correctamente.'),
+                'type': 'success',
+                'sticky': False,}} """
+
+
+    def _check_pe_authorization_complete(self):
+        self.ensure_one()
+        if not self.pe_presupuesto_autorizado:
+            return False
+        
+        revisiones_autorizadas = self.pe_revision_ids.filtered(lambda r: r.autorizado)
+        if not revisiones_autorizadas:
+            return False
+        return True
 
 
     def action_cargar_basicos(self):
@@ -1544,12 +1716,13 @@ class crmInputsLine(models.Model):
     _description = 'Insumos'
     
     lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportunidad', readonly=True)
-    col1 = fields.Char(string='Columna 1')
-    col2 = fields.Char(string='Columna 2')
-    col3 = fields.Char(string='Columna 3')
-    col4 = fields.Char(string='Columna 4')
-    col5 = fields.Char(string='Columna 5')
-    col6 = fields.Char(string='Columna 6')
+    # T0054: Etiquetas de columnas ocultas (solo se muestran en la segunda fila de la vista)
+    col1 = fields.Char(string='Código')
+    col2 = fields.Char(string='Descripción')
+    col3 = fields.Char(string='Unidad')
+    col4 = fields.Char(string='Cantidad')
+    col5 = fields.Char(string='Costo unitario')
+    col6 = fields.Char(string='Importe')
     col7 = fields.Char(string='Columna 7')
     col8 = fields.Char(string='Columna 8')
     input_ex = fields.Boolean(string='Insumo cargado', default=False)
@@ -1737,6 +1910,80 @@ class CrmJuntaLine(models.Model):
     docto_preguntas_name = fields.Char(string='Nombre docto. preguntas')
     acta_junta = fields.Binary(string='Acta de la junta', attachment=True)
     acta_junta_name = fields.Char(string='Nombre acta de la junta')
+
+    def _get_asistente_emails(self):
+        # Obtiene los correos de los asistentes asignados a esta junta
+        self.ensure_one()
+        emails = []
+        for emp in self.asistente_ids:
+            if emp.work_email:
+                emails.append(emp.work_email)
+            elif emp.user_id and emp.user_id.email:
+                emails.append(emp.user_id.email)
+        return emails
+
+    def _send_junta_line_reminder(self, manual=False):
+        """ Envía correo de recordatorio para esta línea de junta específica.
+        
+        Args:
+            manual (bool): True si es notificación manual, False si es automática (cron) """
+        self.ensure_one()
+        template = self.env.ref('project_extra.mail_tmpl_junta_line_recordatorio', raise_if_not_found=False)
+
+        if not template:
+            raise UserError(_('No se encontró la plantilla de correo para recordatorio de Junta de Aclaración de Dudas. '
+                            'Verifique que exista la plantilla "mail_tmpl_junta_line_recordatorio".'))
+        if not self.fecha_hora:
+            raise UserError(_('Debe capturar la fecha de la Junta de Aclaración de Dudas.'))
+        if not self.asistente_ids:
+            raise UserError(_('Debe asignar al menos un asistente para la Junta de Aclaración de Dudas.'))
+
+        emails = self._get_asistente_emails()
+        if not emails:
+            raise UserError(_('Los asistentes asignados no tienen correo electrónico configurado.'))
+
+        email_to = ', '.join(emails)
+        try:
+            template.send_mail(self.id, force_send=True, email_values={'email_to': email_to})
+            
+            if manual:
+                self.write({'notif_manual': True})
+            else:
+                self.write({'notif_auto': True})
+            
+            self.lead_id.message_post(body=_("Se envió recordatorio de junta '%s' a: %s") % (self.descripcion or 'Sin descripción', email_to))
+            _logger.info("Correo de junta enviado a: %s (Junta ID: %s)", email_to, self.id)
+        except Exception as e:
+            _logger.error("Error al enviar correo de junta (ID: %s): %s", self.id, str(e))
+            self.lead_id.message_post(body=_("Error al enviar correo de junta: %s") % str(e))
+            raise UserError(_('Error al enviar el correo: %s') % str(e))
+
+    def action_send_notif_manual(self):
+        # Botón para enviar notificación manual desde la línea de junta
+        self.ensure_one()
+        self._send_junta_line_reminder(manual=True)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Notificación enviada'),
+                'message': _('Se envió el correo de recordatorio correctamente a: %s') % ', '.join(self._get_asistente_emails()),
+                'type': 'success',
+                'sticky': False,}}
+
+    def action_send_notif_auto(self):
+        # Botón para enviar notificación automática manualmente (para pruebas o re-envío)
+        self.ensure_one()
+        self._send_junta_line_reminder(manual=False)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Notificación enviada'),
+                'message': _('Se envió el correo de recordatorio (automático) correctamente.'),
+                'type': 'success',
+                'sticky': False,}}
+
 
 class CrmCircularLine(models.Model):
     _name = 'crm.circular.line'
