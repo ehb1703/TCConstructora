@@ -39,6 +39,7 @@
             <xpath expr="//field[@name='stage_id']" position="before">
                 <field name="stage_name" invisible="1"/>
                 <field name="stage_previous" invisible="1"/>
+                <button name="action_autorizar_presupuesto" type="object" string="Autorizar" class="btn-primary" groups="project_extra.group_budget_authorizer" invisible="stage_name != 'Propuesta Económica' or not pe_presupuesto_revisado or pe_presupuesto_autorizado"/>
                 <button name="action_advance_stage" type="object" string="Avanzar etapa" class="btn-secondary" invisible="stage_name in ('Junta de Fallo', 'Declinado', 'Ganado')"/>
                 <button name="action_revert_stage" type="object" string="Regresar etapa" class="btn-secondary" invisible="stage_name in ('Nuevas Convocatorias', 'Declinado')"/>
                 <button name="action_genera_ordenventa" type="object" string="Orden de venta" class="btn-secondary" invisible="stage_name != 'Ganado'"/>
@@ -177,9 +178,7 @@
                                 <field name="junta_obligatoria" readonly="stage_name != 'Junta de Aclaración de Dudas'"/>
                             </group>
                             <group>
-                                <list editable="bottom" invisible="stage_name != 'Junta de Aclaración de Dudas'">
-                                    <button name="action_send_junta_reminder_manual" string="Enviar notif. manual" type="object" icon="fa-envelope"/>
-                                </list>
+                                <button name="action_send_junta_reminder_manual" string="Enviar notif. manual" type="object" icon="fa-envelope" class="btn-secondary" invisible="stage_name != 'Junta de Aclaración de Dudas'" confirm="Se enviará notificación a todas las juntas pendientes. ¿Continuar?"/>
                             </group>
                         </group>
                         <group colspan="2" string="Junta de Aclaración de Dudas">
@@ -189,9 +188,9 @@
                                     <field name="descripcion" string="Descripción"/>
                                     <field name="lugar_reunion" string="Lugar de reunión"/>
                                     <field name="asistente_ids" widget="many2many_tags" string="Asistentes" options="{'no_create':True, 'no_edit':True}"/>
-                                    <field name="notif_auto" string="Notif. Autom." widget="boolean_toggle"/>
-                                    <field name="notif_manual" string="Notif. Manual" widget="boolean_toggle"/>
-                                    <field name="fecha_limite_preguntas" string="Fecha y hora límite para envío de preguntas"/>
+                                    <field name="notif_auto" string="Notif. Autom." readonly="1" widget="boolean" optional="show"/>
+                                    <field name="notif_manual" string="Notif. Manual" readonly="1" widget="boolean" optional="show"/>
+                                    <field name="fecha_limite_preguntas" string="Fecha y hora límite..."/>
                                     <field name="docto_preguntas_name" column_invisible="1"/>
                                     <field name="docto_preguntas" string="Docto. Preguntas" widget="binary" filename="docto_preguntas_name"/>
                                     <field name="acta_junta_name" column_invisible="1"/>
@@ -199,17 +198,27 @@
                                 </list>
                                 <form string="Junta de Aclaración de Dudas">
                                     <group>
-                                        <field name="fecha_hora" required="1"/>
-                                        <field name="descripcion"/>
-                                        <field name="lugar_reunion"/>
-                                        <field name="asistente_ids" widget="many2many_tags" options="{'no_create':True, 'no_edit':True}"/>
-                                        <field name="notif_auto"/>
-                                        <field name="notif_manual"/>
-                                        <field name="fecha_limite_preguntas"/>
-                                        <field name="docto_preguntas_name" invisible="1"/>
-                                        <field name="docto_preguntas" widget="binary" filename="docto_preguntas_name"/>
-                                        <field name="acta_junta_name" invisible="1"/>
-                                        <field name="acta_junta" widget="binary" filename="acta_junta_name"/>
+                                        <group>
+                                            <field name="fecha_hora" required="1"/>
+                                            <field name="descripcion"/>
+                                            <field name="lugar_reunion"/>
+                                            <field name="asistente_ids" widget="many2many_tags" options="{'no_create':True, 'no_edit':True}"/>
+                                        </group>
+                                        <group>
+                                            <field name="fecha_limite_preguntas"/>
+                                            <field name="notif_auto" readonly="1"/>
+                                            <field name="notif_manual" readonly="1"/>
+                                        </group>
+                                    </group>
+                                    <group>
+                                        <group>
+                                            <field name="docto_preguntas_name" invisible="1"/>
+                                            <field name="docto_preguntas" widget="binary" filename="docto_preguntas_name"/>
+                                        </group>
+                                        <group>
+                                            <field name="acta_junta_name" invisible="1"/>
+                                            <field name="acta_junta" widget="binary" filename="acta_junta_name"/>
+                                        </group>
                                     </group>
                                 </form>
                             </field>
@@ -244,11 +253,14 @@
                 </page>
 
                 <page string="Insumos">
-                    <group invisible="stage_name != 'Cotización de insumos y trabajos especiales'">
+                    <group>
+                        <field name="no_cotizar_insumos" widget="boolean_toggle"/>
+                    </group>
+                    <group invisible="stage_name != 'Cotización de insumos y trabajos especiales' or no_cotizar_insumos">
                         <field name="input_filename" string="Archivo" invisible="1"/>
                         <field name="input_file" widget="binary" filename="input_filename"/>
                     </group>
-                    <group invisible="stage_name != 'Cotización de insumos y trabajos especiales'">
+                    <group invisible="stage_name != 'Cotización de insumos y trabajos especiales' or no_cotizar_insumos">
                         <div class="oe_button_box" invisible="input_file == False">                                    
                             <button class="oe_stat_button" icon="fa-upload" name="action_cargar_insumos" string="Cargar" type="object" invisible="input_ids" confirm="Se agregará el contenido del archivo seleccionado, ¿continuar?"/>
                             <button class="oe_stat_button" icon="fa-upload" name="action_genera_insumos" string="Insumos" type="object" invisible="not input_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
@@ -256,7 +268,7 @@
                             <button class="oe_stat_button" confirm="¿Está seguro que desea eliminar los registros cargados?" icon="fa-times" name="action_unlink_insumos" string="Eliminar Detalle" type="object" invisible="not input_ids"/>
                         </div>
                     </group>
-                    <field name="input_ids" widget="one2many_list">
+                    <field name="input_ids" widget="one2many_list" invisible="no_cotizar_insumos">
                         <list string="Detalles" delete="0" create="0" edit="0" context="{'default_lead_id': id}">
                             <field name="col1"/>
                             <field name="col2"/>
@@ -314,6 +326,28 @@
                                 <field name="documents_count_economica" widget="statinfo" string="Docs"/>
                             </button>
                             <field name="pe_autorizado" invisible="1"/>
+                            <group string="Autorización de Presupuesto">
+                                <group>
+                                    <label for="pe_presupuesto_subtotal" string="Subtotal"/>
+                                    <div class="o_row">
+                                        <field name="pe_presupuesto_subtotal" widget="monetary" options="{'currency_field': 'currency_id'}" nolabel="1"/>
+                                        <button name="action_cargar_presupuesto_economico" string="Cargar datos" type="object" class="btn-link" icon="fa-refresh" title="Extraer datos del documento Económico 2" invisible="pe_presupuesto_autorizado"/>
+                                    </div>
+                                    <field name="pe_presupuesto_iva" string="IVA" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="pe_presupuesto_total" string="Total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                </group>
+                                <group>
+                                    <field name="pe_presupuesto_revisado" string="Revisado" widget="boolean_toggle" readonly="pe_presupuesto_autorizado or pe_presupuesto_total == 0"/>
+                                    <field name="pe_presupuesto_autorizado" string="Autorizado" readonly="1"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-success" role="alert" invisible="not pe_presupuesto_autorizado">
+                                <strong>✓ Presupuesto AUTORIZADO</strong> - Total: <field name="pe_presupuesto_total" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1" class="oe_inline"/>
+                            </div>
+                            <div class="alert alert-warning" role="alert" invisible="pe_presupuesto_autorizado or pe_presupuesto_total == 0 or not pe_presupuesto_revisado">
+                                <strong>Pendiente de autorización</strong> - Use el botón "Autorizar" en la parte superior para autorizar el presupuesto.
+                            </div>
+
                             <group string="Documentos Requeridos">
                                 <field name="pe_doc_line_ids" nolabel="1">
                                     <list editable="bottom" delete="0" create="0">

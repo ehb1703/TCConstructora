@@ -240,5 +240,95 @@
             </field>
         </record>
 
+        <record id="mail_tmpl_junta_line_recordatorio" model="mail.template">
+            <field name="name">Recordatorio de Junta de Aclaración de Dudas (Línea)</field>
+            <field name="model_id" ref="project_extra.model_crm_junta_line"/>
+            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
+            <field name="email_to"></field>
+            <field name="subject">[Junta de Aclaración de Dudas] Recordatorio - {{ object.lead_id.name }}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333; max-width: 600px; margin: 0 auto;">
+                    <div style="background: #00796B; color: white; padding: 15px 20px; border-radius: 8px 8px 0 0;">
+                        <h2 style="margin: 0; font-size: 18px;">📋 Recordatorio de Junta de Aclaración de Dudas</h2>
+                    </div>
+                    <div style="background: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-top: none;">
+                        <p style="margin-top: 0;">Buen día,</p>
+                        <p>Se les recuerda la <b>junta de aclaración de dudas</b> de la convocatoria:</p>
+                        <div style="background: white; border-left: 4px solid #00796B; padding: 15px; margin: 15px 0;">
+                            <p style="margin: 0 0 10px 0;"><b>📌 Convocatoria:</b> <t t-out="object.lead_id.name or ''"/></p>
+                            <p style="margin: 0;" t-if="object.lead_id.no_licitacion"><b>📋 No. Procedimiento:</b> <t t-out="object.lead_id.no_licitacion"/></p>
+                        </div>
+                        <h3 style="color: #00796B; border-bottom: 2px solid #00796B; padding-bottom: 5px;">Detalles de la Junta</h3>
+                        <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                            <tr>
+                                <td style="padding: 8px; background: #e8f5e9; width: 40%;"><b>📅 Fecha y hora:</b></td>
+                                <td style="padding: 8px; background: #f5f5f5;">
+                                    <t t-if="object.fecha_hora"><t t-out="format_datetime(object.fecha_hora, dt_format='long')"/>day, month dd, yyyy - hh:mm:ss (GMT)</t>
+                                </td>
+                            </tr>
+                            <tr t-if="object.descripcion">
+                                <td style="padding: 8px; background: #e8f5e9;"><b>📝 Descripción:</b></td>
+                                <td style="padding: 8px; background: #f5f5f5;"><t t-out="object.descripcion"/></td>
+                            </tr>
+                            <tr t-if="object.lugar_reunion">
+                                <td style="padding: 8px; background: #e8f5e9;"><b>📍 Lugar de reunión:</b></td>
+                                <td style="padding: 8px; background: #f5f5f5;"><t t-out="object.lugar_reunion"/></td>
+                            </tr>
+                            <tr t-if="object.fecha_limite_preguntas">
+                                <td style="padding: 8px; background: #fff3e0;"><b>⏰ Fecha límite preguntas:</b></td>
+                                <td style="padding: 8px; background: #f5f5f5;"><t t-out="format_datetime(object.fecha_limite_preguntas, dt_format='long')"/>day, month dd, yyyy - hh:mm:ss (GMT)</td>
+                            </tr>
+                        </table>
+                        <div style="text-align: center; margin: 20px 0;">
+                            <a t-att-href="'%s/web#id=%s&amp;model=crm.lead&amp;view_type=form' % (object.lead_id.get_base_url(), object.lead_id.id)" 
+                               style="display: inline-block; padding: 12px 24px; background: #00796B; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                Ver Convocatoria
+                            </a>
+                        </div>
+                        <p style="color: #666; font-size: 12px; margin-bottom: 0;">Enviado automáticamente por el Sistema.</p>
+                    </div>
+                </div>
+            </field>
+        </record>
+
+        <!-- T0050: Plantilla para recordatorio de fecha límite de preguntas (modelo crm.junta.line) -->
+        <record id="mail_tmpl_junta_line_deadline" model="mail.template">
+            <field name="name">Recordatorio Fecha Límite Preguntas (Línea Junta)</field>
+            <field name="model_id" ref="project_extra.model_crm_junta_line"/>
+            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
+            <field name="email_to"></field>
+            <field name="subject">[URGENTE] Fecha Límite para Envío de Preguntas - {{ object.lead_id.name }}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333; max-width: 600px; margin: 0 auto;">
+                    <div style="background: #E65100; color: white; padding: 15px 20px; border-radius: 8px 8px 0 0;">
+                        <h2 style="margin: 0; font-size: 18px;">⚠️ Recordatorio: Fecha Límite para Envío de Preguntas</h2>
+                    </div>
+                    <div style="background: #fff3e0; padding: 20px; border: 1px solid #ffcc80; border-top: none;">
+                        <p style="margin-top: 0;">Buen día,</p>
+                        <p>Este es un recordatorio de que <b>mañana vence el plazo</b> para enviar preguntas y dudas para la junta de aclaración de la convocatoria:</p>
+                        <div style="background: white; border-left: 4px solid #E65100; padding: 15px; margin: 15px 0;">
+                            <p style="margin: 0 0 10px 0;"><b>📌 Convocatoria:</b> <t t-out="object.lead_id.name or ''"/></p>
+                            <p style="margin: 0 0 10px 0;" t-if="object.descripcion"><b>📋 Junta:</b> <t t-out="object.descripcion"/></p>
+                            <p style="margin: 0; color: #E65100; font-size: 16px;">
+                                <b>⏰ Fecha límite:</b> 
+                                <t t-if="object.fecha_limite_preguntas"><t t-out="format_datetime(object.fecha_limite_preguntas, dt_format='long')"/>day, month dd, yyyy - hh:mm:ss (GMT)</t>
+                            </p>
+                        </div>
+                        <p style="background: #ffecb3; padding: 10px; border-radius: 5px;">
+                            <b>📝 Nota:</b> Posterior a esta fecha, las dependencias no admiten preguntas adicionales.
+                            No es necesario realizar ninguna acción adicional si la información ya fue enviada.
+                        </p>
+                        <div style="text-align: center; margin: 20px 0;">
+                            <a t-att-href="'%s/web#id=%s&amp;model=crm.lead&amp;view_type=form' % (object.lead_id.get_base_url(), object.lead_id.id)" 
+                               style="display: inline-block; padding: 12px 24px; background: #E65100; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                Ver Convocatoria
+                            </a>
+                        </div>
+                        <p style="color: #666; font-size: 12px; margin-bottom: 0;">Enviado automáticamente por el Sistema.</p>
+                    </div>
+                </div>
+            </field>
+        </record>
+
     </data>
 </odoo>

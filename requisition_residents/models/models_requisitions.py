@@ -80,11 +80,10 @@ class requisitionResidents(models.Model):
             if dias.days > 6:
                 raise ValidationError('El periodo seleccionado es mayor a una semana.')
 
-    @api.onchange('project_id')
-    @api.depends('project_id')
+    @api.onchange('finicio','project_id')
     def validar_obra(self):
-        if self.finicio:
-            existe = self.env['requisition.residents'].search([('finicio','=',self.finicio), ('project_id','!=',self.project_id.id), ('id','!=',self.id)])
+        if self.finicio and self.project_id:
+            existe = self.env['requisition.residents'].search([('finicio','=',self.finicio), ('project_id','=',self.project_id.id), ('id','!=',self.id)])
             if existe:
                 self.project_id = None
                 raise ValidationError('Ya existe una requisición para la obra en el periodo seleccionado')
@@ -199,7 +198,7 @@ class requisitionResidents(models.Model):
         self.message_post(body=Markup(body), message_type='comment', subtype_xmlid='mail.mt_note')
 
     def action_send(self):
-        existe = self.env['requisition.residents'].search([('finicio','=',self.finicio), ('project_id','!=',self.project_id.id), ('id','!=',self.id)])
+        existe = self.env['requisition.residents'].search([('finicio','=',self.finicio), ('project_id','=',self.project_id.id), ('id','!=',self.id)])
         if existe:
             self.project_id = None
             raise ValidationError('Ya existe una requisición para la obra en el periodo seleccionado')
@@ -692,6 +691,7 @@ class requisitionWeekly(models.Model):
 
 class requisitionWeeklyLine(models.Model):
     _name = 'requisition.weekly.line'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Movimientos'
     _order = 'company_id asc, project_id asc, id asc'
 

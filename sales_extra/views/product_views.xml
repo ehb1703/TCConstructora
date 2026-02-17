@@ -96,5 +96,5 @@
         </field>
     </record>
 
-    <menuitem id="menu_product_unspsc_code_products" name="Productos y servicios SAT" parent="sale.product_menu_catalog" action="action_product_unspsc_code_products" sequence="15"/>
+    <menuitem id="menu_product_unspsc_code_products" name="Productos y servicios SAT" parent="sale.prod_config_main" action="action_product_unspsc_code_products" sequence="35"/>
 </odoo>

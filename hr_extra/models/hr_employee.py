@@ -39,7 +39,8 @@ class hrEmployeeInherit(models.Model):
         domain="['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids), ('state', '!=', 'baja')]")
     coach_id = fields.Many2one('hr.employee', 'Coach', 
         domain="['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids), ('state', '!=', 'baja')]")
-    state = fields.Selection(selection=[('activo','Activo'), ('baja','Baja'), ('pensionado','Pensionado'), ('incapacidad','Incapacidad')],
+    state = fields.Selection(selection=[('activo','Activo'), ('baja','Baja'), ('pensionado','Pensionado'), ('incapacidad','Incapacidad'), 
+        ('permiso','Permiso')],
         string='Estado Actual', default='activo', tracking=True)
 
     @api.onchange('work_contact_id')
@@ -324,9 +325,9 @@ class hrContractInherit(models.Model):
 
         if not attendance_contracts or not overtime_work_entry_type or len(default_work_entry_type) != 1:
             return
+
         overtime_hours = self.env['hr.attendance.overtime']._read_group(
             [('employee_id', 'in', self.employee_id.ids), ('date', '>=', date_from), ('date', '<=', date_to)], [], ['duration:sum'],)[0][0]
-        # unapproved overtimes should not be taken into account
         unapproved_overtime_hours = round(self.env['hr.attendance'].sudo()._read_group([('employee_id', 'in', self.employee_id.ids), 
             ('check_in', '>=', date_from), ('check_out', '<=', date_to), ('overtime_hours', '>', 0), ('overtime_status', '!=', 'approved')], [], 
             ['overtime_hours:sum'],)[0][0], 2)
@@ -356,6 +357,12 @@ class hrContractInherit(models.Model):
         if overtime_hours > 0:
             work_data[overtime_work_entry_type.id] = overtime_hours
         
+
+class HrWorkEntryTypeInherit(models.Model):
+    _inherit = 'hr.work.entry.type'
+
+    percentage = fields.Float(string='Porcentaje de aplicación')
+
 
 class HrPayslipInherit(models.Model):
     _inherit = 'hr.payslip'

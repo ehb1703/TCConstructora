@@ -62,11 +62,7 @@ class AccountMoveInherit(models.Model):
             for move in self:
                 if move.move_type == 'in_invoice' and move.payment_state == 'paid':
                     # Buscar órdenes de compra relacionadas
-                    purchase_orders = self.env['purchase.order'].search([
-                        ('invoice_ids', 'in', move.id),
-                        ('type_purchase', '=', 'bases'),
-                        ('lead_id', '!=', False)
-                    ])
+                    purchase_orders = self.env['purchase.order'].search([('invoice_ids','in',move.id), ('type_purchase','=','bases'), ('lead_id','!=',False)])
                     for po in purchase_orders:
                         po._check_bases_payment_status()
         return res
@@ -75,7 +71,7 @@ class AccountMoveInherit(models.Model):
 class purchaseOrderLineInherit(models.Model):
     _inherit = 'purchase.order.line'
 
-    active = fields.Boolean(string='Activo', default=True, tracking=True)
+    active = fields.Boolean(string='Activo', default=True)
 
 
 class purchaseRequisitionInherit(models.Model):

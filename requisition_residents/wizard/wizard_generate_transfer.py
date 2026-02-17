@@ -11,7 +11,7 @@ class SaleAdvanceInvoiceWizard(models.TransientModel):
 
     raccount_id = fields.Many2one('requisition.bank.account', string='Cuenta bancaria', required=True)
     type_mov = fields.Selection(selection=[('dep','Depósito'), ('trans','Transferencia')],
-        string='Tipo de Movimiento', default='dep', tracking=True)
+        string='Tipo de Movimiento', default='dep')
     fecha = fields.Date(string='Fecha')
     authorize = fields.Char(string='Autorización')
     account_id = fields.Many2one('requisition.bank.account', string='Cuenta bancaria')
