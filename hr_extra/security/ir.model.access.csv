@@ -29,3 +29,7 @@ access_hr_attendance_extra_user,hr.attendance.extra.user,hr_attendance.model_hr_
 access_hr_attendance_extra_manager,hr.attendance.extra.manager,hr_attendance.model_hr_attendance,hr.group_hr_manager,1,1,1,1
 access_hr_attendance_overtime_extra_user,hr.attendance.overtime.extra.user,hr_attendance.model_hr_attendance_overtime,hr.group_hr_user,1,1,1,0
 access_hr_attendance_overtime_extra_manager,hr.attendance.overtime.extra.manager,hr_attendance.model_hr_attendance_overtime,hr.group_hr_manager,1,1,1,1
+access_hr_contract_empresa_user,hr.contract.empresa.user,model_hr_contract_empresa,hr.group_hr_user,1,0,0,0
+access_hr_contract_empresa_manager,hr.contract.empresa.manager,model_hr_contract_empresa,hr.group_hr_manager,1,1,1,1
+
+access_hr_employee,access_hr_employee,model_hr_employee,,1,0,0,0

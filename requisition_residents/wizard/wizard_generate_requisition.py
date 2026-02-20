@@ -46,40 +46,47 @@ class GenerateRequisitionWizard(models.TransientModel):
             else:
                 proveedor = self.env['requisition.debt'].create({'partner_id': rec['partner_id']})
 
-            consulta = ("""SELECT rr.id, rr.name, rr.project_id, rr.finicio, ra.partner_id, 'ACARREO ' category, type_pay, 
-                    STRING_AGG(pt.name->>'es_MX'::text, ',') CONCEPTO, count(*) count, sum(qty) cantidad, sum(ra.amount) precio
+            consulta = ("""SELECT rr.id, rr.name, rr.project_id, rr.finicio, ra.partner_id, 'ACARREO ' category, type_pay, account_id,
+                    STRING_AGG(pt.name->>'es_MX'::text, ', ') CONCEPTO, count(*) count, sum(qty) cantidad, sum(ra.amount) precio
                   FROM requisition_residents rr JOIN requisition_acarreos ra ON rr.id = ra.req_id 
                                                 JOIN product_product pp ON ra.product_id = pp.id
                                                 JOIN product_template pt ON pp.product_tmpl_id = pt.id
                  WHERE rr.id in """ + child + " AND ra.partner_id = " + str(rec['partner_id']) + """
-                 GROUP BY 1, 2, 3, 4, 5, 6, 7
+                 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
                 UNION ALL 
-                SELECT rr.id, rr.name, rr.project_id, rr.finicio, rd.partner_id, 'DESTAJO' category, type_pay, STRING_AGG(pt.name->>'es_MX'::text, ','), 
-                    count(*), sum(rdl.volumen), sum(rdl.amount)
-                  from requisition_residents rr JOIN requisition_destajo rd ON rr.id = rd.req_id 
+                SELECT rr.id, rr.name, rr.project_id, rr.finicio, rd.partner_id, 'DESTAJO' category, type_pay, account_id,
+                    STRING_AGG(pt.name->>'es_MX'::text, ', '), count(*), sum(rdl.volumen), sum(rdl.amount)
+                  FROM requisition_residents rr JOIN requisition_destajo rd ON rr.id = rd.req_id 
                                                 JOIN requisition_destajo_line rdl ON rd.id = rdl.destajo_id 
                                                 JOIN product_product pp ON rdl.product_id = pp.id
                                                 JOIN product_template pt ON pp.product_tmpl_id = pt.id
                  WHERE rr.id in """ + child + " AND rd.partner_id = " + str(rec['partner_id']) + """
-                 GROUP BY 1, 2, 3, 4, 5, 6, 7
+                 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
                 UNION ALL
-                SELECT rr.id, rr.name, rr.project_id, rr.finicio, rm.partner_id, 'MAQUINARIA' category, type_pay, 
-                    STRING_AGG(rm.MAQUINARIA||' '||coalesce(no_serie, ''), ','), count(*), sum(rm.total_days), sum(rm.amount)
+                SELECT rr.id, rr.name, rr.project_id, rr.finicio, rm.partner_id, 'MAQUINARIA' category, type_pay, account_id,
+                    STRING_AGG(rm.MAQUINARIA||' '||coalesce(no_serie, ''), ', '), count(*), sum(rm.total_days), sum(rm.amount)
                   from requisition_residents rr JOIN requisition_maquinaria rm ON rr.id = rm.req_id
                  WHERE rr.id in """ + child + " AND rm.partner_id = " + str(rec['partner_id']) + """
-                 GROUP BY 1, 2, 3, 4, 5, 6, 7
-                 UNION ALL
-                 SELECT rr.id, rr.name, rr.project_id, rr.finicio, rc.partner_id, 'RENTA ' category, type_pay, STRING_AGG(pt.name->>'es_MX'::text, ',') CONCEPTO, 
-                    count(*), 0, sum(rc.price)
-                  from requisition_residents rr JOIN requisition_campamentos rc ON rr.id = rc.req_id 
+                 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
+                UNION ALL
+                SELECT rr.id, rr.name, rr.project_id, rr.finicio, rc.partner_id, 'RENTA ' category, type_pay, account_id,
+                    STRING_AGG(pt.name->>'es_MX'::text, ', ') CONCEPTO, count(*), 0, sum(rc.price)
+                  FROM requisition_residents rr JOIN requisition_campamentos rc ON rr.id = rc.req_id 
                                                 JOIN product_product pp ON rc.product_id = pp.id
                                                 JOIN product_template pt ON pp.product_tmpl_id = pt.id
-                 WHERE rr.id in """ + child + " AND rc.partner_id = " + str(rec['partner_id']) + " GROUP BY 1, 2, 3, 4, 5, 6, 7 ORDER BY 1 ")
+                 WHERE rr.id in """ + child + " AND rc.partner_id = " + str(rec['partner_id']) + """ 
+                 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
+                UNION ALL
+                SELECT rr.id, rr.name, rr.project_id, rr.finicio, rf.partner_id, 'COMBUSTIBLE ' category, type_pay, account_id,
+                    STRING_AGG(rf.OBSERVACIONES, ', ') CONCEPTO, count(*), 0, sum(rf.amount)
+                  FROM requisition_residents rr JOIN requisition_fuel rf ON rr.id = rf.req_id
+                 WHERE rr.id in """ + child + " AND rf.partner_id = " + str(rec['partner_id']) + " GROUP BY 1, 2, 3, 4, 5, 6, 7, 8 ORDER BY 1 ")
             self.env.cr.execute(consulta)
             cargos = self.env.cr.dictfetchall()
             for ca in cargos:
                 lines = {'project_id': ca['project_id'], 'fecha': ca['finicio'], 'debit': ca['precio'], 'origen': ca['name'], 'reqres_id': ca['id'], 
-                    'type_pay': ca['type_pay'], 'concepto': ca['category'] + ' ' + ca['concepto'] + ' ' + str(ca['count']) + ' ' + str(ca['cantidad'])}
+                    'type_pay': ca['type_pay'], 'concepto': ca['category'] + ' ' + ca['concepto'] + ' ' + str(ca['count']) + ' ' + str(ca['cantidad']),
+                    'account_id': ca['account_id']}
                 req_lines.append((0, 0, lines))
             
             proveedor.write({'line_ids': req_lines})

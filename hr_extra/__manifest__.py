@@ -31,7 +31,9 @@
         'views/ctrol_asistencias_views.xml',
         'views/checador_sync_log_views.xml',
         'report/hr_contract_report.xml',
-        'report/report_hr_contract.xml',
+        'report/report_hr_contract_prueba.xml',
+        'report/report_hr_contract_obra.xml',
+        'report/report_hr_contract_indeterminado.xml',
         'report/report_convenio_confidencialidad.xml',
     ],
     'external_dependencies': {

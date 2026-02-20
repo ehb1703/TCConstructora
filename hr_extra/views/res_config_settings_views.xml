@@ -23,26 +23,6 @@
                         </setting>
                         <setting id="api_checadores_user_management" string="Gestión de Usuario API" invisible="not api_checadores_enabled">
                             <div class="content-group">
-                                <!--div class="row mt16">
-                                    <label for="api_checadores_user_id" string="Usuario" class="col-lg-3 o_light_label"/>
-                                    <div class="col-lg-9">
-                                        <field name="api_checadores_user_id" widget="many2one" domain="[('active', '=', True)]" placeholder="Seleccionar usuario..." options="{'no_create': True, 'no_open': True}" class="oe_inline"/>
-                                        <button name="action_open_api_user" string="Ver" type="object" class="btn btn-link" icon="fa-external-link" invisible="not api_checadores_user_id"/>
-                                    </div>
-                                </div>
-                                <div class="row mt16" invisible="not api_checadores_user_id">
-                                    <div class="col-lg-9 offset-lg-3">
-                                        <div class="alert alert-success" role="alert" invisible="not api_checadores_user_active">
-                                            <strong>Usuario:</strong> 
-                                            <field name="api_checadores_username" readonly="1" class="oe_inline"/>
-                                            <span class="badge bg-success ms-2">Activo</span>
-                                        </div>
-                                        <div class="alert alert-danger" role="alert" invisible="api_checadores_user_active">
-                                            <strong>Advertencia:</strong> Usuario inactivo.
-                                        </div>
-                                    </div>
-                                </div-->
-                                
                                 <div invisible="not api_checadores_user_id">
                                     <div class="row mt16">
                                         <label for="api_checadores_user_id" string="Usuario" class="col-lg-3 o_light_label"/>
@@ -54,7 +34,7 @@
                                     
                                     <div class="row mt16">
                                         <div class="col-lg-9 offset-lg-3">
-                                            <div class="alert alert-success">
+                                            <div class="alert alert-success" role="alert">
                                                 Usuario activo: <strong><field name="api_checadores_username" readonly="1" class="oe_inline"/></strong>
                                             </div>
                                         </div>
@@ -126,7 +106,7 @@
                                                 icon="fa-bar-chart"/>
                                     </div>
                                 </div>
-                                <div class="alert alert-info mt-3">
+                                <div class="alert alert-info mt-3" role="status">
                                     <i class="fa fa-info-circle"/> <strong>Control de Asistencias:</strong> Ver todos los registros importados desde checadores con su estado de procesamiento.
                                 </div>
                             </div>

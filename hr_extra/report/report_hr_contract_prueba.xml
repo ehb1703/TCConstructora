@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="report_hrcontract_prueba_template">
+            <t t-set="o" t-value="o.with_context(lang=o.employee_id.lang or 'es_MX')"/>
+            <t t-call="web.internal_layout">
+                <div class="page" style="font-family: Arial, sans-serif; font-size: 11pt; text-align: justify;">
+
+                    <!-- Variables de empresa configurada para este tipo de contrato -->
+                    <t t-set="representante" t-value="o.env['company.legal.representative'].search([('company_id','=',o.company_id.id)], limit=1)"/>
+                    <t t-set="empresa_conf" t-value="o.env['hr.contract.empresa'].search([('tipo_contrato_id','=',o.contract_type_id.id)], limit=1)"/>
+                    <t t-set="empresa_partner" t-value="empresa_conf.empresa_id if empresa_conf else o.company_id"/>
+                    <t t-set="emp" t-value="o.employee_id"/>
+
+                    <!-- Edad calculada -->
+                    <t t-set="edad" t-value="(o.date_start.year - emp.birthday.year - ((o.date_start.month, o.date_start.day) &lt; (emp.birthday.month, emp.birthday.day))) if emp.birthday and o.date_start else 0"/>
+
+                    <!-- Sexo -->
+                    <t t-if="emp.gender == 'male'"><t t-set="sexo" t-value="'MASCULINO'"/></t>
+                    <t t-elif="emp.gender == 'female'"><t t-set="sexo" t-value="'FEMENINO'"/></t>
+                    <t t-else=""><t t-set="sexo" t-value="''"/></t>
+
+                    <!-- Nacionalidad -->
+                    <t t-set="nacionalidad" t-value="emp.country_id.name.upper() if emp.country_id else 'MEXICANO'"/>
+
+                    <!-- Domicilio del empleado -->
+                    <t t-set="domicilio_emp" t-value="emp.private_street or ''"/>
+
+                    <!-- Salario diario -->
+                    <t t-set="salario_diario" t-value="o.daily_wage if o.daily_wage else (o.hourly_wage * 8 if o.wage_type == 'hourly' else o.wage)"/>
+
+                    <!-- Fechas -->
+                    <t t-set="meses" t-value="{'January': 'Enero', 'February': 'Febrero', 'March': 'Marzo', 'April': 'Abril', 'May': 'Mayo', 'June': 'Junio', 'July': 'Julio', 'August': 'Agosto', 'September': 'Septiembre', 'October': 'Octubre', 'November': 'Noviembre', 'December': 'Diciembre'}"/>
+                    <t t-set="fecha_inicio_str" t-value="o.date_start.strftime('%d') + ' de ' + meses.get(o.date_start.strftime('%B'), '') + ' del ' + o.date_start.strftime('%Y') if o.date_start else ''"/>
+                    <t t-set="fecha_fin_str" t-value="o.date_end.strftime('%d') + ' de ' + meses.get(o.date_end.strftime('%B'), '').upper() + ' del ' + o.date_end.strftime('%Y') if o.date_end else 'SIN FECHA DE TERMINO'"/>
+                    <t t-set="ciudad_empresa" t-value="empresa_partner.city or ''"/>
+                    <t t-set="estado_empresa" t-value="empresa_partner.state_id.name if empresa_partner.state_id else 'Jalisco'"/>
+
+                    <!-- ===== ENCABEZADO ===== -->
+                    <p style="text-align: justify;">
+                        <strong>CONTRATO INDIVIDUAL DE TRABAJO POR PERIODO DE PRUEBA DE TRES MESES</strong>
+                        QUE CELEBRAN POR UNA PERSONA MORAL DENOMINADA
+                        <strong><t t-esc="empresa_partner.name.upper() if empresa_partner.name else ''"/></strong>
+                        REPRESENTADA EN ESTE ACTO POR
+                        <strong>LA SRA. <span t-field="representante.representante_id.name"/></strong>
+                        (EN LO SUCESIVO &#x201C;EL PATR&#xD3;N&#x201D;), Y POR LA OTRA EL C.
+                        <strong><span t-field="emp.name"/></strong>
+                        (EN LO SUCESIVO EL &#x201C;EMPLEADO&#x201D;), (CONJUNTAMENTE EL PATR&#xD3;N Y EL
+                        EMPLEADO EN LO SUCESIVO LAS &#x201C;PARTES&#x201D;), AL TENOR DE LAS SIGUIENTES
+                        DECLARACIONES Y CL&#xC1;USULAS:
+                    </p>
+                    <br/>
+                    <p style="text-align: center;"><strong>D E C L A R A C I O N E S:</strong></p>
+                    <br/>
+                    <p><strong>I.&#9;Declara el PATR&#xD3;N:</strong></p>
+                    <br/>
+                    <p>
+                        <strong>A).-&#9;</strong>
+                        Ser una persona moral y tener su domicilio en,
+                        <strong>
+                            <t t-esc="(empresa_partner.street or '').upper()"/>
+                            <t t-if="empresa_partner.street2">, <t t-esc="empresa_partner.street2.upper()"/></t>,
+                            <t t-esc="(empresa_partner.city or '').upper()"/>,
+                            <t t-esc="(empresa_partner.state_id.name or '').upper() if empresa_partner.state_id else ''"/>,
+                            CP <t t-esc="empresa_partner.zip or ''"/>
+                        </strong>
+                    </p>
+                    <br/>
+                    <p>
+                        <strong>B).-&#9;</strong>
+                        Que requiere los servicios de una persona que tenga la capacidad, experiencia y aptitudes
+                        para desempe&#xF1;ar el puesto de <strong><span t-field="emp.job_id.name"/></strong>.
+                    </p>
+                    <br/>
+                    <p><strong>II.&#9;Declara el EMPLEADO:</strong></p>
+                    <br/>
+                    <p>
+                        <strong>A).-&#9;</strong>
+                        Ser de nacionalidad <t t-esc="nacionalidad"/>, tener
+                        <strong><t t-esc="str(edad) + ' A&#xD1;OS' if edad else ''"/></strong> de edad,
+                        ser del sexo <t t-esc="sexo"/>, CURP <strong><t t-esc="emp.ssnid or ''"/></strong>,
+                        y tener su domicilio en <strong><t t-esc="domicilio_emp"/></strong>.
+                    </p>
+                    <br/>
+                    <p>
+                        <strong>B).-&#9;</strong>
+                        Que cuenta con la capacidad, experiencia, preparaci&#xF3;n, conocimientos y aptitudes
+                        necesarias para desempe&#xF1;ar el puesto a que se refiere la cl&#xE1;usula marcada con
+                        el n&#xFA;mero 1.- del presente contrato y est&#xE1; dispuesto a prestar sus servicios
+                        a favor de El Patr&#xF3;n.
+                    </p>
+                    <br/>
+                    <p>Con base a las anteriores declaraciones, las Partes pactan las siguientes:</p>
+                    <br/><br/>
+                    <p style="text-align: center;"><strong>C L &#xC1; U S U L A S:</strong></p>
+                    <br/><br/>
+
+                    <!-- CL&#xC1;USULA 1: PUESTO -->
+                    <p><strong>1.&#9;PUESTO</strong></p>
+                    <br/>
+                    <p>
+                        <strong>1.1.&#9;</strong>
+                        El Empleado deber&#xE1; prestar sus servicios en el puesto
+                        <strong><span t-field="emp.job_id.name"/></strong> con la intensidad, cuidado y esmero
+                        apropiado y en la forma y t&#xE9;rminos convenidos en el presente Contrato y su anexo.
+                        Por lo que inicia con fecha del <strong><t t-esc="fecha_inicio_str"/></strong>
+                        y culminar&#xE1; el <strong><t t-esc="fecha_fin_str"/></strong>, sin responsabilidad
+                        para el Patr&#xF3;n.
+                    </p>
+                    <br/>
+                    <p>
+                        <strong>1.2.&#9;</strong>
+                        As&#xED; mismo, el Empleado deber&#xE1; de desempe&#xF1;ar todas las actividades
+                        similares, accesorias y conexas al puesto referido en el punto anterior, y que se le
+                        encomienden. Con motivo del presente Contrato, el Empleado acepta cumplir las
+                        obligaciones y responsabilidades de trabajo que de manera enunciativa m&#xE1;s no
+                        limitativa se encuentran establecidas en el anexo &#x201C;A&#x201D; que contiene la
+                        <strong>DESCRIPCI&#xD3;N DE PUESTO Y RESPONSABILIDADES</strong> que suscriban las partes.
+                    </p>
+                    <br/>
+                    <p>
+                        <strong>1.3.&#9;</strong>
+                        El Empleado desempe&#xF1;ar&#xE1; sus labores en el establecimiento ubicado en
+                        <strong>
+                            <t t-esc="(empresa_partner.street or '').upper()"/>
+                            <t t-if="empresa_partner.street2">, <t t-esc="empresa_partner.street2.upper()"/></t>,
+                            <t t-esc="(empresa_partner.city or '').upper()"/>,
+                            <t t-esc="(empresa_partner.state_id.name or '').upper() if empresa_partner.state_id else ''"/>,
+                            CP <t t-esc="empresa_partner.zip or ''"/>
+                        </strong>,
+                        o en cualquiera de las sucursales con las que El Patr&#xF3;n cuenta o llegue a tener
+                        en un futuro en el Estado de <t t-esc="estado_empresa"/> o en cualquier otra entidad
+                        federativa de la Rep&#xFA;blica Mexicana.
+                    </p>
+                    <br/>
+                    <p><strong>1.4.&#9;</strong>En todos los casos, el Empleado, cuando as&#xED; se le solicite, deber&#xE1; mantener informada a El Patr&#xF3;n acerca del desarrollo y estado de su actividad.</p>
+                    <br/>
+                    <p><strong>1.5.&#9;</strong>De igual forma y tomando en cuenta la naturaleza de las funciones que desempe&#xF1;ar&#xE1; el Empleado, el nivel de complejidad de las mismas y el grado de preparaci&#xF3;n que se requiere para su correcto desempe&#xF1;o ambas partes reconocen que el puesto que desempe&#xF1;ar&#xE1; El Empleado es de naturaleza t&#xE9;cnica y altamente especializada.</p>
+                    <br/>
+                    <p><strong>1.6.&#9;</strong>El Empleado est&#xE1; obligado a acatar las &#xF3;rdenes, circulares, Reglamento Interior de Trabajo y disposiciones que dicte El Patr&#xF3;n y todos los ordenamientos legales que le sean aplicables, incluyendo los marcados en el Reglamento Federal de Seguridad e Higiene y Medio Ambiente en el Trabajo y las Normas Oficiales Mexicanas de la secretaria del Trabajo y Previsi&#xF3;n Social en esta materia. El Empleado se compromete a cumplir con lo establecido en los art&#xED;culos 134 y 135 de la Ley Federal del Trabajo.</p>
+                    <br/><br/>
+
+                    <!-- CL&#xC1;USULA 2: SALARIO -->
+                    <p><strong>2.&#9;SALARIO</strong></p>
+                    <br/>
+                    <p><strong>2.1.&#9;</strong>El EMPLEADO percibir&#xE1; un salario diario de <strong>$<t t-esc="'%.2f' % salario_diario"/> (<t t-esc="o.get_salario_en_letra(salario_diario)"/>)</strong> menos las deducciones aplicables por concepto de impuestos y cualesquiera otras que correspondan en t&#xE9;rminos de lo establecido por el art&#xED;culo 110 de la LFT;</p>
+                    <br/>
+                    <p><strong>2.2.&#9;</strong>El salario que el EMPLEADO tenga derecho a percibir le ser&#xE1; pagado quincenalmente los d&#xED;as 15 y ultimo de cada mes.</p>
+                    <br/>
+                    <p><strong>2.3.&#9;</strong>La Compa&#xF1;&#xED;a emitir&#xE1; semanalmente en forma electr&#xF3;nica los recibos de salario y prestaciones que le sean pagados a El EMPLEADO, mismos que ir&#xE1;n debidamente timbrados en los t&#xE9;rminos previstos por la legislaci&#xF3;n fiscal.</p>
+                    <br/>
+                    <p><strong>2.4.&#9;</strong>En caso de que La Compa&#xF1;&#xED;a lo requiera, El Empleado estar&#xE1; obligado a firmar los recibos de salario correspondientes.</p>
+                    <br/>
+                    <p><strong>2.5.&#9;</strong>El EMPLEADO autoriza a la COMPA&#xD1;&#xCD;A para que descuente de sus salarios y prestaciones los conceptos se&#xF1;alados por el art&#xED;culo 110 de la Ley Federal del Trabajo, en la forma y t&#xE9;rminos contenidos en ese dispositivo legal. Las Partes convienen desde este momento que el descuento que podr&#xE1; hacer la COMPA&#xD1;&#xCD;A ser&#xE1; del 30% del excedente del salario m&#xED;nimo.</p>
+                    <br/>
+                    <p><strong>2.6.&#9;</strong>De conformidad a lo establecido por el art&#xED;culo 101 de la LFT EL EMPLEADO en este acto otorga su consentimiento para que el pago de sus salarios y prestaciones que tenga derecho a percibir, le sean pagados mediante deposito o transferencia electr&#xF3;nica de dinero a la cuenta bancaria que El EMPLEADO tiene abierta a su nombre y cuyos datos de n&#xFA;mero e instituci&#xF3;n bancaria ha comunicado a La Compa&#xF1;&#xED;a.</p>
+                    <br/>
+                    <p><strong>2.7.&#9;</strong>Queda pactado por las Partes que en el salario Quincenal del Empleado se encuentra incluido el pago de los d&#xED;as de descanso semanal (s&#xE9;ptimos d&#xED;as) y de descanso obligatorio (festivos) que se generen en el per&#xED;odo que se cubra.</p>
+                    <br/>
+                    <p><strong>2.8.&#9;</strong>Las Partes convienen que el patr&#xF3;n entregar&#xE1; al empleado el Comprobante Fiscal Digital (CFDI) de recibo de pago de salario en forma electr&#xF3;nica, mediante correo electr&#xF3;nico que se har&#xE1; llegar al empleado en la cuenta de correo electr&#xF3;nico que &#xE9;ste designe a trav&#xE9;s de la suscripci&#xF3;n del Formato de Designaci&#xF3;n de Cuenta de Correo Electr&#xF3;nico correspondiente.</p>
+                    <br/>
+                    <p><strong>2.9.&#9;</strong>Las Partes convienen que el CFDI de recibo de pago de salario que contenga los requisitos fiscales del caso y que se haga llegar al Empleado en formato electr&#xF3;nico, sustituye al recibo de pago de salario impreso en papel. El contenido del CFDI de n&#xF3;mina que la Compa&#xF1;&#xED;a haga llegar al Empleado v&#xED;a electr&#xF3;nica, podr&#xE1; ser verificado por el Empleado en portal de Internet del Servicio de Administraci&#xF3;n Tributaria de la Secretar&#xED;a de Hacienda y Cr&#xE9;dito P&#xFA;blico.</p>
+                    <br/><br/>
+
+                    <!-- CL&#xC1;USULA 3: AGUINALDO -->
+                    <p><strong>3.&#9;AGUINALDO</strong></p>
+                    <br/>
+                    <p><strong>3.1.&#9;</strong>El EMPLEADO tendr&#xE1; derecho al pago de un aguinaldo, calculado sobre una base anual de 15 (quince) d&#xED;as de salario, el cual le ser&#xE1; cubierto a m&#xE1;s tardar el d&#xED;a 20 del mes de diciembre de cada a&#xF1;o.</p>
+                    <br/>
+                    <p><strong>3.2.&#9;</strong>En caso de que el Empleado no labore la anualidad completa, el aguinaldo le ser&#xE1; pagado a El Empleado en forma proporcional al tiempo trabajado.</p>
+                    <br/>
+                    <p><strong>3.3.&#9;</strong>De igual forma, en caso de que El Patr&#xF3;n decida dar por terminado el presente contrato al t&#xE9;rmino del periodo de prueba, el aguinaldo le ser&#xE1; pagado al Empleado en forma proporcional al tiempo laborado, ello precisamente al t&#xE9;rmino del periodo de prueba.</p>
+                    <br/><br/>
+
+                    <!-- CL&#xC1;USULA 4: JORNADA -->
+                    <p><strong>4.&#9;JORNADA Y HORARIO DE LABORES</strong></p>
+                    <br/>
+                    <p><strong>4.1.&#9;</strong>La duraci&#xF3;n de la jornada de labores acordada por las partes y en la que El Empleado deber&#xE1; concurrir a laborar es de 48 (cuarenta y ocho) horas en jornada diurna, 45 (cuarenta y cinco) horas en jornada mixta y 42 (cuarenta y dos) horas en jornada nocturna.</p>
+                    <br/>
+                    <p><strong>4.2.&#9;</strong>El d&#xED;a de descanso semanal del Empleado ser&#xE1; el domingo, con goce de salario &#xED;ntegro.</p>
+                    <br/>
+                    <p><strong>4.3.&#9;</strong>Las partes acuerdan que El Patr&#xF3;n, en cualquier tiempo, podr&#xE1; cambiar la distribuci&#xF3;n de la jornada de trabajo, la hora de entrada, la de suspensi&#xF3;n, la de reanudaci&#xF3;n y la de conclusi&#xF3;n de las labores, incluso en turno mixto, de conformidad a las necesidades de &#xE9;ste y de acuerdo con los servicios que deba prestar para sus clientes.</p>
+                    <br/>
+                    <p><strong>4.4.&#9;</strong>El Empleado deber&#xE1; registrar diariamente su asistencia a la hora de inicio, suspensi&#xF3;n, reanudaci&#xF3;n y conclusi&#xF3;n de las labores, en el sistema de asistencia que El Patr&#xF3;n designe.</p>
+                    <br/>
+                    <p><strong>4.5.&#9;</strong>El d&#xED;a de descanso semanal le ser&#xE1; asignado y podr&#xE1; ser cambiado por El Patr&#xF3;n, de acuerdo a las necesidades del servicio.</p>
+                    <br/>
+                    <p><strong>4.6.&#9;</strong>En caso de que El Empleado deba laborar en d&#xED;a domingo, le ser&#xE1; pagada una prima dominical equivalente al 25% (veinticinco por ciento) del salario ordinario del domingo.</p>
+                    <br/>
+                    <p><strong>4.7.&#9;</strong>Queda expresamente pactado que el Empleado tiene prohibido laborar en tiempo extraordinario y cuando por circunstancias extraordinarias as&#xED; se requiera, para que pueda laborarlo, deber&#xE1; recabar autorizaci&#xF3;n previa por escrito firmada por El Patr&#xF3;n. Sin dicha autorizaci&#xF3;n por escrito el Empleado no podr&#xE1; laborar en tiempo extraordinario.</p>
+                    <br/>
+                    <p><strong>4.8.&#9;</strong>Las ausencias al trabajo solo podr&#xE1;n ser justificadas cuando El Empleado exhiba y entregue a El Patr&#xF3;n un certificado de incapacidad temporal que le haya sido expedido en forma previa por el Instituto Mexicano del Seguro Social. El certificado deber&#xE1; ser entregado por El Empleado a El Patr&#xF3;n a m&#xE1;s tardar al d&#xED;a siguiente h&#xE1;bil al de la fecha de su expedici&#xF3;n.</p>
+                    <br/><br/>
+
+                    <!-- CL&#xC1;USULA 5: VACACIONES -->
+                    <p><strong>5.&#9;VACACIONES Y PRIMA VACACIONAL</strong></p>
+                    <br/>
+                    <p><strong>5.1.&#9;</strong>El EMPLEADO recibir&#xE1; el pago de vacaciones en los t&#xE9;rminos m&#xED;nimos establecidos por el art&#xED;culo 76 de la Ley Federal del Trabajo y una prima vacacional equivalente al 25% (veinticinco por ciento) del salario de las vacaciones.</p>
+                    <br/>
+                    <p><strong>5.2.&#9;</strong>En caso de que el Empleado no labore la anualidad completa, las vacaciones y prima vacacional le ser&#xE1;n pagadas a El Empleado en forma proporcional al tiempo laborado.</p>
+                    <br/>
+                    <p><strong>5.3.&#9;</strong>De igual forma, en caso de que El Patr&#xF3;n decida dar por terminado el presente contrato al t&#xE9;rmino del periodo de prueba, las vacaciones y prima vacacional le ser&#xE1;n pagados al Empleado en forma proporcional al tiempo laborado, ello precisamente al t&#xE9;rmino del periodo de prueba.</p>
+                    <br/><br/>
+
+                    <!-- CL&#xC1;USULA 6: HERRAMIENTAS -->
+                    <p><strong>6.&#9;HERRAMIENTAS</strong></p>
+                    <br/>
+                    <p><strong>6.1.&#9;</strong>El Patr&#xF3;n proporcionar&#xE1; al Empleado todo el material y equipo que requiera para el desarrollo de su trabajo. El Empleado est&#xE1; obligado a cuidarlos y darles un correcto uso, as&#xED; como a entregarlos a El Patr&#xF3;n cuando &#xE9;sta as&#xED; se lo requiera.</p>
+                    <br/>
+                    <p><strong>6.2.&#9;</strong>El Patr&#xF3;n podr&#xE1; cambiar en cualquier momento la herramienta que previamente haya asignado al Empleado.</p>
+                    <br/>
+                    <p><strong>6.3.&#9;</strong>En caso de que El Patr&#xF3;n proporcione al Empleado herramientas tecnol&#xF3;gicas, tales como computadora, tableta electr&#xF3;nica o tel&#xE9;fono celular, o le asigne una cuenta de correo electr&#xF3;nico, o les permita el acceso a sus sistemas inform&#xE1;ticos mediante la asignaci&#xF3;n de un nombre de usuario y una contrase&#xF1;a, El Empleado se obliga a utilizar tales herramientas exclusivamente para el trabajo no teniendo permitido El Empleado utilizarlas para fines personales.</p>
+                    <br/>
+                    <p><strong>6.4.&#9;</strong>El uso de las herramientas de trabajo listadas en el punto anterior, que le llegue a proporcionar El Patr&#xF3;n al Empleado, no puede generar en el Empleado ning&#xFA;n derecho ni expectativa de privacidad, quedando El Patr&#xF3;n en todo momento facultada para monitorear el uso de las referidas herramientas.</p>
+                    <br/>
+                    <p><strong>6.5.&#9;</strong>La informaci&#xF3;n almacenada personalmente por el Empleado en las herramientas referidas en el apartado <strong>6.3.</strong> del presente contrato y que le hayan sido proporcionadas por El Patr&#xF3;n, no ser&#xE1; considerada como informaci&#xF3;n o comunicaciones privadas del Empleado debido al hecho de que las referidas herramientas no tienen por objeto su uso para efectos personales.</p>
+                    <br/>
+                    <p><strong>6.6.&#9;</strong>El Patr&#xF3;n tiene el derecho de cambiar o de reasignar, en cualquier momento, las herramientas de trabajo que previamente le hayan sido proporcionadas o asignadas al Empleado.</p>
+                    <br/>
+                    <p><strong>6.7.&#9;</strong>Queda prohibido al Empleado comunicar a terceros, sus claves, contrase&#xF1;as, nombres de usuario, llaves, c&#xF3;digos o cualquier mecanismo por el que el Empleado pueda acceder a las herramientas electr&#xF3;nicas, programas de c&#xF3;mputo, archivos o sistemas electr&#xF3;nicos de El Patr&#xF3;n. Tambi&#xE9;n tiene prohibido el Empleado permitir que terceros utilicen sus herramientas de trabajo.</p>
+                    <br/>
+                    <p><strong>6.8.&#9;</strong>Las comunicaciones electr&#xF3;nicas que emanen de cualquiera de las herramientas proporcionadas por El Patr&#xF3;n al Empleado, se considerar&#xE1;n hechas por el Empleado, ya que tiene estrictamente prohibido prestar tales herramientas a cualquier tercero o permitir que alguna persona ajena al Empleado haga uso de tales herramientas.</p>
+                    <br/>
+                    <p><strong>6.9.&#9;</strong>De igual forma, cuando se asignen al Empleado alg&#xFA;n nombre de usuario y contrase&#xF1;a que le permitan acceder a programas de c&#xF3;mputo, archivos o sistemas electr&#xF3;nicos de El Patr&#xF3;n, se considerar&#xE1; que el acceso y registro de informaci&#xF3;n la hizo personalmente el Empleado, si para ingresar a tales sistemas de c&#xF3;mputo, archivos o sistemas electr&#xF3;nicos se utiliz&#xF3; el nombre de usuario y contrase&#xF1;a del Empleado.</p>
+                    <br/>
+                    <p><strong>6.10.&#9;</strong>Todos los sistemas de comunicaciones electr&#xF3;nicas y telef&#xF3;nicas, as&#xED; como todas las comunicaciones e informaci&#xF3;n transmitidas, recibidas o almacenadas en los sistemas de c&#xF3;mputo, herramientas y equipos proporcionados por El Patr&#xF3;n al Empleado (correo electr&#xF3;nico o cualquier programa inform&#xE1;tico propiedad de El Patr&#xF3;n) o en cualquier otro medio de almacenaje, son propiedad exclusiva de El Patr&#xF3;n.</p>
+                    <br/>
+                    <p><strong>6.11.&#9;</strong>El Empleado tiene prohibido utilizar c&#xF3;digos e ingresar archivos o comunicaciones almacenadas en los equipos o sistemas de c&#xF3;mputo con la finalidad de copiarlos y sustraerlos, salvo que haya recibido una autorizaci&#xF3;n previa y por escrito de parte de alg&#xFA;n apoderado que tenga facultades de administraci&#xF3;n.</p>
+                    <br/>
+                    <p><strong>6.12.&#9;</strong>Todos los c&#xF3;digos de acceso a sistemas o equipos de c&#xF3;mputo o a los sistemas de voz y datos, son propiedad de El Patr&#xF3;n. Los que se asignen al Empleado son personales e intransferibles. El Empleado no podr&#xE1; hacer uso de los c&#xF3;digos asignados a un tercero ni transmitir el que le haya sido asignado.</p>
+                    <br/>
+                    <p><strong>6.13.&#9;</strong>El uso inadecuado de los sistemas y equipos de c&#xF3;mputo que son proporcionados por El Patr&#xF3;n al Empleado como herramienta de trabajo, est&#xE1; estrictamente prohibido y no ser&#xE1; tolerado. Algunas conductas consideradas como &#x201C;uso inadecuado&#x201D; son, pero no se limitan a, la transmisi&#xF3;n de correos cadena, el almacenaje de m&#xFA;sica, fotograf&#xED;as (especialmente pornograf&#xED;a), bromas y chistes o uso de redes sociales tales. Solo en el caso de que el uso de cualquiera de tales programas de redes sociales, sea indispensable para el trabajo, El Empleado podr&#xE1; hacer uso de ellas, previa autorizaci&#xF3;n por escrito del Gerente de Inform&#xE1;tica de El Patr&#xF3;n.</p>
+                    <br/>
+                    <p><strong>6.14.&#9;</strong>Queda estrictamente prohibido a El Empleado instalar en las herramientas electr&#xF3;nicas de comunicaci&#xF3;n que les sean asignadas, programas que no les sean expresamente permitidos o de los que se carezca la licencia correspondiente. El incumplimiento de esta obligaci&#xF3;n ser&#xE1; considerado como una desobediencia del trabajador en relaci&#xF3;n al trabajo contratado.</p>
+                    <br/><br/>
+
+                    <!-- CL&#xC1;USULA 7: CONFIDENCIALIDAD -->
+                    <p><strong>7.&#9;CONFIDENCIALIDAD</strong></p>
+                    <br/>
+                    <p><strong>7.1.&#9;</strong>Como parte de sus actividades el Empleado tendr&#xE1; acceso, recibir&#xE1;, conocer&#xE1; o tendr&#xE1; acceso a informaci&#xF3;n confidencial, secretos industriales y secretos comerciales (en lo sucesivo &#x201C;La Informaci&#xF3;n Confidencial&#x201D;) de El Patr&#xF3;n, de sus matrices, subsidiarias, filiales, divisiones, clientes, y/o de alguna otra entidad o persona relacionada con El Patr&#xF3;n.</p>
+                    <br/>
+                    <p><strong>7.2.&#9;</strong>Dentro de la informaci&#xF3;n confidencial a la cual El Empleado tendr&#xE1; acceso con motivo de la prestaci&#xF3;n de los servicios de trabajo para El Patr&#xF3;n se incluye pero no se limita a: informaci&#xF3;n de clientes o clientes potenciales; datos de contacto, empleados clave, cotizaciones, pedidos, descuentos, planes de pagos, ventas, mercadeo y planes de negocios; investigaciones y t&#xE9;cnicas; informaci&#xF3;n de oferta; informaci&#xF3;n sobre los h&#xE1;bitos de compra o preferencias de los clientes o clientes potenciales; precios, informaci&#xF3;n de utilidades y costos; informaci&#xF3;n de proveedores; ganancias, promociones, m&#xE1;rgenes de utilidad, eventos para clientes, los cuales constituyen para El Patr&#xF3;n una ventaja comercial y competitiva respecto de sus competidores. Esa informaci&#xF3;n es estrictamente confidencial pues El Patr&#xF3;n ha invertido en mecanismos que permitan conservar la confidencialidad de la informaci&#xF3;n y hacerla inaccesible a terceros ajenos a El Patr&#xF3;n.</p>
+                    <br/>
+                    <p><strong>7.3.&#9;</strong>El presente contrato de trabajo constituye la prevenci&#xF3;n de confidencialidad a que se refiere el art&#xED;culo 85 de la Ley de la Propiedad Industrial.</p>
+                    <br/>
+                    <p><strong>7.4.&#9;</strong>Por lo tanto, el Empleado se obliga <strong>(I)</strong> a utilizar La Informaci&#xF3;n Confidencial &#xFA;nica y exclusivamente para el trabajo contratado, <strong>(II)</strong> a no utilizarla en beneficio propio o de terceros y <strong>(III)</strong> a no divulgarla bajo ninguna circunstancia.</p>
+                    <br/>
+                    <p><strong>7.5.&#9;</strong>La violaci&#xF3;n por parte del Empleado a su obligaci&#xF3;n de confidencia y de no uso para beneficio personal o en beneficio de terceros de La Informaci&#xF3;n Confidencial, ser&#xE1; considerado como responsable de actos de revelaci&#xF3;n, apoderamiento y uso no autorizado de secretos industriales y ser&#xE1; acreedor a las multas, sanciones penales, y/o responsabilidad civil respecto de la reparaci&#xF3;n del da&#xF1;o material o la indemnizaci&#xF3;n por da&#xF1;os y perjuicios, de conformidad con lo previsto en la Ley de Propiedad Industrial, la Ley Federal de Derechos de Autor y de los C&#xF3;digos Penales de la Rep&#xFA;blica Mexicana.</p>
+                    <br/>
+                    <p><strong>7.6.&#9;</strong>Cuando por cualquier motivo se termine la relaci&#xF3;n de trabajo, El Empleado deber&#xE1; entregar y devolver a El Patr&#xF3;n toda la documentaci&#xF3;n que en original o copia permanezca o est&#xE9; relacionada con negocios de El Patr&#xF3;n, y que se encuentre en poder del Empleado o est&#xE9;n bajo su control en forma directa o indirecta.</p>
+                    <br/><br/>
+
+                    <!-- CL&#xC1;USULA 8: CAPACITACI&#xD3;N -->
+                    <p><strong>8.&#9;CAPACITACI&#xD3;N Y ADIESTRAMIENTO</strong></p>
+                    <br/>
+                    <p><strong>8.1.&#9;</strong>El Patr&#xF3;n se obliga a proporcionar al Empleado capacitaci&#xF3;n y adiestramiento en los t&#xE9;rminos de los planes y programas establecidos o que se establezca en El Patr&#xF3;n de conformidad a lo dispuesto por el T&#xED;tulo Cuarto, Cap&#xED;tulo III Bis, Art&#xED;culo 153-A de la Ley Federal del Trabajo. As&#xED; mismo, el Empleado se obliga a recibir dicha capacitaci&#xF3;n y adiestramiento.</p>
+                    <br/>
+                    <p><strong>8.2.&#9;</strong>De igual forma y por el puesto que desempe&#xF1;a el Empleado se obliga a proporcionar capacitaci&#xF3;n y adiestramiento al personal a su cargo, en los t&#xE9;rminos que indique El Patr&#xF3;n o en los t&#xE9;rminos que prevengan los planes y programas.</p>
+                    <br/><br/>
+
+                    <!-- CL&#xC1;USULA 9 (numerada 10 en el docx): EX&#xC1;MENES M&#xC9;DICOS -->
+                    <p><strong>10.&#9;EX&#xC1;MENES M&#xC9;DICOS Y SEGURIDAD E HIGIENE</strong></p>
+                    <br/>
+                    <p><strong>10.1.&#9;</strong>Si el Empleado cuenta con una prescripci&#xF3;n m&#xE9;dica que indique la necesidad del uso de una sustancia permitida, antes de comenzar sus servicios deber&#xE1; informar a El Patr&#xF3;n el hecho y entregar tal certificado expedido por un m&#xE9;dico autorizado. La omisi&#xF3;n del Empleado de notificar a El Patr&#xF3;n que est&#xE1; bajo tratamiento m&#xE9;dico que requiere el uso de tales sustancias controladas, puede resultar en la terminaci&#xF3;n de la relaci&#xF3;n de trabajo sin responsabilidad para El Patr&#xF3;n.</p>
+                    <br/>
+                    <p><strong>10.2.&#9;</strong>El Empleado conviene en someterse a los reconocimientos m&#xE9;dicos de ingreso o peri&#xF3;dicos que ordene El Patr&#xF3;n, en los t&#xE9;rminos de las fracciones II y X del art&#xED;culo 134 de la Ley Federal del Trabajo, los cuales pueden incluir ex&#xE1;menes para detectar el uso de drogas o el nivel de alcohol.</p>
+                    <br/>
+                    <p><strong>10.3.&#9;</strong>El resultado de los reconocimientos m&#xE9;dicos que se practiquen a El Empleado ser&#xE1; dado a conocer a &#xE9;ste y la informaci&#xF3;n ser&#xE1; tratada como datos personales sensibles. El costo de los ex&#xE1;menes, as&#xED; como los honorarios m&#xE9;dicos ser&#xE1;n con cargo exclusivo a El Patr&#xF3;n.</p>
+                    <br/>
+                    <p><strong>10.4.&#9;</strong>El Empleado se obliga a observar todas las medidas de seguridad e higiene que sean indicados por El Patr&#xF3;n o por la Comisi&#xF3;n Mixta correspondiente, con el objeto de evitar accidentes. De igual forma se obliga a utilizar el equipo de protecci&#xF3;n y seguridad que sea necesario para el desempe&#xF1;o de las labores y que sea otorgado por El Patr&#xF3;n.</p>
+                    <br/>
+                    <p><strong>10.5.&#9;</strong>El Empleado se obliga a no introducir a ninguna persona ajena a la empresa al cami&#xF3;n que tiene asignado para el desempe&#xF1;o de sus funciones, ni bebidas embriagantes, ni estupefacientes ni drogas de ninguna &#xED;ndole.</p>
+                    <br/>
+                    <p><strong>10.6.&#9;</strong>Queda estrictamente prohibido que El Empleado se lleve a su domicilio o a cualquier otro domicilio ajeno a la empresa, el cami&#xF3;n que tiene asignado para el desempe&#xF1;o de sus labores, por lo que se obliga a recogerlo en el centro de trabajo al inicio de sus labore, y a entregarlo al termino de las mismas.</p>
+                    <br/>
+                    <p><strong>10.7.&#9;</strong>El Empleado se obliga a circular en la unidad que tiene asignada por las vialidades permitidas por las leyes y reglamentos viales, por lo que para el indebido caso de que por su descuido, negligencia o irresponsabilidad, incumpla con las leyes y reglamentos en referencia que ameriten alguna sanci&#xF3;n o infracci&#xF3;n, el empleado se obliga a cumplir y/o pagar en su caso, las sanciones e infracciones que contemplen las leyes y reglamentos viales, as&#xED; como a reparar los da&#xF1;os ocasionados en los bienes y patrimonio de la empresa.</p>
+                    <br/><br/>
+
+                    <!-- CL&#xC1;USULA 11: NO DISCRIMINACI&#xD3;N -->
+                    <p><strong>11.&#9;NO DISCRIMINACI&#xD3;N</strong></p>
+                    <br/>
+                    <p><strong>11.1.&#9;</strong>El Patr&#xF3;n respeta plenamente la dignidad humana de los trabajadores a su servicio; no tolera discriminaci&#xF3;n por origen &#xE9;tnico o nacional, g&#xE9;nero, edad, discapacidad, condici&#xF3;n social, condiciones de salud, religi&#xF3;n, condici&#xF3;n migratoria, opiniones, preferencias sexuales o estado civil; tampoco permite conductas que impliquen un trato desigual por cuesti&#xF3;n de g&#xE9;nero.</p>
+                    <br/>
+                    <p><strong>11.2.&#9;</strong>En virtud de lo anterior queda prohibido al Empleado (I) incurrir en, o (II) permitir que otros incurran en actos inmorales o de hostigamiento y/o acoso sexual contra cualquier persona en el establecimiento o lugar de trabajo o incurrir en actos de discriminaci&#xF3;n de cualquier tipo.</p>
+                    <br/><br/>
+
+                    <!-- CL&#xC1;USULA 12: BENEFICIARIOS -->
+                    <p><strong>12.&#9;DESIGNACI&#xD3;N DE BENEFICIARIOS</strong></p>
+                    <br/>
+                    <p><strong>12.1.&#9;</strong>Para los efectos de lo previsto por la fracci&#xF3;n X del art&#xED;culo 25 de la Ley Federal del Trabajo, el trabajador designa como beneficiarios a las personas que se indica a continuaci&#xF3;n:</p>
+                    <br/>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <tr>
+                            <th style="border: 1px solid #000; padding: 5px; text-align: center;"><strong>NOMBRE</strong></th>
+                            <th style="border: 1px solid #000; padding: 5px; text-align: center;"><strong>PARENTESCO</strong></th>
+                            <th style="border: 1px solid #000; padding: 5px; text-align: center;"><strong>PORCENTAJE</strong></th>
+                        </tr>
+                        <t t-if="o.beneficiario_ids">
+                            <t t-foreach="o.beneficiario_ids" t-as="ben">
+                                <tr>
+                                    <td style="border: 1px solid #000; padding: 5px;"><t t-esc="ben.nombre_id.name or ''"/></td>
+                                    <td style="border: 1px solid #000; padding: 5px;"><t t-esc="ben.parentesco_id.nombre or ''"/></td>
+                                    <td style="border: 1px solid #000; padding: 5px; text-align: center;"><t t-esc="str(ben.porcentaje)"/>%</td>
+                                </tr>
+                            </t>
+                        </t>
+                        <t t-else="">
+                            <tr><td style="border: 1px solid #000; padding: 12px;"> </td><td style="border: 1px solid #000; padding: 12px;"> </td><td style="border: 1px solid #000; padding: 12px;"> </td></tr>
+                            <tr><td style="border: 1px solid #000; padding: 12px;"> </td><td style="border: 1px solid #000; padding: 12px;"> </td><td style="border: 1px solid #000; padding: 12px;"> </td></tr>
+                            <tr><td style="border: 1px solid #000; padding: 12px;"> </td><td style="border: 1px solid #000; padding: 12px;"> </td><td style="border: 1px solid #000; padding: 12px;"> </td></tr>
+                        </t>
+                    </table>
+                    <br/>
+
+                    <!-- CL&#xC1;USULA 13: DATOS PERSONALES -->
+                    <p><strong>13.&#9;DATOS PERSONALES Y AVISO DE PRIVACIDAD</strong></p>
+                    <br/>
+                    <p><strong>13.1.&#9;</strong>En cumplimiento a la Ley Federal de Protecci&#xF3;n de Datos Personales en Posesi&#xF3;n de Particulares se expide el presente Aviso de Privacidad con la finalidad de informar al El Trabajador el uso que El Patr&#xF3;n dar&#xE1; a los datos personales que ha recabado del Empleado y los que llegue a recabar en el curso de la relaci&#xF3;n de trabajo, tales como domicilio, edad, religi&#xF3;n, estado civil, condici&#xF3;n de salud, correo electr&#xF3;nico, n&#xFA;meros telef&#xF3;nicos, cuentas bancarias, nombre de c&#xF3;nyuge, hijos, beneficiarios, documentos de su identidad, calidad migratoria y nacionalidad, registro federal de contribuyentes, Clave &#xDA;nica de Registro de Poblaci&#xF3;n y n&#xFA;mero de seguridad social, entre otros.</p>
+                    <br/>
+                    <p><strong>13.2.&#9;</strong>Los datos personales y personales sensibles del Empelado ser&#xE1;n utilizados por El Patr&#xF3;n exclusivamente para las finalidades de la relaci&#xF3;n de trabajo y para efectos de cumplimiento de obligaciones en materia fiscal y de seguridad social y no ser&#xE1;n transferidos a ning&#xFA;n tercero ajeno a ella, salvo para el cumplimiento de las obligaciones legales ante las autoridades competentes tales como Instituto Mexicano del Seguro Social, Instituto del Fondo Nacional para la Vivienda de los Trabadores, Instituto Nacional del Fondo de Consumo para los Trabajadores, las autoridades tributarias, as&#xED; como las autoridades judiciales.</p>
+                    <br/>
+                    <p><strong>13.3.&#9;</strong>El Trabajador puede <strong>(I)</strong> acceder, rectificar, cancelar, oponerse, limitar y revocar el uso o divulgaci&#xF3;n de sus datos personales y datos personales sensibles y <strong>(II)</strong> contactar a El Patr&#xF3;n en caso de que tenga alguna duda en relaci&#xF3;n al aviso de privacidad contenido en esta cl&#xE1;usula, podr&#xE1; presentar su solicitud por escrito personalmente en el domicilio de El Patr&#xF3;n dirigida al Encargado de Datos Personales el cual ha sido designado como encargado de la privacidad en El Patr&#xF3;n.</p>
+                    <br/>
+                    <p><strong>13.4.&#9;</strong>El aviso de privacidad contenido en el presente contrato puede sufrir modificaciones, cambios o actualizaciones que ser&#xE1;n informados al Empleado v&#xED;a correo electr&#xF3;nico y que &#xE9;ste podr&#xE1; consultar en la p&#xE1;gina de Internet de El Patr&#xF3;n.</p>
+                    <br/><br/>
+
+                    <!-- CL&#xC1;USULA 14: ACUERDO COMPLETO -->
+                    <p><strong>14.&#9;ACUERDO COMPLETO</strong></p>
+                    <br/>
+                    <p><strong>14.1.&#9;</strong>Este contrato contiene el acuerdo completo celebrado entre las partes las que convienen en someterse a los t&#xE9;rminos y condiciones aqu&#xED; estipuladas.</p>
+                    <br/>
+                    <p><strong>14.2.&#9;</strong>Para todo aquello que no haya sido motivo de pacto expreso por las partes en este contrato, las mismas se obligan en los t&#xE9;rminos m&#xED;nimos establecidos por la Ley Federal del Trabajo.</p>
+                    <br/><br/><br/>
+
+                    <!-- CIERRE -->
+                    <p>
+                        <strong>L E &#xCD; D O</strong> que fue el presente Contrato y enteradas las Partes de su contenido y
+                        del alcance de las obligaciones que contraen, lo firman por duplicado en
+                        <t t-esc="(empresa_partner.street or '').upper()"/>
+                        <t t-if="empresa_partner.street2">, <t t-esc="empresa_partner.street2.upper()"/></t>,
+                        <t t-esc="(empresa_partner.city or '').upper()"/>,
+                        <t t-esc="(empresa_partner.state_id.name or '').upper() if empresa_partner.state_id else ''"/>,
+                        CP <t t-esc="empresa_partner.zip or ''"/>,
+                        el <t t-esc="fecha_inicio_str"/>.
+                    </p>
+                    <br/><br/><br/><br/>
+
+                    <!-- Tabla de firmas -->
+                    <table style="width: 100%; border: none; border-collapse: collapse;">
+                        <tr>
+                            <td style="width: 45%; text-align: center; border: none; vertical-align: top; padding: 10px;">
+                                <strong>POR EL PATR&#xD3;N</strong><br/><br/><br/>
+                                ____________________________________<br/>
+                                <span t-field="representante.representante_id.name"/><br/>
+                                <t t-esc="empresa_partner.name"/>
+                            </td>
+                            <td style="width: 10%; border: none;"></td>
+                            <td style="width: 45%; text-align: center; border: none; vertical-align: top; padding: 10px;">
+                                <strong>EL EMPLEADO</strong><br/><br/><br/>
+                                _____________________________________<br/>
+                                <span t-field="emp.name"/><br/>
+                                <span t-field="emp.job_id.name"/>
+                            </td>
+                        </tr>
+                    </table>
+
+                </div>
+            </t>
+        </template>
+
+        <template id="hr_extra.report_hr_contract_prueba">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="hr_extra.report_hrcontract_prueba_template" t-lang="o.employee_id.lang or 'es_MX'"/>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>

@@ -49,6 +49,7 @@ class requisitionResidents(models.Model):
     campamento_ids = fields.One2many('requisition.campamentos', 'req_id', string='Campamentos')
     maquinaria_ids = fields.One2many('requisition.maquinaria', 'req_id', string='Maquinaria')
     cash_ids = fields.One2many('requisition.cash', 'req_id', string='Caja Chica')
+    fuel_ids = fields.One2many('requisition.fuel', 'req_id', string='Combustible')
     nom_ids = fields.One2many('requisition.nomina', 'req_id', string='Nomina')
     rweekly_id = fields.Many2one('requisition.weekly', readonly=True)
 
@@ -109,21 +110,47 @@ class requisitionResidents(models.Model):
                 lines = {'category': 'Nómina', 'relacion': relacion[:-1], 'description': 'Nómina', 'partner_id': self.employee_id.work_contact_id.id, 
                     'fuerza_untaxed': fe, 'amount_untaxed': total, 'fuerza_total': ff, 'amount_total': total_fiscal}
                 req_lines.append((0, 0, lines))
+        if self.fuel_ids:
+            self.env.cr.execute('''SELECT partner_id, SUM(CASE WHEN ra.type_pay = 'FISCAL' THEN amount ELSE 0 END) fiscal, 
+                    SUM(CASE WHEN ra.type_pay = 'EFECTIVO' THEN amount ELSE 0 END) efectivo
+                FROM requisition_fuel ra WHERE req_id = ''' + str(self.id) + ' GROUP BY 1')
+            combustible = self.env.cr.dictfetchall()
+            for rec in combustible:
+                lines = {'category': 'Combustible', 'description': 'Combustible', 'partner_id': rec['partner_id'], 'amount_untaxed': rec['efectivo'], 
+                    'amount_total': rec['fiscal']}
+                req_lines.append((0, 0, lines))
         if self.cash_ids:
             total = 0
             total_fiscal = 0
             relacion = ''
-            for rec in self.cash_ids:
-                if rec.amount != 0:
-                    if rec.type_comp == 'fact':
-                        total_fiscal += rec.amount
-                    else:
-                        total += rec.amount
-                    relacion = relacion + str(rec.id) + ','
-            if relacion != '':
-                lines = {'category': 'Caja Chica', 'relacion': relacion[:-1], 'description': 'Reposición de Caja Chica', 
-                    'partner_id': self.employee_id.work_contact_id.id, 'amount_untaxed': total, 'amount_total': total_fiscal}
-                req_lines.append((0, 0, lines))
+            if self.state == 'draft':
+                for rec in self.cash_ids:
+                    if rec.amount >= 2000:
+                        raise ValidationError('El importe capturado en Caja Chica rebasa los limites. Favor de solicitar mediante una orden de compra.')
+                    if rec.amount != 0:
+                        if rec.type_comp == 'fact':
+                            total_fiscal += rec.amount
+                        else:
+                            total += rec.amount
+                        relacion = relacion + str(rec.id) + ','
+                if relacion != '':
+                    lines = {'category': 'Caja Chica', 'relacion': relacion[:-1], 'description': 'Reposición de Caja Chica', 
+                        'partner_id': self.employee_id.work_contact_id.id, 'amount_untaxed': total, 'amount_total': total_fiscal}
+                    req_lines.append((0, 0, lines))
+            else:
+                for rec in self.cash_ids:
+                    if rec.amount >= 2000:
+                        raise ValidationError('El importe capturado en Caja Chica rebasa los limites. Favor de solicitar mediante una orden de compra.')
+                    if rec.amount != 0 and rec.comp:
+                        if rec.type_comp == 'fact':
+                            total_fiscal += rec.amount
+                        else:
+                            total += rec.amount
+                        relacion = relacion + str(rec.id) + ','
+                if relacion != '':
+                    lines = {'category': 'Caja Chica', 'relacion': relacion[:-1], 'description': 'Reposición de Caja Chica', 
+                        'partner_id': self.employee_id.work_contact_id.id, 'amount_untaxed': total, 'amount_total': total_fiscal}
+                    req_lines.append((0, 0, lines))
         if self.campamento_ids:
             self.env.cr.execute('''SELECT partner_id, SUM(CASE WHEN ra.type_pay = 'FISCAL' THEN price ELSE 0 END) fiscal, 
                     SUM(CASE WHEN ra.type_pay = 'EFECTIVO' THEN price ELSE 0 END) efectivo
@@ -234,18 +261,24 @@ class requisitionResidents(models.Model):
 
         self.state = 'send'
 
+     
+    def action_nomina(self):
+        raise ValidationError('Todavía esta pendiente........')
+
     def action_confirm(self):
         c = 0
         ccamp = len(self.campamento_ids.filtered(lambda u: not u.account_id))
         cmaq = len(self.maquinaria_ids.filtered(lambda u: not u.account_id))
         ccar = len(self.acarreo_ids.filtered(lambda u: not u.account_id))
         cdest = len(self.destajo_ids.filtered(lambda u: not u.account_id))
+        cfuel = len(self.fuel_ids.filtered(lambda u: not u.account_id))
         c = ccamp + cmaq + ccar + cdest
         if c != 0:
             raise ValidationError('Hay información sin la cuenta bancaria a depositar, favor de revisar.')
 
         self.action_resumen()
         self.state = 'aprobado'
+
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -517,7 +550,7 @@ class requisitionMaquinariaLine(models.Model):
     qty = fields.Float(string='Litros')
     amount = fields.Float(string='Importe')
     rendimiento = fields.Float(string='Rendimiento')
-    vale = fields.Char(string='No. de valde de maquinaria')
+    vale = fields.Char(string='No. de vale')
 
     @api.depends('product_id')
     def _compute_product_template_id(self):
@@ -575,6 +608,7 @@ class requisitionCash(models.Model):
     observaciones = fields.Char(string='Observaciones')
     foto = fields.Binary(string='Foto', attachment=True)
     foto_name = fields.Char(string='Nombre de la foto del comprobante')
+    state = fields.Selection(related='req_id.state', string='Estatus')
 
     @api.depends('product_id')
     def _compute_product_template_id(self):
@@ -590,7 +624,50 @@ class requisitionCash(models.Model):
             if self.fecha > self.req_id.ffinal or self.fecha < self.req_id.finicio:
                 raise ValidationError('La fecha capturada no esta dentro del periodo capturado')
 
+    @api.onchange('amount')
+    def onchange_amount(self):
+        if self.amount:
+            if self.amount >= 2000.0:
+                self.amount = 0.0
+                raise ValidationError('El importe capturado rebasa los limites. Favor de solicitar una orden de compra.')
+
     # Falta agregar la validación de que la línea no exista en otra requisición, una vez que se tengan ejemplos de captura
+
+
+class requisitionFuel(models.Model):
+    _name = 'requisition.fuel'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _description = 'Combustible'
+
+    req_id = fields.Many2one('requisition.residents', readonly=True)
+    product_id = fields.Many2one(comodel_name='product.product', string='Elemento', change_default=True, ondelete='restrict', 
+        domain="[('purchase_ok', '=', True), ('default_code', '=', 'C00001')]")
+    product_template_id = fields.Many2one(comodel_name='product.template', string='Product Template', compute='_compute_product_template_id',
+        search='_search_product_template_id', domain=[('purchase_ok', '=', True)])
+    partner_id = fields.Many2one('res.partner', string='Proveedor')
+    reference = fields.Char(string='Referencia')
+    observaciones = fields.Char(string='Observaciones')
+    amount = fields.Float(string='Monto Gasto')
+    comprobantes_ids = fields.Many2many(comodel_name='ir.attachment', string='Comprobantes')
+    account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
+    type_pay = fields.Char(string='Tipo de pago', compute='_compute_type_pay', store=True, readonly=True)
+
+    @api.depends('product_id')
+    def _compute_product_template_id(self):
+        for line in self:
+            line.product_template_id = line.product_id.product_tmpl_id
+
+    def _search_product_template_id(self, operator, value):
+        return [('product_id.product_tmpl_id', operator, value)]
+
+    @api.depends('account_id')
+    def _compute_type_pay(self):
+        for req in self:
+            if req.account_id:
+                if req.account_id.type_pay == 'fiscal':
+                    req.type_pay = 'FISCAL'
+                else:
+                    req.type_pay = 'EFECTIVO'
 
 
 class requisitionNomina(models.Model):
@@ -653,8 +730,8 @@ class requisitionWeekly(models.Model):
             raise UserError('El usuario no tiene las facultades para realizar esta acción')
 
         for rec in self.line_ids:
-            if not rec.aprobado and rec.importe == 0.0:
-                raise ValidationError('El registro del concepto %s no esta aprobado, favor de revisar'% rec.concepto)
+            """if not rec.aprobado and rec.importe == 0.0:
+                raise ValidationError('El registro del concepto %s no esta aprobado, favor de revisar'% rec.concepto) """
             if not rec.aprobado and rec.importe != 0.0 and rec.importe > rec.adeudo:
                 raise ValidationError('El registro del concepto %s tiene un importe mayor al aprobado, favor de revisar'% rec.concepto)
 
@@ -683,9 +760,10 @@ class requisitionWeekly(models.Model):
                 else:
                     importe = ad.importe
 
-                ade_line = self.env['requisition.debt.line'].create({'fecha': rec['fecha'], 'project_id': ad.project_id.id, 'debit': 0.0, 'credit': importe, 
-                    'concepto': ad.concepto, 'origen': self.name, 'reqw_id': self.id, 'movcta_id': cta_line.id, 'req_id': ad.debt_id.req_id.id, 
-                    'reqres_id': ad.debt_id.id, 'type_pay': ad.type_pay})
+                if importe != 0.0:
+                    ade_line = self.env['requisition.debt.line'].create({'fecha': rec['fecha'], 'project_id': ad.project_id.id, 'debit': 0.0, 'credit': importe,
+                        'concepto': ad.concepto, 'origen': self.name, 'reqw_id': self.id, 'movcta_id': cta_line.id, 'req_id': ad.debt_id.req_id.id, 
+                        'reqres_id': ad.debt_id.reqres_id.id, 'type_pay': ad.type_pay})
             self.write({'state': 'done'})
 
 
@@ -707,6 +785,7 @@ class requisitionWeeklyLine(models.Model):
     adeudo = fields.Float(string='Adeudo')
     aprobado = fields.Boolean(string='Adeudo aprobado', default=False)
     importe = fields.Float(string='Abono', default='0.0')
+    comentarios = fields.Char(string='Comentarios')
     accountbank_id = fields.Many2one('requisition.bank.account', string='Cuenta bancaria', domain="[('obsolete', '=', False)]")
     debt_id = fields.Many2one('requisition.debt.line', string='Linea de adeudo')
     state = fields.Selection(related='weekly_id.state', string='Estatus')

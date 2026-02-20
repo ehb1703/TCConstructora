@@ -19,7 +19,6 @@
                 <field name="codigo"/>
                 <field name="nombre"/>
                 <field name="descripcion"/>
-                <field name="active"/>
             </list>
         </field>
     </record>
@@ -32,12 +31,11 @@
                 <sheet>
                     <group>
                         <group>
+                            <field name="active" invisible="1"/>
                             <field name="codigo"/>
                             <field name="nombre"/>
                         </group>
-                        <group>
-                            <field name="active"/>
-                        </group>
+                        <group/>
                     </group>
                     <group>
                         <field name="descripcion" placeholder="Explicación detallada del parentesco y su alcance legal/administrativo..."/>
@@ -48,6 +46,50 @@
         </field>
     </record>
 
-    <menuitem id="menu_hr_parentesco" name="Parentescos" parent="hr.menu_human_resources_configuration" action="action_hr_parentesco" sequence="25"/>
+    <record id="action_hr_contract_empresa" model="ir.actions.act_window">
+        <field name="name">Empresas para contratos</field>
+        <field name="res_model">hr.contract.empresa</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Agregar empresa para contratos</p>
+            <p>Configure la empresa que aparecerá en cada tipo de contrato.</p>
+        </field>
+    </record>
 
+    <record id="view_hr_contract_empresa_list" model="ir.ui.view">
+        <field name="name">hr.contract.empresa.list</field>
+        <field name="model">hr.contract.empresa</field>
+        <field name="arch" type="xml">
+            <list string="Empresas para contratos" editable="top">
+                <field name="tipo_contrato_id"/>
+                <field name="empresa_id"/>
+                <field name="fecha_inicio"/>
+                <field name="fecha_fin"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hr_contract_empresa_form" model="ir.ui.view">
+        <field name="name">hr.contract.empresa.form</field>
+        <field name="model">hr.contract.empresa</field>
+        <field name="arch" type="xml">
+            <form string="Empresa para contrato">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="tipo_contrato_id"/>
+                            <field name="empresa_id" options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <field name="fecha_inicio"/>
+                            <field name="fecha_fin"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_hr_contract_empresa" name="Empresas para contratos" parent="hr_contract.menu_human_resources_configuration_contract" action="action_hr_contract_empresa" sequence="10"/>
+    <menuitem id="menu_hr_parentesco" name="Parentescos" parent="hr_contract.menu_human_resources_configuration_contract" action="action_hr_parentesco" sequence="12"/>
 </odoo>

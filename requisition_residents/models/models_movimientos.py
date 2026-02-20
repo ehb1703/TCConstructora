@@ -10,7 +10,7 @@ class requisitionDebt(models.Model):
     _name = 'requisition.debt'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'partner_id'
-    _description = 'Adeudo por proveedor'
+    _description = 'Estado de cuenta del Proveedor'
 
     partner_id = fields.Many2one('res.partner', string='Proveedor')
     amount_total = fields.Float(string='Total', compute='_compute_amount', store=True, readonly=True)
@@ -37,7 +37,8 @@ class requisitionDebt(models.Model):
 
 class requisitionDebtLine(models.Model):
     _name = 'requisition.debt.line'
-    _description = 'Momivientos'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _description = 'Movimientos'
 
     req_id = fields.Many2one('requisition.debt', readonly=True)
     project_id = fields.Many2one('project.project', string='Obra')
@@ -49,6 +50,9 @@ class requisitionDebtLine(models.Model):
     type_pay = fields.Char(string='Tipo de pago', readonly=True)
     recibo = fields.Binary(string='Recibo', attachment=True)
     recibo_name = fields.Char(string='Nombre del recibo')
+    account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
+    comprobantes_ids = fields.Many2many(comodel_name='ir.attachment', string='Comprobantes')
+    observaciones = fields.Char(string='Observaciones')
     reqres_id = fields.Many2one('requisition.residents', string='Requisición Residente')
     movcta_id = fields.Many2one('requisition.bank.movements', string='Movimiento bancario')
     reqw_id = fields.Many2one('requisition.weekly', string='Requisición semanal')

@@ -21,6 +21,7 @@
                 <field name="amount_untaxed"/>
                 <field name="amount_total"/>
                 <field name="state"/>
+                <field name="out_time" groups="requisition_residents.group_requisition_admin"/>
             </list>
         </field>
     </record>
@@ -33,7 +34,8 @@
                 <header>
                     <button string="Resumen" name="action_resumen" type="object" class="btn-primary" invisible="state != 'draft'"/>
                     <button string="Enviar" name="action_send" type="object" class="btn-primary" invisible="state != 'draft'"/>
-                    <button string="Aprobar" name="action_confirm" type="object" class="btn-primary" invisible="state != 'send'"/>
+                    <button string="Actualizar nómina" name="action_nomina" type="object" class="btn-primary" invisible="state == 'draft'" groups="requisition_residents.group_requisition_admin"/>
+                    <button string="Aprobar" name="action_confirm" type="object" class="btn-primary" invisible="state != 'send'" groups="requisition_residents.group_requisition_admin"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -64,7 +66,7 @@
                                     <field name="description"/>
                                     <field name="partner_id"/>
                                     <field name="amount_untaxed"/>
-                                    <field name="amount_total"/>
+                                    <field name="amount_total" string='Importe con IVA'/>
                                 </list>
                                 <form><p>Información no disponible a través de esta vista</p></form>
                             </field>
@@ -91,19 +93,35 @@
                                     <field name="categoria"/>
                                     <field name="type_comp" string="Comprobante"/>
                                     <field name="reference"/>
-                                    <field name="comp"/>
+                                    <field name="comp" groups="requisition_residents.group_requisition_admin" readonly="state == 'draft'"/>
                                     <field name="observaciones"/>
                                     <field name="foto" filename="foto_name" widget="binary"/>
                                 </list>
                                 <form><p>Información no disponible a través de esta vista</p></form>
                             </field>
                         </page>
+                        <page string="Combustible">
+                            <field name="fuel_ids" widget="one2many_list">
+                                <list create="true" delete="true" editable="bottom" context="{'default_req_id': id}">
+                                    <field name="product_template_id" column_invisible="1"/>
+                                    <field name="type_pay" column_invisible="1"/>
+                                    <field name="product_id"/>
+                                    <field name="partner_id"/>
+                                    <field name="amount" string="Importe" sum="amount"/>
+                                    <field name="reference"/>
+                                    <field name="observaciones"/>
+                                    <field name="account_id" domain="[('partner_id', '=', partner_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="comprobantes_ids" widget="many2many_binary"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
+                            </field>
+                        </page>
                         <page string="Nómina">
                             <field name="nom_ids" widget="one2many_list">
-                                <list create="true" delete="true" editable="bottom" context="{'default_req_id': id}">
-                                    <field name="employee_id"/>
-                                    <field name="job_id"/>
-                                    <field name="salary" sum="salary"/>
+                                <list create="false" delete="false" editable="bottom" context="{'default_req_id': id}">
+                                    <field name="employee_id" readonly="1"/>
+                                    <field name="job_id" readonly="1"/>
+                                    <field name="salary" sum="salary" readonly="1"/>
                                     <field name="observaciones"/>
                                 </list>
                                 <form><p>Información no disponible a través de esta vista</p></form>
@@ -115,7 +133,7 @@
                                     <field name="destajo_id"/>
                                     <field name="partner_id"/>
                                     <field name="fuerza"/>
-                                    <field name="account_id"/>
+                                    <field name="account_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="type_pay" invisible="not account_id"/>
                                     <field name="amount_total" sum="amount_total"/>
                                 </list>
@@ -129,7 +147,7 @@
                                             <field name="partner_id"/>
                                         </group>
                                         <group>
-                                            <field name="account_id" domain="[('partner_id', '=', partner_id)]" readonly="state == 'draft' or state == False"/>
+                                            <field name="account_id" domain="[('partner_id', '=', partner_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                             <field name="fuerza"/>
                                         </group>        
                                     </group>
@@ -181,7 +199,7 @@
                                     <field name="price"/>
                                     <field name="qty"/>
                                     <field name="amount"/>
-                                    <field name="account_id" domain="[('partner_id', '=', partner_id)]" readonly="state == 'draft' or state == False"/>
+                                    <field name="account_id" domain="[('partner_id', '=', partner_id)]" readonly="state == 'draft' or state == False" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                 </list>
                                 <form><p>Información no disponible a través de esta vista</p></form>
                             </field>
@@ -199,7 +217,7 @@
                                     <field name="price"/>
                                     <field name="periodo"/>
                                     <field name="deposito"/>
-                                    <field name="account_id" domain="[('partner_id', '=', partner_id)]" readonly="state == 'draft' or state == False"/>
+                                    <field name="account_id" domain="[('partner_id', '=', partner_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                 </list>
                                 <form><p>Información no disponible a través de esta vista</p></form>
                             </field>
@@ -240,7 +258,7 @@
                                             <field name="justification"/>
                                             <field name="autoriza_id"/>
                                             <field name="horometro"/>
-                                            <field name="account_id" domain="[('partner_id', '=', partner_id)]" readonly="state == 'draft' or state == False"/>
+                                            <field name="account_id" domain="[('partner_id', '=', partner_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                             <field name="type_pay" invisible="not account_id"/>
                                         </group>        
                                     </group>
@@ -336,6 +354,7 @@
                                     <field name="adeudo" readonly="1"/>
                                     <field name="aprobado" readonly="state != 'rev'"/>
                                     <field name="importe" readonly="state != 'rev'"/>
+                                    <field name="comentarios" readonly="state != 'rev'"/>
                                     <field name="accountbank_id" readonly="state != 'apr'" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="supplier_id" readonly="1" context="{'special_display_name': True}" options="{'no_create':True, 'no_edit':True}"/>
                                 </list>
@@ -353,6 +372,31 @@
                     </notebook>
                 </sheet>
                 <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_requisition_weekly_line_form" model="ir.ui.view">
+        <field name="name">view.requisition.weekly.line.form</field>
+        <field name="model">requisition.weekly.line</field>
+        <field name="arch" type="xml">
+            <form delete="0" create="0" edit="0">
+                <sheet>
+                    <group>
+                        <field name="company_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                        <field name="project_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                        <field name="concepto" readonly="1"/>
+                        <field name="partner_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                        <field name="fuerza" readonly="1"/>
+                        <field name="type_pay" readonly="1"/>
+                        <field name="origen" readonly="1"/>
+                        <field name="adeudo" readonly="1"/>
+                        <field name="aprobado" readonly="1"/>
+                        <field name="importe" readonly="1"/>
+                        <field name="comentarios" readonly="state != 'rev'"/>
+                        <field name="accountbank_id" readonly="state != 'apr'" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                    </group>
+                </sheet>
             </form>
         </field>
     </record>

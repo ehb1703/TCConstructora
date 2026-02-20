@@ -13,8 +13,8 @@ class CtrolAsistencias(models.Model):
     _order = 'check_date desc, id desc'
     _rec_name = 'id'
 
-    employee_id = fields.Integer(string='ID Empleado', required=True, help='Número de empleado desde el checador')
-    registration_number = fields.Char(string='Número de Empleado', required=True, index=True, 
+    employee_id = fields.Integer(string='ID Empleado', help='Número de empleado desde el checador')
+    registration_number = fields.Char(string='Número de Empleado', index=True, 
         help='Número de empleado desde el checador (identificador principal)')
     check_type = fields.Selection([('entrada', 'Entrada'), ('salida', 'Salida') ], string='Tipo de Registro', required=True, default='entrada')
     status = fields.Selection([('success', 'Exitoso'), ('error', 'Error')], string='Estado del Registro', default='success', required=True,

@@ -1,28 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <record id="action_report_hr_contract" model="ir.actions.report">
-        <field name="name">Contrato Temporal</field>
-        <field name="model">hr.contract</field>
-        <field name="report_type">qweb-pdf</field>
-        <field name="report_name">hr_extra.report_hr_contract</field>
-        <field name="report_file">hr_extra.report_hr_contract</field>
-        <field name="print_report_name">'Contrato - %s' % (object.name)</field>
-        <field name="binding_model_id" ref="model_hr_contract"/>
-        <field name="binding_type">report</field>
-    </record>
-
+    <!-- Acción: Contrato Obra Determinada (Base) -->
     <record id="action_report_hrcontract_obra" model="ir.actions.report">
         <field name="name">Contrato Obra Determinada</field>
         <field name="model">hr.contract</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">hr_extra.report_hrcontract_obra</field>
         <field name="report_file">hr_extra.report_hrcontract_obra</field>
-        <field name="print_report_name">'Contrato - %s' % (object.name)</field>
+        <field name="print_report_name">'Contrato Obra - %s' % (object.name)</field>
         <field name="binding_model_id" ref="model_hr_contract"/>
         <field name="binding_type">report</field>
     </record>
 
+    <!-- Acción: Contrato Por Periodo de Prueba -->
+    <record id="action_report_hr_contract_prueba" model="ir.actions.report">
+        <field name="name">Contrato Por Periodo de Prueba</field>
+        <field name="model">hr.contract</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hr_extra.report_hr_contract_prueba</field>
+        <field name="report_file">hr_extra.report_hr_contract_prueba</field>
+        <field name="print_report_name">'Contrato Prueba - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_hr_contract"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Acción: Contrato Indeterminado (Oficina) -->
+    <record id="action_report_hrcontract_indeterminado" model="ir.actions.report">
+        <field name="name">Contrato Indeterminado</field>
+        <field name="model">hr.contract</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hr_extra.report_hrcontract_indeterminado</field>
+        <field name="report_file">hr_extra.report_hrcontract_indeterminado</field>
+        <field name="print_report_name">'Contrato Indeterminado - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_hr_contract"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Acción: Convenio de Confidencialidad -->
     <record id="action_report_convenio_confidencialidad" model="ir.actions.report">
         <field name="name">Convenio de Confidencialidad</field>
         <field name="model">hr.contract</field>

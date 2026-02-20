@@ -68,6 +68,7 @@ class respartnerCurp(models.Model):
                 vals['name'] = name
         return super().create(vals_list)
 
+
     def write(self, values):
         company = self.is_company
         nombre = self.nombre

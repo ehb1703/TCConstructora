@@ -42,6 +42,7 @@ class hrEmployeeInherit(models.Model):
     state = fields.Selection(selection=[('activo','Activo'), ('baja','Baja'), ('pensionado','Pensionado'), ('incapacidad','Incapacidad'), 
         ('permiso','Permiso')],
         string='Estado Actual', default='activo', tracking=True)
+    empresa_empleadora = fields.Many2one('res.company', string='Empresa empleadora')
 
     @api.onchange('work_contact_id')
     def onchange_name(self):
@@ -133,8 +134,8 @@ class hrEmployeeInherit(models.Model):
             # image_1920 ya está en base64
             photo_base64 = self.image_1920.decode('utf-8') if isinstance(self.image_1920, bytes) else str(self.image_1920)
         
-        # Obtener company (nombre de la compañía)
-        company_name = self.company_id.name if self.company_id else ''
+        # Obtener company: usa empresa_empleadora si está capturada, si no usa company_id del empleado
+        company_name = self.empresa_empleadora.name if self.empresa_empleadora else (self.company_id.name if self.company_id else '')
         
         # Asegurar que project nunca esté vacío
         project_name = self.current_project_name or 'Oficina'
@@ -254,9 +255,11 @@ class hrContractInherit(models.Model):
     total_porcentaje = fields.Integer(string='Total', compute='_compute_total_porcentaje', store=True)
     contract_type_name = fields.Char(string='Tipo de contrato nombre', related='contract_type_id.name', store=False)
     project_id = fields.Many2one('project.project', string='Obra')
+    empresa_contrato_id = fields.Many2one('hr.contract.empresa', string='Empresa para contrato', compute='_compute_empresa_contrato', store=False)
     l10n_mx_schedule_pay_temp = fields.Selection(selection=[('daily', 'Diario'), ('weekly', 'Semanal'), ('10_days', '10 Dias'), ('14_days', '14 Dias'), 
         ('bi_weekly', 'Quincenal'), ('monthly', 'Mensual'), ('bi_monthly', 'Bimestral'),], 
         compute='_compute_l10n_mx_schedule_pay', store=True, readonly=False, required=True, string='Pago', default='weekly', index=True)
+    wage_type = fields.Selection([('monthly', 'Fixed Wage'), ('hourly', 'Hourly Wage')], compute='_compute_wage_type', store=True, readonly=True)
     daily_wage = fields.Monetary(string='Salario diario', compute='_compute_daily_wage', readonly=True, store=True)
 
     @api.depends('beneficiario_ids', 'beneficiario_ids.porcentaje')
@@ -283,11 +286,33 @@ class hrContractInherit(models.Model):
             if total > 100:
                 raise ValidationError(_('El total de porcentajes de beneficiarios no puede exceder el 100%%. Actualmente es %s%%.') % total)
 
+    @api.depends('contract_type_id')
+    def _compute_empresa_contrato(self):
+        for contract in self:
+            empresa = self.env['hr.contract.empresa'].search([('tipo_contrato_id', '=', contract.contract_type_id.id)], limit=1)
+            contract.empresa_contrato_id = empresa
+
+    def _get_empresa_contrato(self):
+        # Obtiene la empresa configurada para el tipo de contrato actual.
+        self.ensure_one()
+        empresa = self.env['hr.contract.empresa'].search([('tipo_contrato_id', '=', self.contract_type_id.id)], limit=1)
+        return empresa
+
     def action_report_contract(self):
-        if self.contract_type_id.name == 'Obra determinada':
+        tipo = self.contract_type_id.name
+        if tipo == 'Obra determinada':
             return self.env.ref('hr_extra.action_report_hrcontract_obra').report_action(self)
+        elif tipo == 'Indeterminado':
+            return self.env.ref('hr_extra.action_report_hrcontract_indeterminado').report_action(self)
+        elif tipo == 'Por periodo de prueba':
+            return self.env.ref('hr_extra.action_report_hr_contract_prueba').report_action(self)
         else:
-            return self.env.ref('hr_extra.action_report_hr_contract').report_action(self)
+            return self.env.ref('hr_extra.action_report_hr_contract_prueba').report_action(self)
+
+    def action_report_indeterminado_con_convenio(self):
+        # Genera contrato indeterminado + convenio de confidencialidad como documentos combinados.
+        contrato_action = self.env.ref('hr_extra.action_report_hrcontract_indeterminado').report_action(self)
+        return contrato_action
 
     def action_report_convenio(self):
         # Genera el convenio de confidencialidad
@@ -347,7 +372,8 @@ class hrContractInherit(models.Model):
             work_data[inhabilestrab_type.id] = inh_trab[0]['duration']
 
         self.env.cr.execute("SELECT COUNT(*) num FROM (SELECT * FROM generate_series('" + str(date_from) + "'::date, '" + str(date_to) + 
-            """'::date, '1 day') as d ORDER BY 1) as t1 WHERE EXISTS(SELECT * from resource_calendar_leaves rca where rca.date_from::date = t1.d::date)
+                """'::date, '1 day') as d ORDER BY 1) as t1 
+            WHERE EXISTS(SELECT * FROM resource_calendar_leaves rca WHERE rca.date_from::date = t1.d::date AND rca.holiday_id is null)
             AND NOT EXISTS(SELECT * FROM hr_attendance_overtime hao WHERE hao.DATE = t1.d::date AND hao.employee_id IN (""" + empleados[1:-1] + '))')
         inhabiles = self.env.cr.dictfetchall()
         if inhabiles[0]['num'] > 0:
@@ -398,6 +424,11 @@ class HrPayslipWorkedDaysInherit(models.Model):
                     worked_days.amount = worked_days.payslip_id.contract_id.daily_wage * round(worked_days.number_of_days, 0) if worked_days.is_paid else 0
                 elif worked_days.work_entry_type_id.code == 'FESTTRAB':
                     worked_days.amount = worked_days.payslip_id.contract_id.daily_wage * round(worked_days.number_of_days, 0) * 2 if worked_days.is_paid else 0
+                elif worked_days.work_entry_type_id.code in ('LEAVE120', 'LEAVE1000', 'LEAVE1100'):
+                    worked_days.amount = worked_days.payslip_id.contract_id.daily_wage * worked_days.number_of_days
+                elif worked_days.work_entry_type_id.code in ('LEAVE1200'):
+                    # Agregar la regla de negocio
+                    worked_days.amount = worked_days.payslip_id.contract_id.daily_wage * worked_days.number_of_days
                 else:
                     worked_days.amount = worked_days.payslip_id.contract_id.daily_wage * worked_days.number_of_days if worked_days.is_paid else 0
             else:
