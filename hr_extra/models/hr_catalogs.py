@@ -41,3 +41,15 @@ class HrContractBeneficiario(models.Model):
         for rec in self:
             if rec.porcentaje < 0 or rec.porcentaje > 100:
                 raise ValidationError(_('El porcentaje debe estar entre 0 y 100.'))
+
+
+class HrContractEmpresa(models.Model):
+    _name = 'hr.contract.empresa'
+    _description = 'Empresas para contratos'
+    _order = 'tipo_contrato_id, id'
+
+    tipo_contrato_id = fields.Many2one('hr.contract.type', string='Tipo de contrato', required=True)
+    empresa_id = fields.Many2one('res.partner', string='Empresa', required=True, 
+        domain="[('is_company', '=', True), ('typesupplier_id.name', 'ilike', 'RH')]",)
+    fecha_inicio = fields.Date(string='Fecha Inicio')
+    fecha_fin = fields.Date(string='Fecha Final')

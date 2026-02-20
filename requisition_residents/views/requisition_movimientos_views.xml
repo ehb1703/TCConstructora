@@ -41,7 +41,10 @@
                                     <field name="origen" readonly="1"/>
                                     <field name="concepto" readonly="1"/>
                                     <field name="type_pay" readonly="1"/>
+                                    <field name="account_id" readonly="1"/>
                                     <field name="recibo" filename="recibo_name" widget="binary" invisible="debit > 0.00"/>
+                                    <field name="comprobantes_ids" widget="many2many_binary" invisible="debit > 0.00"/>
+                                    <field name="observaciones" invisible="debit > 0.00"/>
                                 </list>
                                 <form><p>Información no disponible a través de esta vista</p></form>
                             </field>
@@ -147,6 +150,6 @@
     <menuitem id="menu_movimientos" name="Movimientos" groups="group_requisition_admin" parent="reports_menu_root" sequence="20">
         <menuitem id="menu_requisition_bank_account" name="Diario - Cuentas bancarias" action="action_requisition_bank_account" sequence="1"/>
         <menuitem id="menu_requisition_general" name="Pagos Generales" action="action_requisition_general" sequence="5"/>
-        <menuitem id="menu_requisition_debt" name="Adeudo" action="action_requisition_debt" sequence="10"/>
+        <menuitem id="menu_requisition_debt" name="Estado de cuenta" action="action_requisition_debt" sequence="10"/>
     </menuitem>
 </odoo>

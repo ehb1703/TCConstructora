@@ -38,7 +38,7 @@ class CrmLead(models.Model):
     fecha_limite_inscripcion = fields.Date(string='Fecha límite de inscripción')
     fecha_apertura = fields.Date(string='Fecha de apertura')
     convocatoria_pdf = fields.Binary(string='PDF de convocatoria', attachment=True)
-    convocatoria_pdf_name = fields.Char(string='Nombre del archivo')
+    convocatoria_pdf_name = fields.Char(string='Nombre del archivo de convocatoria')
     origen_id = fields.Many2one('crm.lead.type', string='Tipo de Venta')
     origen_name = fields.Char(string='Tipo nombre', compute='_compute_bases')
     req_bases = fields.Boolean(string='Requiere pago de bases', compute='_compute_bases')
@@ -71,10 +71,10 @@ class CrmLead(models.Model):
     bases_sancion_atraso = fields.Boolean(string='Sanción por atraso', tracking=True, help='Si no se cumple el tiempo estipulado se generan sanciones')
     bases_ret_5_millar = fields.Boolean(string='Ret. 5 al millar', tracking=True)
     bases_ret_2_millar = fields.Boolean(string='Ret. 2 al millar', tracking=True)
-    ptdcto_ids = fields.Many2many('project.docsrequeridos', 'propuesta_tecnica_doctos_rel', 'tecnica_id', 'docto_id', string='Documentos requeridos',
+    ptdcto_ids = fields.Many2many('project.docsrequeridos', 'propuesta_tecnica_doctos_rel', 'tecnica_id', 'docto_id', string='Documentos técnicos requeridos ',
         domain="[('model_id', '=', 'crm.lead'), ('etapa','=','tecnica')]")
-    pedcto_ids = fields.Many2many('project.docsrequeridos', 'propuesta_economica_doctos_rel', 'economica_id', 'docto_id', string='Documentos requeridos',
-        domain="[('model_id', '=', 'crm.lead'), ('etapa','=','economica')]")
+    pedcto_ids = fields.Many2many('project.docsrequeridos', 'propuesta_economica_doctos_rel', 'economica_id', 'docto_id', 
+        string='Documentos económicos requeridos', domain="[('model_id', '=', 'crm.lead'), ('etapa','=','economica')]")
     # Visita de obra
     visita_obligatoria = fields.Boolean(string='Asistencia obligatoria')
     visita_personas_ids = fields.Many2many('hr.employee', 'crm_lead_visita_employee_rel', 'lead_id', 'employee_id', string='Personas asignadas')
@@ -110,12 +110,12 @@ class CrmLead(models.Model):
     # Insumos
     input_ids = fields.One2many('crm.input.line', 'lead_id', string='Insumos')
     input_file = fields.Binary(string='Archivo', attachment=True)
-    input_filename = fields.Char(string='Nombre del archivo', tracking=True)
+    input_filename = fields.Char(string='Nombre del archivo de Insumos', tracking=True)
     no_cotizar_insumos = fields.Boolean(string='No se necesita cotizar insumos', default=False)
     # Junta de Apertura de Propuestas
     apertura_obligatoria = fields.Boolean('Asistencia obligatoria')
     apertura_personas_ids = fields.Many2many('hr.employee', 'crm_lead_apertura_employee_rel', 'lead_id', 'employee_id', 'Personas asignadas')
-    apertura_fecha = fields.Datetime('Fecha y hora de junta')
+    apertura_fecha = fields.Datetime('Fecha y hora de junta de apertura')
     apertura_fecha_limite = fields.Date('Fecha límite')
     apertura_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la junta de apertura de propuestas')
     apertura_acta = fields.Binary('Acta de la junta', attachment=True)
@@ -125,7 +125,7 @@ class CrmLead(models.Model):
     # Junta de Fallo
     fallo_obligatoria = fields.Boolean(string='Asistencia obligatoria')
     fallo_personas_ids = fields.Many2many('hr.employee', 'crm_lead_fallo_employee_rel', 'lead_id', 'employee_id', string='Personas asignadas')
-    fallo_fecha = fields.Datetime(string='Fecha y hora de junta')
+    fallo_fecha = fields.Datetime(string='Fecha y hora de junta de fallo')
     fallo_lugar_reunion = fields.Char(string='Lugar de reunión', size=200, help='Dirección y ubicación de la junta de pronunciamiento del fallo')
     fallo_fecha_adjudicacion = fields.Date(string='Fecha de adjudicación')
     fallo_ganado = fields.Boolean(string='Ganado')
@@ -709,22 +709,6 @@ class CrmLead(models.Model):
         self._send_junta_reminder(manual=True)
 
 
-    def _send_junta_dudas_deadline_reminder(self):
-        template = self.env.ref('project_extra.mail_tmpl_junta_dudas_deadline', raise_if_not_found=False)
-        if not template:
-            raise UserError(_('No se encontró la plantilla de recordatorio de fecha límite de dudas.'))
-
-        for lead in self:
-            if not lead.junta_obligaboria: # Pendiente tarea 0050    (lead.junta_obligatoria and lead.junta_fecha_limite_dudas):
-                continue
-
-            if lead.stage_name == 'Junta de Aclaración de Dudas':
-                correos = ', '.join(lead._get_emails())
-                template.send_mail(lead.id, force_send=True, email_values={'email_to': correos})
-                lead.junta_dudas_notif_auto_sent = True
-                lead.message_post(body=_("Se envió recordatorio de FECHA LÍMITE DE DUDAS a: %s") % correos)
-
-
     def _send_apertura_reminder(self, manual=False):
         template = self.env.ref('project_extra.mail_tmpl_apertura_recordatorio', raise_if_not_found=False)
         if not template:
@@ -817,51 +801,16 @@ class CrmLead(models.Model):
         leads = self.search(domain)
         for rec in leads:
             rec._send_visita_reminder(manual=False)
-
-
-    @api.model
-    def cron_send_junta_reminders(self):
-        # Cron: envía recordatorio un día antes de la Junta de Aclaración de Dudas.
-        today = fields.Date.context_today(self)
-        target = today + relativedelta(days=1)
-
-        domain = [('junta_obligatoria','=',True), ('junta_notif_auto_sent','=',False), #Pendiente 0050 ('junta_fecha','=',target),
-            ('stage_name','=','Junta de Aclaración de Dudas')]
-        leads = self.search(domain)
-        for rec in leads:
-            rec._send_junta_reminder(manual=False)
-
-
-    @api.model
-    def cron_send_junta_dudas_deadline(self):
-        # Cron: envía recordatorio un día antes de la fecha límite de dudas.
-        today = fields.Date.context_today(self)
-        target = today + relativedelta(days=1)
-        domain = [('junta_obligatoria','=',True), ('junta_dudas_notif_auto_sent','=',False), #Pendietne 0050 ('junta_fecha_limite_dudas','=',target),
-            ('stage_name','=','Junta de Aclaración de Dudas')]
-        leads = self.search(domain)
-        for rec in leads:
-            rec._send_junta_dudas_deadline_reminder()
+            
 
     @api.model
     def cron_send_junta_line_reminders(self):
-        """
-        T0050 - Cron: envía recordatorio de Juntas de Aclaración de Dudas.
-        Solo envía a juntas con fecha IGUAL O POSTERIOR a hoy que no hayan sido notificadas.
-        NO envía a juntas con fechas pasadas.
-        """
+        """ Cron: envía recordatorio de Juntas de Aclaración de Dudas.
+        Solo envía a juntas con fecha IGUAL O POSTERIOR a hoy que no hayan sido notificadas. NO envía a juntas con fechas pasadas. """
         today = fields.Date.context_today(self)
-        
-        _logger.info("Ejecutando cron_send_junta_line_reminders para fecha >= %s", today)
-        
-        leads = self.search([
-            ('junta_obligatoria', '=', True),
-            ('stage_name', '=', 'Junta de Aclaración de Dudas')
-        ])
-        
+        leads = self.search([('junta_obligatoria', '=', True), ('stage_name', '=', 'Junta de Aclaración de Dudas')])
         enviados = 0
         errores = 0
-        
         for lead in leads:
             for junta_line in lead.junta_line_ids:
                 # Solo juntas con fecha >= hoy, no notificadas automáticamente y con asistentes
@@ -874,60 +823,39 @@ class CrmLead(models.Model):
                         enviados += 1
                     except Exception as e:
                         errores += 1
-                        _logger.error(
-                            "Error al enviar recordatorio automático de junta (Lead: %s, Junta: %s): %s",
-                            lead.id, junta_line.id, str(e)
-                        )
-        
+                        _logger.error("Error al enviar recordatorio automático de junta (Lead: %s, Junta: %s): %s", lead.id, junta_line.id, str(e))
         _logger.info("Cron junta line finalizado: %d enviados, %d errores", enviados, errores)
 
     @api.model
     def cron_send_junta_line_deadline_reminders(self):
-        """
-        T0050 - Cron: envía recordatorio de fecha límite de preguntas.
-        Solo envía a juntas con fecha límite IGUAL O POSTERIOR a hoy que no hayan sido notificadas.
-        NO envía a juntas con fechas pasadas.
-        """
+        """ T0050 - Cron: envía recordatorio de fecha límite de preguntas.
+        Solo envía a juntas con fecha límite IGUAL O POSTERIOR a hoy que no hayan sido notificadas. NO envía a juntas con fechas pasadas. """
         today = fields.Date.context_today(self)
-        
         _logger.info("Ejecutando cron_send_junta_line_deadline_reminders para fecha >= %s", today)
-        
         template = self.env.ref('project_extra.mail_tmpl_junta_line_deadline', raise_if_not_found=False)
         if not template:
             _logger.warning("No se encontró la plantilla mail_tmpl_junta_line_deadline")
             return
         
-        leads = self.search([
-            ('junta_obligatoria', '=', True),
-            ('stage_name', '=', 'Junta de Aclaración de Dudas')
-        ])
-        
+        leads = self.search([('junta_obligatoria', '=', True), ('stage_name', '=', 'Junta de Aclaración de Dudas')])
         enviados = 0
-        
         for lead in leads:
             for junta_line in lead.junta_line_ids:
                 # Solo juntas con fecha límite >= hoy y con asistentes
-                if (junta_line.fecha_limite_preguntas and 
-                    junta_line.fecha_limite_preguntas.date() >= today and
-                    junta_line.asistente_ids):
+                if junta_line.fecha_limite_preguntas and junta_line.fecha_limite_preguntas.date() >= today and junta_line.asistente_ids:
                     try:
                         emails = junta_line._get_asistente_emails()
                         if emails:
                             email_to = ', '.join(emails)
                             template.send_mail(junta_line.id, force_send=True, email_values={'email_to': email_to})
-                            lead.message_post(
-                                body=_("Se envió recordatorio de FECHA LÍMITE DE PREGUNTAS para junta '%s' a: %s") 
-                                    % (junta_line.descripcion or 'Sin descripción', email_to)
-                            )
+                            lead.message_post(body=_("Se envió recordatorio de FECHA LÍMITE DE PREGUNTAS para junta '%s' a: %s") 
+                                    % (junta_line.descripcion or 'Sin descripción', email_to))
                             enviados += 1
                     except Exception as e:
-                        _logger.error(
-                            "Error al enviar recordatorio de fecha límite (Lead: %s, Junta: %s): %s",
-                            lead.id, junta_line.id, str(e)
-                        )
-        
+                        _logger.error("Error al enviar recordatorio de fecha límite (Lead: %s, Junta: %s): %s", lead.id, junta_line.id, str(e))
         _logger.info("Cron fecha límite finalizado: %d enviados", enviados)
     
+
     def _sync_pt_doc_lines(self):
         # Sincroniza la tabla de Propuesta Técnica con los documentos seleccionados en ptdcto_ids.
         docline = self.env['crm.propuesta.tecnica.doc']
@@ -1265,14 +1193,6 @@ class CrmLead(models.Model):
                             'Use el botón "Cargar datos" para extraer la información del documento Económico 2.'))
         
         self.write({'pe_presupuesto_autorizado': True})
-        """return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Presupuesto Autorizado'),
-                'message': _('El presupuesto ha sido autorizado correctamente.'),
-                'type': 'success',
-                'sticky': False,}} """
 
 
     def _check_pe_authorization_complete(self):

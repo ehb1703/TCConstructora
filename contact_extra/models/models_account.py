@@ -15,10 +15,9 @@ class accountInherit(models.Model):
     nif_code = fields.Char(string='Código NIF')
     is_afectable = fields.Boolean(string='Es afectable')
 
-
 class partnerBankInherit(models.Model):
     _inherit = 'res.partner.bank'
 
     no_tarjeta = fields.Char(string='No. de Tarjeta')
     type_pay = fields.Selection(selection=[('estrategia','Estrategia'), ('fiscal','Fiscal')],
-        string='Tipo', default='estrategia')    
+        string='Tipo', default='estrategia')

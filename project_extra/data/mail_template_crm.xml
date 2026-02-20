@@ -124,44 +124,6 @@
             </field>
         </record>
 
-        <record id="mail_tmpl_junta_recordatorio" model="mail.template">
-            <field name="name">Recordatorio junta de aclaración de dudas</field>
-            <field name="model_id" ref="crm.model_crm_lead"/>
-            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
-            <field name="email_to"></field>
-            <field name="subject">[Junta de aclaración de dudas] Recordatorio - {{object.name}}</field>
-            <field name="body_html" type="html">
-                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
-                    <p>Buen día,</p>
-                    <p>Se les recuerda la <b>junta de aclaración de dudas</b> de la convocatoria <b><t t-out="object.name or ''"/></b>.</p>
-                    <ul>
-                        <li><b>Fecha y hora de la junta: </b><t t-if="object.junta_fecha"><t t-out="format_datetime(object.junta_fecha, dt_format='long')">day, month dd, yyyy - hh:mm:ss (GMT)</t></t></li>
-                        <li><b>Lugar de reunión: </b><t t-if="object.junta_lugar_reunion"><t t-out="object.junta_lugar_reunion"/></t></li>
-                    </ul>
-                    <p>
-                        Abrir en la Aplicación:
-                        <a t-att-href="'%s/web#id=%s&amp;model=crm.lead&amp;view_type=form' % (object.get_base_url(), object.id)" style="color:#1A73E8; text-decoration:none;" target="_blank" rel="noopener">Ver convocatoria</a>
-                    </p>
-                    <p>Enviado automáticamente por el Sistema.</p>
-                </div>
-            </field>
-        </record>
-
-        <record id="mail_tmpl_junta_dudas_deadline" model="mail.template">
-            <field name="name">Recordatorio fecha límite de dudas</field>
-            <field name="model_id" ref="crm.model_crm_lead"/>
-            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
-            <field name="subject">[Junta de aclaración de dudas] Recordatorio - {{ object.name }}</field>
-            <field name="body_html" type="html">
-                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
-                    <p>
-                        Este es un recordatorio de que <t t-if="object.junta_fecha_limite_dudas"><t t-out="object.junta_fecha_limite_dudas"/></t> es la fecha límite para enviar dudas para su aclaración.
-                    </p>
-                    <p>No es necesario realizar ninguna acción adicional si la información ya fue enviada.</p>
-                </div>
-            </field>
-        </record>
-
         <record id="mail_tmpl_apertura_recordatorio" model="mail.template">
             <field name="name">Recordatorio junta de apertura de propuestas</field>
             <field name="model_id" ref="crm.model_crm_lead"/>

@@ -47,14 +47,22 @@
                     <field name="name" placeholder="Employee's Name" required="True" style="font-size: min(4vw, 2.6rem);" readonly="1"/>
                 </h1>
             </xpath>
+            <xpath expr="//field[@name='work_email']" position="attributes">
+                <attribute name="required">user_id</attribute>
+            </xpath>
+            <xpath expr="//page[@name='public']//field[@name='address_id']/.." position="before">
+                <group string="Empresa">
+                    <field name="empresa_empleadora" options="{'no_create':True, 'no_open':True, 'no_edit':True}"/>
+                </group>
+            </xpath>
             <xpath expr="//field[@name='department_id']" position="after">
-                <field name="director_ids" widget="many2many_tags" string="Director/Gerente" options="{'no_create': True, 'no_open': True}"/>
+                <field name="director_ids" widget="many2many_tags" string="Director/Gerente" options="{'no_create':True, 'no_open':True, 'no_edit':True}"/>
             </xpath>
             <xpath expr="//notebook/page[last()]" position="after">
                 <page string="Obras" name="obras_asignadas">
                     <field name="obra_ids">
                         <list string="Obras asignadas" editable="bottom">
-                            <field name="project_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="project_id" options="{'no_create':True, 'no_open':True, 'no_edit':True}"/>
                             <field name="etapa_id" readonly="1"/>
                             <field name="fecha_inicio" readonly="1"/>
                             <field name="fecha_fin" readonly="1"/>
@@ -120,20 +128,24 @@
         <field name="arch" type="xml">
             <xpath expr="//header/field[@name='state']" position="before">
                 <field name="contract_type_name" invisible="1"/>
-                <button name="action_report_contract" string="Contrato" class="btn-primary" type="object"/>
-                <button name="action_report_convenio" string="Convenio" class="btn-secondary" type="object" invisible="contract_type_name not in ['Obra determinada', 'Permanente']"/>
+                <button name="action_report_contract" string="Contrato" class="btn-primary" type="object"
+                    invisible="contract_type_name not in ['Obra determinada', 'Por periodo de prueba', 'Indeterminado', 'Permanente', 'Temporal', 'Por temporada', 'Tiempo completo']"/>
+                <button name="action_report_convenio" string="Convenio" class="btn-secondary" type="object"
+                    invisible="contract_type_name not in ['Obra determinada', 'Permanente', 'Indeterminado']"/>
+                <button name="action_report_indeterminado_con_convenio" string="Contrato + Convenio" class="btn-secondary" type="object"
+                    invisible="contract_type_name != 'Indeterminado'"/>
             </xpath>
 
             <xpath expr="//field[@name='hr_responsible_id']" position="before">
-                <field name="project_id" string="Obra" options="{'no_create': True, 'no_open': True}" invisible="contract_type_name not in ['Obra determinada']"/>
+                <field name="project_id" string="Obra" options="{'no_create':True, 'no_open':True, 'no_edit':True}" invisible="contract_type_name not in ['Obra determinada']"/>
             </xpath>
 
             <xpath expr="//notebook" position="inside">
                 <page string="Beneficiarios" name="beneficiarios">
                     <field name="beneficiario_ids">
                         <list string="Beneficiarios" editable="bottom">
-                            <field name="nombre_id" options="{'no_create': True, 'no_open': True}"/>
-                            <field name="parentesco_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="nombre_id" options="{'no_create':True, 'no_open':True, 'no_edit':True}"/>
+                            <field name="parentesco_id" options="{'no_create':True, 'no_open':True, 'no_edit':True}"/>
                             <field name="porcentaje"/>
                         </list>
                     </field>
