@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'HR Extra',
-    'version': '1.0',
+    'version': '1.1',
     'category': 'Human Resources/Payroll',
     'sequence': 290,
     'summary': 'Extensiones de Recursos Humanos para TC Constructora',
@@ -30,6 +30,7 @@
         'views/res_config_settings_views.xml',
         'views/ctrol_asistencias_views.xml',
         'views/checador_sync_log_views.xml',
+        'views/hr_leaves_views.xml',
         'report/hr_contract_report.xml',
         'report/report_hr_contract_prueba.xml',
         'report/report_hr_contract_obra.xml',

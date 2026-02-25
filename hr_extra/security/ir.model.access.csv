@@ -6,6 +6,7 @@ access_hr_employee_obra_user,access_hr_employee_obra_user,model_hr_employee_obra
 access_hr_parentesco_manager,access_hr_parentesco_manager,model_hr_parentesco,hr.group_hr_manager,1,1,1,1
 access_hr_contract_beneficiario_manager,access_hr_contract_beneficiario_manager,model_hr_contract_beneficiario,hr.group_hr_manager,1,1,1,1
 access_hr_employee_obra_manager,access_hr_employee_obra_manager,model_hr_employee_obra,hr.group_hr_manager,1,1,1,1
+access_hr_leave_disease,access_hr_eleave_disease,model_hr_leave_disease,hr.group_hr_manager,1,1,1,1
 
 access_hr_employee_api,hr.employee.api,hr.model_hr_employee,group_api_checadores,1,0,0,0
 access_hr_department_api,hr.department.api,hr.model_hr_department,group_api_checadores,1,0,0,0
@@ -31,5 +32,6 @@ access_hr_attendance_overtime_extra_user,hr.attendance.overtime.extra.user,hr_at
 access_hr_attendance_overtime_extra_manager,hr.attendance.overtime.extra.manager,hr_attendance.model_hr_attendance_overtime,hr.group_hr_manager,1,1,1,1
 access_hr_contract_empresa_user,hr.contract.empresa.user,model_hr_contract_empresa,hr.group_hr_user,1,0,0,0
 access_hr_contract_empresa_manager,hr.contract.empresa.manager,model_hr_contract_empresa,hr.group_hr_manager,1,1,1,1
+access_hr_leave_vacation_days,hr.leave.vacation.days,model_hr_leave_vacation_days,hr.group_hr_manager,1,1,1,1
 
 access_hr_employee,access_hr_employee,model_hr_employee,,1,0,0,0

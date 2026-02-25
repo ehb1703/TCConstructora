@@ -76,49 +76,49 @@
                             Enteradas ambas partes del contenido y alcance de todas y cada una de las cláusulas, así como de los derechos que se adquieren y de las obligaciones que contraen, lo firman de conformidad por duplicado, en la ciudad de Guadalajara, Jalisco, el día <strong><span t-esc="o.signature_date.strftime('%d')"/> de <t t-esc="mes_espanol"/> del año <span t-esc="o.signature_date.strftime('%Y')"/>.</strong></p>
                             <br/><br/>
                         </div>
-                        <table style="width: 80%; margin: 40px auto 0 auto; border: none; border-collapse: collapse; border-spacing: 0;">
+                        <table style="width: 80%; margin: 40px auto 0 auto; border: 0 !important; border-collapse: collapse; border-spacing: 0; outline: none;">
                             <tr>
-                                <td style="width: 45%; text-align: center; border: none; padding: 10px; vertical-align: top;">EL CONTRATANTE</td>
-                                <td style="width: 10%; border: none;"></td>
-                                <td style="width: 45%; text-align: center; border: none; padding: 10px; vertical-align: top;">EL CONTRATISTA</td>
+                                <td style="width: 45%; text-align: center; border: 0 !important; padding: 10px; vertical-align: top;">EL CONTRATANTE</td>
+                                <td style="width: 10%; border: 0 !important;"></td>
+                                <td style="width: 45%; text-align: center; border: 0 !important; padding: 10px; vertical-align: top;">EL CONTRATISTA</td>
                             </tr>
                             <tr>
-                                <td style="text-align: center; border: none; padding-top: 50px; vertical-align: bottom;">
+                                <td style="text-align: center; border: 0 !important; padding-top: 50px; vertical-align: bottom;">
                                     <span style="display: inline-block; width: 80%; border-bottom: 1px solid #000;">&#160;</span>
                                 </td>
-                                <td style="border: none;"></td>
-                                <td style="text-align: center; border: none; padding-top: 50px; vertical-align: bottom;">
-                                    <span style="display: inline-block; width: 80%; border-bottom: 1px solid #000;">&#160;</span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td style="text-align: center; border: none; padding: 5px;"><span t-field="representante.representante_id.title.name"/> <span t-field="representante.representante_id.name"/></td>
-                                <td style="border: none;"></td>
-                                <td style="text-align: center; border: none; padding: 5px;"><span t-field="o.vendor_id.responsable_id.title.name"/> <span t-field="o.vendor_id.responsable_id.name"/></td>
-                            </tr>
-                            <tr>
-                                <td style="text-align: center; border: none; padding: 5px;">Representante Legal</td>
-                                <td style="border: none;"></td>
-                                <td style="text-align: center; border: none; padding: 5px;">Representante Legal</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align: center; border: none; padding-top: 30px;">TESTIGO</td>
-                                <td style="border: none;"></td>
-                                <td style="text-align: center; border: none; padding-top: 30px;">TESTIGO</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align: center; border: none; padding-top: 50px; vertical-align: bottom;">
-                                    <span style="display: inline-block; width: 80%; border-bottom: 1px solid #000;">&#160;</span>
-                                </td>
-                                <td style="border: none;"></td>
-                                <td style="text-align: center; border: none; padding-top: 50px; vertical-align: bottom;">
+                                <td style="border: 0 !important;"></td>
+                                <td style="text-align: center; border: 0 !important; padding-top: 50px; vertical-align: bottom;">
                                     <span style="display: inline-block; width: 80%; border-bottom: 1px solid #000;">&#160;</span>
                                 </td>
                             </tr>
                             <tr>
-                                <td style="text-align: center; border: none; padding: 5px;">PERSONA 1</td>
-                                <td style="border: none;"></td>
-                                <td style="text-align: center; border: none; padding: 5px;">PERSONA 2</td>
+                                <td style="text-align: center; border: 0 !important; padding: 5px;"><span t-field="representante.representante_id.title.name"/> <span t-field="representante.representante_id.name"/></td>
+                                <td style="border: 0 !important;"></td>
+                                <td style="text-align: center; border: 0 !important; padding: 5px;"><span t-field="o.vendor_id.responsable_id.title.name"/> <span t-field="o.vendor_id.responsable_id.name"/></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; border: 0 !important; padding: 5px;">Representante Legal</td>
+                                <td style="border: 0 !important;"></td>
+                                <td style="text-align: center; border: 0 !important; padding: 5px;">Representante Legal</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; border: 0 !important; padding-top: 30px;">TESTIGO</td>
+                                <td style="border: 0 !important;"></td>
+                                <td style="text-align: center; border: 0 !important; padding-top: 30px;">TESTIGO</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; border: 0 !important; padding-top: 50px; vertical-align: bottom;">
+                                    <span style="display: inline-block; width: 80%; border-bottom: 1px solid #000;">&#160;</span>
+                                </td>
+                                <td style="border: 0 !important;"></td>
+                                <td style="text-align: center; border: 0 !important; padding-top: 50px; vertical-align: bottom;">
+                                    <span style="display: inline-block; width: 80%; border-bottom: 1px solid #000;">&#160;</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; border: 0 !important; padding: 5px;">PERSONA 1</td>
+                                <td style="border: 0 !important;"></td>
+                                <td style="text-align: center; border: 0 !important; padding: 5px;">PERSONA 2</td>
                             </tr>
                         </table>
                         <br/><br/>

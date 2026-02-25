@@ -24,6 +24,7 @@ class HrEmployeeObra(models.Model):
     etapa_id = fields.Many2one('project.project.stage', string='Etapa', related='project_id.stage_id', readonly=True, store=True)
     fecha_inicio = fields.Date(string='Fecha inicio')
     fecha_fin = fields.Date(string='Fecha fin')
+    hourly_wage = fields.Float(string='Salario por hora', digits=(10, 2), default=0.0)
 
 class hrEmployeeInherit(models.Model):
     _inherit = 'hr.employee'
@@ -43,6 +44,7 @@ class hrEmployeeInherit(models.Model):
         ('permiso','Permiso')],
         string='Estado Actual', default='activo', tracking=True)
     empresa_empleadora = fields.Many2one('res.company', string='Empresa empleadora')
+    antique = fields.Integer(string='Antigüedad', default=0)
 
     @api.onchange('work_contact_id')
     def onchange_name(self):
@@ -54,6 +56,20 @@ class hrEmployeeInherit(models.Model):
             vals['name'] = vals['legal_name']
         resource_vals = super()._prepare_resource_values(vals, tz)
         return resource_vals
+
+    def action_activar_empleado(self):
+        self.state = 'activo'
+
+    def cron_antique(self):
+        self.env.cr.execute("""UPDATE hr_employee he SET antique = t2.anios 
+            FROM (SELECT t1.employee_id, hc.id, (CASE WHEN (now()::date - hc.date_start) > 365 
+                      THEN SPLIT_PART(AGE((CASE WHEN hc.state = 'close' THEN hc.date_end ELSE now()::date END), hc.date_start)::character varying, 'year', 1) 
+                      ELSE '0' end)::integer anios
+                FROM (SELECT hc.employee_id, MAX(hc.id) id FROM hr_contract hc JOIN hr_contract_type hct ON hc.contract_type_id = hct.id 
+                WHERE hc.state != 'cancel' AND hct.code = 'Permanent' GROUP BY 1) as t1 JOIN hr_contract hc ON t1.id = hc.id) as t2
+            WHERE he.id = t2.employee_id; """)
+
+
 
     @api.depends('obra_ids', 'obra_ids.project_id', 'obra_ids.project_id.active', 'obra_ids.fecha_inicio', 'obra_ids.fecha_fin', 'work_location_id')
     def _compute_current_project(self):
@@ -244,8 +260,7 @@ class hrEmployeeInherit(models.Model):
             'total_count': total_count,
             'limit': limit,
             'offset': offset,
-            'returned_count': len(result)
-        }
+            'returned_count': len(result)}
 
 
 class hrContractInherit(models.Model):
@@ -356,10 +371,9 @@ class hrContractInherit(models.Model):
         unapproved_overtime_hours = round(self.env['hr.attendance'].sudo()._read_group([('employee_id', 'in', self.employee_id.ids), 
             ('check_in', '>=', date_from), ('check_out', '<=', date_to), ('overtime_hours', '>', 0), ('overtime_status', '!=', 'approved')], [], 
             ['overtime_hours:sum'],)[0][0], 2)
-        if not overtime_hours or overtime_hours < 0:
-            return
-        work_data[default_work_entry_type.id] -= overtime_hours
-        overtime_hours -= unapproved_overtime_hours
+        if overtime_hours or overtime_hours > 0:
+            work_data[default_work_entry_type.id] -= overtime_hours
+            overtime_hours -= unapproved_overtime_hours
 
         empleados = str(self.employee_id.ids)
         self.env.cr.execute("""SELECT coalesce(sum(hao.duration), 0.0) duration 
@@ -382,7 +396,16 @@ class hrContractInherit(models.Model):
 
         if overtime_hours > 0:
             work_data[overtime_work_entry_type.id] = overtime_hours
-        
+
+        self.env.cr.execute('''SELECT * FROM hr_leave hl JOIN hr_leave_type hlt ON hl.holiday_status_id = hlt.id AND hlt.name->>'es_MX' = 'Vacaciones' 
+            WHERE hl.state = 'validate' AND hl.employee_id IN (''' + empleados[1:-1] + ") AND hl.request_date_from BETWEEN '" + str(date_from) + "' AND '" 
+            + str(date_to) + "'")
+        prima = self.env.cr.dictfetchall()
+        if prima:
+            prima_type = self.env['hr.work.entry.type'].search([('code', '=', 'LEAVE120P')])
+            work_data[prima_type.id] = prima[0]['number_of_hours']
+
+
 
 class HrWorkEntryTypeInherit(models.Model):
     _inherit = 'hr.work.entry.type'
@@ -405,9 +428,55 @@ class HrPayslipInherit(models.Model):
         for payslip in self:
             payslip.l10n_mx_daily_salary = payslip.contract_id.daily_wage
 
+    def _get_worked_day_lines_values(self, domain=None):
+        self.ensure_one()
+        res = []
+        hours_per_day = self._get_worked_day_lines_hours_per_day()
+        work_hours = self.contract_id.get_work_hours(self.date_from, self.date_to, domain=domain)
+        work_hours_ordered = sorted(work_hours.items(), key=lambda x: x[1])
+        biggest_work = work_hours_ordered[-1][0] if work_hours_ordered else 0
+        add_days_rounding = 0
+        for work_entry_type_id, hours in work_hours_ordered:
+            work_entry_type = self.env['hr.work.entry.type'].browse(work_entry_type_id)
+            days = round(hours / hours_per_day, 5) if hours_per_day else 0
+            """if work_entry_type_id == biggest_work:
+                days += add_days_rounding """
+            day_rounded = self._round_days(work_entry_type, days)
+            add_days_rounding += (days - day_rounded)
+            attendance_line = {'sequence': work_entry_type.sequence, 'work_entry_type_id': work_entry_type_id, 'number_of_days': day_rounded, 
+                'number_of_hours': hours,}
+            res.append(attendance_line)
+        work_entry_type = self.env['hr.work.entry.type']
+        return sorted(res, key=lambda d: work_entry_type.browse(d['work_entry_type_id']).sequence) 
+
 
 class HrPayslipWorkedDaysInherit(models.Model):
     _inherit = 'hr.payslip.worked_days'
+
+    def _get_costo_hora_por_fecha(self, employee, date_from, date_to):
+        if not employee or not date_from or not date_to:
+            return None
+
+        obras = employee.obra_ids.filtered(lambda o: o.hourly_wage and o.fecha_inicio and o.fecha_fin)
+        if not obras:
+            return None
+
+        total_dias = 0
+        total_costo = 0.0
+        current = date_from
+        while current <= date_to:
+            obra_dia = obras.filtered(lambda o: o.fecha_inicio <= current <= o.fecha_fin)
+            if obra_dia:
+                obra = obra_dia.sorted(key=lambda o: o.id, reverse=True)[0]
+                total_costo += obra.hourly_wage
+                total_dias += 1
+            current += relativedelta(days=1)
+
+        if not total_dias:
+            return None
+
+        return total_costo / total_dias
+
 
     @api.depends('is_paid', 'is_credit_time', 'number_of_hours', 'payslip_id', 'contract_id.wage', 'payslip_id.sum_worked_hours')
     def _compute_amount(self):
@@ -418,18 +487,43 @@ class HrPayslipWorkedDaysInherit(models.Model):
                 worked_days.amount = 0
                 continue
             if worked_days.payslip_id.wage_type == "hourly":
-                if worked_days.work_entry_type_id.code == 'OVERTIME':
-                    worked_days.amount = worked_days.payslip_id.contract_id.hourly_wage * worked_days.number_of_hours if worked_days.is_paid else 0
-                elif worked_days.work_entry_type_id.code == 'DESC':
-                    worked_days.amount = worked_days.payslip_id.contract_id.daily_wage * round(worked_days.number_of_days, 0) if worked_days.is_paid else 0
-                elif worked_days.work_entry_type_id.code == 'FESTTRAB':
-                    worked_days.amount = worked_days.payslip_id.contract_id.daily_wage * round(worked_days.number_of_days, 0) * 2 if worked_days.is_paid else 0
-                elif worked_days.work_entry_type_id.code in ('LEAVE120', 'LEAVE1000', 'LEAVE1100'):
-                    worked_days.amount = worked_days.payslip_id.contract_id.daily_wage * worked_days.number_of_days
-                elif worked_days.work_entry_type_id.code in ('LEAVE1200'):
-                    # Agregar la regla de negocio
-                    worked_days.amount = worked_days.payslip_id.contract_id.daily_wage * worked_days.number_of_days
+                costo_hora_obra = self._get_costo_hora_por_fecha(worked_days.payslip_id.employee_id, worked_days.payslip_id.date_from, 
+                    worked_days.payslip_id.date_to)
+                hourly_rate = costo_hora_obra if costo_hora_obra else worked_days.payslip_id.contract_id.hourly_wage
+                if costo_hora_obra:
+                    daily_rate = hourly_rate * 8
                 else:
-                    worked_days.amount = worked_days.payslip_id.contract_id.daily_wage * worked_days.number_of_days if worked_days.is_paid else 0
+                    daily_rate = worked_days.payslip_id.contract_id.daily_wage
+
+                if worked_days.work_entry_type_id.code == 'OVERTIME':
+                    worked_days.amount = hourly_rate * worked_days.number_of_hours if worked_days.is_paid else 0
+                elif worked_days.work_entry_type_id.code == 'DESC':
+                    worked_days.amount = daily_rate * worked_days.number_of_days if worked_days.is_paid else 0
+                elif worked_days.work_entry_type_id.code == 'FESTTRAB':
+                    worked_days.amount = daily_rate * worked_days.number_of_days * 2 if worked_days.is_paid else 0
+                elif worked_days.work_entry_type_id.code in ('LEAVE120', 'LEAVE1000', 'LEAVE1100'):
+                    worked_days.amount = daily_rate * worked_days.number_of_days
+                elif worked_days.work_entry_type_id.code in ('LEAVE120P'):
+                    worked_days.amount = daily_rate * worked_days.number_of_days * .25
+                elif worked_days.work_entry_type_id.code in ('LEAVE1200'):
+                    percentage = self.env['hr.leave.disease'].search([('disease_date','>=',worked_days.payslip_id.date_from), 
+                        ('disease_date','<=',worked_days.payslip_id.date_to), ('employee_id','=',worked_days.payslip_id.employee_id.id)])
+                    comp = 0
+                    parcial = 0
+                    amount = 0.0
+                    for x in percentage:
+                        if x.percentage == 100:
+                            comp += 1
+                        else:
+                            parcial += 1
+
+                    if comp != 0:
+                        amount += daily_rate * comp
+                    if parcial != 0:
+                        amount += daily_rate * parcial * .6
+
+                    worked_days.amount = amount
+                else:
+                    worked_days.amount = daily_rate * worked_days.number_of_days if worked_days.is_paid else 0
             else:
                 worked_days.amount = worked_days.payslip_id.contract_id.contract_wage * worked_days.number_of_hours / (worked_days.payslip_id._get_regular_worked_hours() or 1) if worked_days.is_paid else 0

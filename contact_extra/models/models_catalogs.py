@@ -30,22 +30,15 @@ class cls_municipios(models.Model):
     municipio = fields.Char(string='Municipio', tracking=True, required=True)
     state_id = fields.Many2one('res.country.state', string='Estado', tracking=True, required=True)
     active = fields.Boolean(string='Activo', default=True, tracking=True)
-    
-    @api.constrains('municipio')
-    def fnc_check_municipio(self):
-        for x in self:
-            if x.municipio:
-                res = self.search([('municipio','=',x.municipio),('state_id','=',x.state_id.id),('id','!=',x.id)])
-                if res:
-                    raise ValidationError("Ya existe un municipio igual")                
 
-    @api.onchange("municipio")
+    _sql_constraints = [('municipio_uniq','unique(state_id, municipio)','El municipio debe ser único por Estado.')]
+    
+    @api.onchange('municipio')
     def onchange_municipio(self):
         if self.municipio:                       
-            nvacadena = self.municipio.strip(" ")            
-            if len(nvacadena)==0:
-                warning = {'title': 'Advertencia',
-                        'message': 'El nombre del municipio es incorrecto, favor de verificar',}
+            nvacadena = self.municipio.strip(' ')
+            if len(nvacadena) == 0:
+                warning = {'title': 'Advertencia', 'message': 'El nombre del municipio es incorrecto, favor de verificar',}
                 return {'warning':warning}
             self.municipio = nvacadena.upper()
 
