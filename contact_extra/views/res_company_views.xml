@@ -58,6 +58,9 @@
             <xpath expr="//field[@name='function']" position="before">
                 <field name="responsable_id" invisible="not is_company" domain="[('is_company', '=', False)]"/>
             </xpath>
+            <xpath expr="//notebook/page[@name='contact_addresses']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
             <xpath expr="//field[@name='vat']" position="after">
                 <field name="curp" invisible="is_company"/>
                 <field name="nacionalidad" string="Nacionalidad"/>

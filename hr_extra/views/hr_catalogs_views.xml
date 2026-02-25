@@ -90,6 +90,18 @@
         </field>
     </record>
 
+    <record id="hr_job_descripcion_form" model="ir.ui.view">
+        <field name="name">hr.job.descripcion.form</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_hr_job_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="descripcion_puesto"
+                    placeholder="Describa las funciones, responsabilidades y actividades del puesto..."/>
+            </xpath>
+        </field>
+    </record>
+
     <menuitem id="menu_hr_contract_empresa" name="Empresas para contratos" parent="hr_contract.menu_human_resources_configuration_contract" action="action_hr_contract_empresa" sequence="10"/>
     <menuitem id="menu_hr_parentesco" name="Parentescos" parent="hr_contract.menu_human_resources_configuration_contract" action="action_hr_parentesco" sequence="12"/>
 </odoo>

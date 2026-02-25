@@ -13,8 +13,21 @@ class purchaseOrderInherit(models.Model):
             string='Tipo de movimiento')
 
     def action_comparativo(self):
-        url = '/web/binary/purchase_cuadro_comparativo?&lead=%s'% (self.lead_id.id)
-        return {'type': 'ir.actions.act_url', 'url': url, 'target': 'new', }
+        if not self.lead_id:
+            raise UserError(_('Esta solicitud no tiene una oportunidad vinculada.'))
+
+        cotizaciones = self.env['purchase.order'].search([('lead_id', '=', self.lead_id.id), ('type_purchase', '=', 'ins'), ('state', '=', 'sent'),
+            ('mail_reception_confirmed', '=', True)])
+        if not cotizaciones:
+            raise UserError(_('No se puede generar el Cuadro Comparativo.\n\n'
+                'No existen cotizaciones que cumplan con todos los requisitos:\n'
+                '  • Tipo de movimiento: Insumos\n'
+                '  • Estado: Solicitud de cotización enviada\n'
+                '  • Confirmación de recepción: marcada'))
+
+        url = '/web/binary/purchase_cuadro_comparativo?&lead=%s' % self.lead_id.id
+        return {'type': 'ir.actions.act_url', 'url': url, 'target': 'new'}
+
 
     def generate_purchase_order(self):
         rfq_to_merge = self.filtered(lambda r: r.state in ['sent'] and r.type_purchase == 'ins')

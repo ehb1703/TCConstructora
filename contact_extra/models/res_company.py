@@ -25,6 +25,27 @@ class respartnerCurp(models.Model):
     nombre = fields.Char(string='Nombre(s)', tracking=True)
     country_id = fields.Many2one('res.country', string='País', default=lambda self: self.env.company.country_id)
 
+    @api.model
+    def default_get(self, fields_list):
+        """ Override para forzar las cuentas contables correctas al crear un nuevo contacto. 
+            Odoo 18 busca por ID ASC lo que hace que tome cuentas obsoletas con ID menor. """
+        res = super().default_get(fields_list)
+        if 'property_account_receivable_id' in fields_list:
+            account_rec = self.env['account.account'].search([('account_type', '=', 'asset_receivable'), ('deprecated', '=', False), 
+                ('code', 'not ilike', '.00.')], limit=1, order='code')
+            if account_rec:
+                res['property_account_receivable_id'] = account_rec.id
+            else:
+                _logger.warning("contact_extra: No se encontró la cuenta para default receivable.")
+        if 'property_account_payable_id' in fields_list:
+            account_pay = self.env['account.account'].search([('account_type', '=', 'liability_payable'), ('deprecated', '=', False), 
+                ('code', 'not ilike', '.00.')], limit=1, order='code')
+            if account_pay:
+                res['property_account_payable_id'] = account_pay.id
+            else:
+                _logger.warning("contact_extra: No se encontró la cuenta para default payable.")
+        return res
+
     @api.constrains('curp')
     def _check_curp(self):
         for record in self:
@@ -34,10 +55,7 @@ class respartnerCurp(models.Model):
 
     @api.onchange('apaterno', 'amaterno', 'nombre')
     def onchange_name(self):
-        name = ''
-        paterno = ''
-        materno = ''
-        nombre = ''
+        name, paterno, materno, nombre = '', '', '', ''
         if not self.is_company:
             if self.apaterno:
                 paterno = self.apaterno
@@ -51,7 +69,6 @@ class respartnerCurp(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        _logger.warning(vals_list)
         for vals in vals_list:
             if any(field in vals for field in ['nombre', 'apaterno', 'amaterno']):
                 if vals.get('apaterno'):
@@ -66,6 +83,7 @@ class respartnerCurp(models.Model):
                 
                 name = vals.get('nombre') + apaterno + amaterno
                 vals['name'] = name
+
         return super().create(vals_list)
 
 
@@ -95,7 +113,7 @@ class respartnerCurp(models.Model):
                 if empleado:
                     empleado.write({'name': name, 'legal_name': name})
         return super().write(values)
-                    
+
 
 class rescompanyContacts(models.Model):
     _inherit = 'res.company'
@@ -217,7 +235,7 @@ class companyLegalProxy(models.Model):
 
     def action_vencer(self):
         self.state = 'vencido'
-        
+
 
 class companyPublicRecord(models.Model):
     _name = 'company.public.record'
@@ -229,7 +247,7 @@ class companyPublicRecord(models.Model):
     folio = fields.Char(string='Nombre', tracking=True)
     registration_date = fields.Date(string='Fecha de Registro')
     type = fields.Selection(
-        selection=[('const','Constitución de Sociedades mercantiles (SA. , S. de R.L., etc.)'), ('insc','Inscripción de poderes notariales'), 
+        selection=[('const','Constitución de Sociedades mercantiles (SA. , S. de R.L., etc.)'), ('insc','Inscripción de poderes notariales'),
             ('mod','Modificaciones estatutarias (cambio de domicilio, objeto social, capital)'), ('compra','Compra-venta de inmuebles'),
             ('fusion','Fusión, escisión o liquidación de sociedades'), ('cont', 'Inscripción de contratos de garantía (hipotecas, fideicomisos).')],
         string='Tipo de trámite', tracking=True)
@@ -248,7 +266,7 @@ class companyAssembly(models.Model):
     folio = fields.Char(string='Nombre', tracking=True)
     registration_date = fields.Date(string='Fecha de Registro')
     type = fields.Selection(
-        selection=[('const','Constitución de la sociedad o asociación (asamblea constitutiva).'), ('aprob','Aprobación de estados financieros.'), 
+        selection=[('const','Constitución de la sociedad o asociación (asamblea constitutiva).'), ('aprob','Aprobación de estados financieros.'),
             ('mod','Modificación de estatutos sociales.'), ('nomb','Nombramiento o remoción de administradores, comisarios o representantes.')],
         string='Tipo de trámite', tracking=True)
     docto_ids = fields.Many2many(comodel_name='ir.attachment', string="Actas")
@@ -266,7 +284,7 @@ class companyEmployerRegistration(models.Model):
     folio = fields.Char(string='Nombre', tracking=True)
     registration_date = fields.Date(string='Fecha de Registro')
     type = fields.Selection(
-        selection=[('alta','Alta como patrón ante el IMSS.'), ('inicio','Inicio de operaciones con personal subordinado.'), 
+        selection=[('alta','Alta como patrón ante el IMSS.'), ('inicio','Inicio de operaciones con personal subordinado.'),
         ('const','Constitución de una empresa con empleados.'), ('reg','Registro de sucursales o centros de trabajo adicionales.'),
         ('mod','Modificación de datos patronales (domicilio, razón social, régimen fiscal).')],
         string='Tipo de trámite', tracking=True)

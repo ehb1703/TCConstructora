@@ -53,3 +53,9 @@ class HrContractEmpresa(models.Model):
         domain="[('is_company', '=', True), ('typesupplier_id.name', 'ilike', 'RH')]",)
     fecha_inicio = fields.Date(string='Fecha Inicio')
     fecha_fin = fields.Date(string='Fecha Final')
+
+
+class HrJob(models.Model):
+    _inherit = 'hr.job'
+
+    descripcion_puesto = fields.Text(string='Descripción del puesto')

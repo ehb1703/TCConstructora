@@ -13,6 +13,17 @@
             <field name="active" eval="False"/>
             <field name="user_id" ref="base.user_admin"/>
         </record>
+
+        <record id="ir_cron_employee_antique" model="ir.cron">
+            <field name="name">Antigüedad del empleado</field>
+            <field name="model_id" ref="model_hr_employee"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_antique()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="False"/>
+            <field name="user_id" ref="base.user_admin"/>
+        </record>
         
     </data>
 </odoo>
