@@ -37,8 +37,8 @@
                 <field name="apaterno" invisible="is_company" placeholder="Apellido Paterno"/>
                 <field name="amaterno" invisible="is_company" placeholder="Apellido Materno"/>
                 <h1>
-                    <field id="company" options="{'line_breaks': False}" widget="text" class="text-break" name="name" default_focus="1" placeholder="e.g. Lumber Inc" invisible="not is_company" required="type == 'contact'" readonly="1"/>
-                    <field id="individual" options="{'line_breaks': False}" widget="text" class="text-break" name="name" default_focus="1" placeholder="e.g. Brandon Freeman" invisible="is_company" required="type == 'contact'" readonly="1"/>
+                    <field id="company" options="{'line_breaks': False}" widget="text" class="text-break" name="name" default_focus="1" placeholder="e.g. Lumber Inc" invisible="not is_company" required="type == 'contact'" readonly="1" force_save="1"/>
+                    <field id="individual" options="{'line_breaks': False}" widget="text" class="text-break" name="name" default_focus="1" placeholder="e.g. Brandon Freeman" invisible="is_company" required="type == 'contact'" readonly="1" force_save="1"/>
                 </h1>
                 <div>
                     <span class="d-inline-flex">

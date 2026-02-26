@@ -40,3 +40,6 @@ class HrDepartureWizard(models.TransientModel):
 
                 if self.unassign_equipment:
                     self.employee_id.update({'equipment_ids': [Command.unlink(equipment.id) for equipment in self.employee_id.equipment_ids]})
+
+                for rec in self.employee_id.obra_ids.filtered(lambda c: not c.fecha_fin):
+                    rec.update({'fecha_fin': self.departure_date})

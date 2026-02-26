@@ -26,6 +26,7 @@ class HrEmployeeObra(models.Model):
     fecha_fin = fields.Date(string='Fecha fin')
     hourly_wage = fields.Float(string='Salario por hora', digits=(10, 2), default=0.0)
 
+
 class hrEmployeeInherit(models.Model):
     _inherit = 'hr.employee'
 
@@ -58,7 +59,7 @@ class hrEmployeeInherit(models.Model):
         return resource_vals
 
     def action_activar_empleado(self):
-        self.state = 'activo'
+        self.update({'state': 'activo'})
 
     def cron_antique(self):
         self.env.cr.execute("""UPDATE hr_employee he SET antique = t2.anios 
@@ -66,10 +67,8 @@ class hrEmployeeInherit(models.Model):
                       THEN SPLIT_PART(AGE((CASE WHEN hc.state = 'close' THEN hc.date_end ELSE now()::date END), hc.date_start)::character varying, 'year', 1) 
                       ELSE '0' end)::integer anios
                 FROM (SELECT hc.employee_id, MAX(hc.id) id FROM hr_contract hc JOIN hr_contract_type hct ON hc.contract_type_id = hct.id 
-                WHERE hc.state != 'cancel' AND hct.code = 'Permanent' GROUP BY 1) as t1 JOIN hr_contract hc ON t1.id = hc.id) as t2
+                WHERE hc.state != 'cancel' /*AND hct.code = 'Permanent'*/ GROUP BY 1) as t1 JOIN hr_contract hc ON t1.id = hc.id) as t2
             WHERE he.id = t2.employee_id; """)
-
-
 
     @api.depends('obra_ids', 'obra_ids.project_id', 'obra_ids.project_id.active', 'obra_ids.fecha_inicio', 'obra_ids.fecha_fin', 'work_location_id')
     def _compute_current_project(self):
@@ -188,7 +187,6 @@ class hrEmployeeInherit(models.Model):
     @api.model
     def get_employees_for_api(self, filters=None):
         """Obtiene empleados para la API con paginación y búsqueda.
-        
         Args:
             filters (dict): Diccionario con filtros opcionales:
                 - active_only (bool): Solo empleados activos (default True)
@@ -198,10 +196,8 @@ class hrEmployeeInherit(models.Model):
                 - search (str): Búsqueda por nombre o número de empleado
                 - limit (int): Límite de resultados (default 100, max 1000)
                 - offset (int): Desplazamiento para paginación (default 0)
-        
         Returns:
-            dict: Diccionario con employees, total_count, limit, offset
-        """
+            dict: Diccionario con employees, total_count, limit, offset """
         filters = filters or {}
         domain = []
         
@@ -275,24 +271,26 @@ class hrContractInherit(models.Model):
         ('bi_weekly', 'Quincenal'), ('monthly', 'Mensual'), ('bi_monthly', 'Bimestral'),], 
         compute='_compute_l10n_mx_schedule_pay', store=True, readonly=False, required=True, string='Pago', default='weekly', index=True)
     wage_type = fields.Selection([('monthly', 'Fixed Wage'), ('hourly', 'Hourly Wage')], compute='_compute_wage_type', store=True, readonly=True)
-    daily_wage = fields.Monetary(string='Salario diario', compute='_compute_daily_wage', readonly=True, store=True)
+    daily_wage = fields.Monetary(string='Salario diario')
 
     @api.depends('beneficiario_ids', 'beneficiario_ids.porcentaje')
     def _compute_total_porcentaje(self):
         for contract in self:
             contract.total_porcentaje = sum(contract.beneficiario_ids.mapped('porcentaje'))
 
+    @api.onchange('hourly_wage', 'wage')
     def _compute_daily_wage(self):
         for contract in self:
             if contract.hourly_wage:
-                contract.daily_wage = contract.hourly_wage * 8
+                salary = contract.hourly_wage * 8
             if contract.wage:
                 if contract.l10n_mx_schedule_pay_temp == 'dialy':
-                    contract.daily_wage = contract.wage
+                    salary = contract.wage
                 if contract.l10n_mx_schedule_pay_temp == 'weekly':
-                    contract.daily_wage = contract.wage / 7
+                    salary = contract.wage / 7
                 if contract.l10n_mx_schedule_pay_temp == 'bi_weekly':
-                    contract.daily_wage = contract.wage / 15
+                    salary = contract.wage / 15
+            contract.daily_wage = salary
 
     @api.constrains('beneficiario_ids')
     def _check_total_porcentaje(self):
@@ -406,6 +404,25 @@ class hrContractInherit(models.Model):
             work_data[prima_type.id] = prima[0]['number_of_hours']
 
 
+    def write(self, vals):
+        c = 0
+        if 'state' in vals or 'project_id' in vals:
+            c = 1
+
+        res = super(hrContractInherit, self).write(vals)
+        if c == 1 and self.contract_name_type_name == 'Obra determinada':
+            obra = self.env['hr.employee.obra'].search([('employee_id', '=', self.employee_id.id), ('project_id', '=', self.project_id.id)])
+            if not obra:
+                if self.state in ('open', 'close', 'cancel'):
+                    self.env['hr.employee.obra'].sudo().create({'employee_id':self.employee_id.id, 'project_id':self.project_id.id, 
+                        'fecha_inicio':self.date_start, 'fecha_fin':self.date_end, 'hourly_wage':self.daily_wage/8})
+                
+            if len(obra) == 1:
+                if not obra.fecha_inicio: 
+                    obra.write({'fecha_inicio': self.date_start})
+                if not obra.hourly_wage:
+                    obra.write({'hourly_wage':self.daily_wage/8})
+        return res
 
 class HrWorkEntryTypeInherit(models.Model):
     _inherit = 'hr.work.entry.type'
