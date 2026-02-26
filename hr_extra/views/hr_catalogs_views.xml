@@ -96,8 +96,7 @@
         <field name="inherit_id" ref="hr.view_hr_job_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='name']" position="after">
-                <field name="descripcion_puesto"
-                    placeholder="Describa las funciones, responsabilidades y actividades del puesto..."/>
+                <field name="descripcion_puesto" placeholder="Describa las funciones, responsabilidades y actividades del puesto..."/>
             </xpath>
         </field>
     </record>
