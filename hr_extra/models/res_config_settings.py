@@ -15,6 +15,7 @@ class ResConfigSettings(models.TransientModel):
     api_checadores_user_id = fields.Many2one('res.users', string='Usuario del API', compute='_compute_api_user', inverse='_inverse_api_user', store=False)
     api_checadores_user_active = fields.Boolean(string='Usuario Activo', related='api_checadores_user_id.active', readonly=True)
     api_checadores_password = fields.Char(string='Nueva Contraseña')
+    registration_active = fields.Boolean(string='No. de empleado automatico', config_parameter='hr.registration_active')
 
     @api.depends('api_checadores_username')
     def _compute_api_user(self):
@@ -41,9 +42,7 @@ class ResConfigSettings(models.TransientModel):
         
         res.update({
             'api_checadores_enabled': IrConfigParam.get_param('api_checadores.enabled', 'False').lower() == 'true',
-            'api_checadores_username': IrConfigParam.get_param('api_checadores.username', ''),
-            'api_checadores_jwt_secret': jwt_secret,
-        })
+            'api_checadores_username': IrConfigParam.get_param('api_checadores.username', ''), 'api_checadores_jwt_secret': jwt_secret,})
         return res
 
 
@@ -119,11 +118,9 @@ ESTADÍSTICAS DE PROCESAMIENTO
             raise UserError('La contraseña debe tener al menos 6 caracteres.')
         
         try:
-            # Actualizar contraseña del usuario
             self.api_checadores_user_id.sudo().write({'password': password})
             username = self.api_checadores_user_id.login
             
-            # Primero intentar UPDATE
             self.env.cr.execute("UPDATE ir_config_parameter SET value = %s, write_uid = %s, write_date = NOW() WHERE key = 'api_checadores.password'", (
                 password, self.env.uid))
             updated = self.env.cr.rowcount
@@ -134,7 +131,6 @@ ESTADÍSTICAS DE PROCESAMIENTO
                 self.env.cr.execute("""INSERT INTO ir_config_parameter (key, value, create_uid, create_date, write_uid, write_date)
                     VALUES ('api_checadores.password', %s, %s, NOW(), %s, NOW()) """, (password, self.env.uid, self.env.uid))
             
-            # Verificar que se guardó
             self.env.cr.execute("SELECT value FROM ir_config_parameter WHERE key = 'api_checadores.password'")
             result = self.env.cr.fetchone()
             self.api_checadores_password = False

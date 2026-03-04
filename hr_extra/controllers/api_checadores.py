@@ -515,6 +515,8 @@ class ApiChecadoresController(http.Controller):
             # Validar formato de fecha - Si es inválido, NO guardar y devolver error
             try:
                 check_datetime = datetime.fromisoformat(data['check_date'].replace('Z', '+00:00'))
+                # Normalizar a naive: checador envia hora local MX, evita TypeError con datetime.now()
+                check_datetime = check_datetime.replace(tzinfo=None)
             except (ValueError, TypeError) as e:
                 return self._error_response(
                     f'Formato de fecha inválido: {data["check_date"]}. Use formato ISO 8601 (YYYY-MM-DDTHH:MM:SS)',
@@ -526,43 +528,31 @@ class ApiChecadoresController(http.Controller):
             env = request.env(user=SUPERUSER_ID)
             
             # Validar que empleado existe por registration_number
-            employee = env['hr.employee'].search([('registration_number', '=', data['registration_number'])], limit=1)
+            employee = env['hr.employee'].search([('registration_number','=',data['registration_number'])], limit=1)
             if not employee:
-                return self._error_response(
-                    f'Empleado con número {data["registration_number"]} no encontrado',
-                    status=404,
-                    error_code='EMPLOYEE_NOT_FOUND'
-                )
+                return self._error_response(f'Empleado con número {data["registration_number"]} no encontrado',
+                    status=404, error_code='EMPLOYEE_NOT_FOUND')
             
             now = datetime.now()
-            
             # VALIDACIÓN 1: Fecha dentro de ±1 día (según TXT)
             one_day_ago = now - timedelta(days=1)
             one_day_ahead = now + timedelta(days=1)
             
             if check_datetime < one_day_ago or check_datetime > one_day_ahead:
-                return self._error_response(
-                    f'La fecha de registro debe estar dentro de ±1 día de la fecha actual. '
+                return self._error_response(f'La fecha de registro debe estar dentro de ±1 día de la fecha actual. '
                     f'Fecha enviada: {check_datetime.strftime("%Y-%m-%d %H:%M:%S")}, '
                     f'Rango permitido: {one_day_ago.strftime("%Y-%m-%d %H:%M:%S")} a {one_day_ahead.strftime("%Y-%m-%d %H:%M:%S")}',
-                    status=400,
-                    error_code='INVALID_DATE_RANGE'
-                )
+                    status=400, error_code='INVALID_DATE_RANGE')
             
             # VALIDACIÓN 2: Máximo 6 checks por empleado por día (según TXT)
             check_date_only = check_datetime.date()
-            checks_today = env['ctrol.asistencias'].search_count([
-                ('registration_number', '=', data['registration_number']),
-                ('check_date', '>=', f'{check_date_only} 00:00:00'),
-                ('check_date', '<=', f'{check_date_only} 23:59:59')
-            ])
+            checks_today = env['ctrol.asistencias'].search_count([('registration_number', '=', data['registration_number']),
+                ('check_date', '>=', f'{check_date_only} 00:00:00'), ('check_date', '<=', f'{check_date_only} 23:59:59')])
             
             if checks_today >= 6:
                 return self._error_response(
                     f'El empleado {data["registration_number"]} ya tiene {checks_today} registros para el día {check_date_only}. Máximo permitido: 6',
-                    status=400,
-                    error_code='MAX_CHECKS_EXCEEDED'
-                )
+                    status=400, error_code='MAX_CHECKS_EXCEEDED')
             
             # Preparar datos para crear registro
             data['status'] = 'success'
@@ -583,8 +573,7 @@ class ApiChecadoresController(http.Controller):
                 'status': 'success',
                 'timestamp': datetime.now().isoformat(),
                 'data': attendance.to_json(),
-                'checks_today': checks_today_final
-            })
+                'checks_today': checks_today_final})
             
         except json.JSONDecodeError:
             return self._error_response('Body JSON inválido', status=400, error_code='INVALID_JSON')
@@ -596,7 +585,6 @@ class ApiChecadoresController(http.Controller):
     @http.route('/api/v1/attendances', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     def attendance_list(self, **kw):
         """Obtiene lista de asistencias desde ctrol.asistencias con paginación.
-        
         Query Parameters (en body JSON para GET):
             - registration_number: Filtrar por número de empleado
             - check_type: Filtrar por tipo (entrada/salida)

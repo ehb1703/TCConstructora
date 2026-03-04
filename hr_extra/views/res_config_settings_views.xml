@@ -65,7 +65,6 @@
                                 </div>
                             </div>
                         </setting>
-
                         <setting id="api_checadores_endpoints" invisible="not api_checadores_enabled">
                             <div class="content-group">
                                 <h4>Endpoints Disponibles</h4>
@@ -88,22 +87,13 @@
                             </div>
                         </setting>
                     </block>
-                    
                     <block title="Procesamiento de Asistencias">                        
                         <setting id="attendance_statistics_setting" string="Estadísticas y Monitoreo">
                             <div class="content-group">
                                 <div class="row mt16">
                                     <div class="col-lg-12">
-                                        <button name="action_view_attendance_logs" 
-                                                string="Ver Control de Asistencias" 
-                                                type="object" 
-                                                class="btn btn-primary"
-                                                icon="fa-list"/>
-                                        <button name="action_view_attendance_statistics" 
-                                                string="Ver Estadísticas en Tiempo Real" 
-                                                type="object" 
-                                                class="btn btn-info ms-2"
-                                                icon="fa-bar-chart"/>
+                                        <button name="action_view_attendance_logs" string="Ver Control de Asistencias" type="object" class="btn btn-primary" icon="fa-list"/>
+                                        <button name="action_view_attendance_statistics" string="Ver Estadísticas en Tiempo Real" type="object" class="btn btn-info ms-2" icon="fa-bar-chart"/>
                                     </div>
                                 </div>
                                 <div class="alert alert-info mt-3" role="status">
@@ -113,6 +103,12 @@
                         </setting>
                     </block>
                 </app>
+            </xpath>
+
+            <xpath expr="//block[@name='employee_rights_setting_container']/setting" position="after">
+                <setting help="Actualización del número de empleado." title="Actualización del número de empleado.">
+                    <field name="registration_active"/>
+                </setting>
             </xpath>
         </field>
     </record>

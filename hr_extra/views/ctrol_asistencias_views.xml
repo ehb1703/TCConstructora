@@ -10,7 +10,7 @@
                 <field name="registration_number"/>
                 <field name="employee_name"/>
                 <field name="check_type"/>
-                <field name="check_date"/>
+                <field name="check_date" widget="datetime" options="{'tz': False}"/>
                 <field name="status" decoration-success="status=='success'" decoration-danger="status=='error'" widget="badge"/>
                 <field name="log_status"/>
                 <field name="attendance_id" optional="show" string="Asistencia Odoo"/>
@@ -42,7 +42,7 @@
                             <field name="employee_id" invisible="1"/>
                             <field name="employee_name"/>
                             <field name="check_type"/>
-                            <field name="check_date"/>
+                            <field name="check_date" widget="datetime" options="{'tz': False}"/>
                         </group>
                         <group string="Estado de Validación">
                             <field name="status" widget="badge" decoration-success="status=='success'" decoration-danger="status=='error'"/>

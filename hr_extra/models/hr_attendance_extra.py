@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
+from .hr_employee import _encargado_nomina_extra_domain
 from odoo.exceptions import ValidationError, UserError
 from datetime import date, datetime, timedelta, time
 import logging

@@ -14,6 +14,46 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
+_SCHEDULE_PAY_SEMANAL = ('weekly')
+_SCHEDULE_PAY_QUINCENAL = ('bi_weekly', 'monthly', 'bi_monthly', '10_days', '14_days', 'daily')
+
+
+def _get_user_schedule_pay(env):
+    """ Lee l10n_mx_schedule_pay del contrato activo del empleado del usuario.
+    Usa SQL directo para evitar recursión: _search → ORM → _search.
+    Retorna: 'semanal', 'quincenal', o None (sin restricción).
+    - None si es ADMIN, si no tiene contrato, o si su schedule es 'ambas'. """
+    # ADMIN siempre ve todo — usa xmlid base.group_system
+    env.cr.execute("""SELECT 1 FROM res_groups_users_rel rgur JOIN ir_model_data imd ON imd.res_id = rgur.gid WHERE rgur.uid = %s AND imd.module = 'base'
+        AND imd.name = 'group_system' LIMIT 1 """, (env.uid,))
+    if env.cr.fetchone():
+        return None
+
+    # Leer encargado_nomina del empleado (campo T61 que captura el responsable)
+    env.cr.execute("""SELECT he.encargado_nomina FROM hr_employee he JOIN resource_resource rr ON rr.id = he.resource_id WHERE rr.user_id = %s
+        AND he.active = true LIMIT 1 """, (env.uid,))
+    row = env.cr.fetchone()
+    enc = row[0] if row else None
+
+    # Sin valor o ambas = sin restricción
+    if not enc or enc == 'ambas':
+        return None
+    return enc  # 'semanal' o 'quincenal'
+
+
+def _encargado_nomina_extra_domain(env, employee_field='employee_id'):
+    """Genera dominio adicional para filtrar por Schedule Pay del usuario.
+        - Si el usuario es ADMIN o no tiene valor → sin restricción (dominio vacío)
+        - Si tiene semanal → solo ve empleados semanal + ambas + sin valor
+        - Si tiene quincenal → solo ve empleados quincenal + ambas + sin valor
+    El campo a filtrar es encargado_nomina del empleado (capturado en T61). """
+    enc = _get_user_schedule_pay(env)
+    if not enc:
+        return []
+    field = 'encargado_nomina' if employee_field == 'self' else f'{employee_field}.encargado_nomina'
+    return ['|', '|', (field, '=', False), (field, '=', 'ambas'), (field, '=', enc)]
+
+
 class HrEmployeeObra(models.Model):
     _name = 'hr.employee.obra'
     _description = 'Obra asignada a empleado'
@@ -41,11 +81,17 @@ class hrEmployeeInherit(models.Model):
         domain="['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids), ('state', '!=', 'baja')]")
     coach_id = fields.Many2one('hr.employee', 'Coach', 
         domain="['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids), ('state', '!=', 'baja')]")
-    state = fields.Selection(selection=[('activo','Activo'), ('baja','Baja'), ('pensionado','Pensionado'), ('incapacidad','Incapacidad'), 
-        ('permiso','Permiso')],
+    state = fields.Selection(selection=[('activo','Activo'), ('baja','Baja'), ('pensionado','Pensionado'), ('incapacidad','Incapacidad'), ('permiso','Permiso')],
         string='Estado Actual', default='activo', tracking=True)
     empresa_empleadora = fields.Many2one('res.company', string='Empresa empleadora')
     antique = fields.Integer(string='Antigüedad', default=0)
+    encargado_nomina = fields.Selection(selection=[('quincenal', 'Quincenal'), ('semanal', 'Semanal'), ('ambas', 'Ambas')],
+        string='Encargado de Nómina')
+    can_number = fields.Boolean(compute='_compute_can_number')
+
+    def _compute_can_number(self):
+        can_edit = self.env['ir.config_parameter'].sudo().get_param('hr.registration_active')
+        self.can_number = can_edit
 
     @api.onchange('work_contact_id')
     def onchange_name(self):
@@ -60,6 +106,11 @@ class hrEmployeeInherit(models.Model):
 
     def action_activar_empleado(self):
         self.update({'state': 'activo'})
+
+    @api.model
+    def _search(self, domain, offset=0, limit=None, order=None):
+        extra = _encargado_nomina_extra_domain(self.env, 'self')
+        return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
     def cron_antique(self):
         self.env.cr.execute("""UPDATE hr_employee he SET antique = t2.anios 
@@ -259,6 +310,18 @@ class hrEmployeeInherit(models.Model):
             'returned_count': len(result)}
 
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        can_edit = self.env['ir.config_parameter'].sudo().get_param('hr.registration_active')
+        if can_edit:
+            for vals in vals_list:
+                seq = self.env['ir.sequence'].next_by_code('numemployee')
+                vals['registration_number'] = seq
+
+        res = super(hrEmployeeInherit, self).create(vals_list)
+        return res
+
+
 class hrContractInherit(models.Model):
     _inherit = 'hr.contract'
 
@@ -272,6 +335,8 @@ class hrContractInherit(models.Model):
         compute='_compute_l10n_mx_schedule_pay', store=True, readonly=False, required=True, string='Pago', default='weekly', index=True)
     wage_type = fields.Selection([('monthly', 'Fixed Wage'), ('hourly', 'Hourly Wage')], compute='_compute_wage_type', store=True, readonly=True)
     daily_wage = fields.Monetary(string='Salario diario')
+    work_entry_source = fields.Selection(selection=[('calendar', 'Horario de trabajo'), ('attendance', 'Asistencia'),],
+        default='attendance')
 
     @api.depends('beneficiario_ids', 'beneficiario_ids.porcentaje')
     def _compute_total_porcentaje(self):
@@ -281,6 +346,7 @@ class hrContractInherit(models.Model):
     @api.onchange('hourly_wage', 'wage')
     def _compute_daily_wage(self):
         for contract in self:
+            salary = 0
             if contract.hourly_wage:
                 salary = contract.hourly_wage * 8
             if contract.wage:
@@ -330,6 +396,12 @@ class hrContractInherit(models.Model):
     def action_report_convenio(self):
         # Genera el convenio de confidencialidad
         return self.env.ref('hr_extra.action_report_convenio_confidencialidad').report_action(self)
+
+    @api.model
+    def _search(self, domain, offset=0, limit=None, order=None):
+        extra = _encargado_nomina_extra_domain(self.env)
+        return super()._search(list(domain) + extra if extra else domain,
+                                offset=offset, limit=limit, order=order)
 
     def get_salario_en_letra(self, numero):
         # Convierte número a texto usando función nativa de Odoo
@@ -410,7 +482,7 @@ class hrContractInherit(models.Model):
             c = 1
 
         res = super(hrContractInherit, self).write(vals)
-        if c == 1 and self.contract_name_type_name == 'Obra determinada':
+        if c == 1 and self.contract_type_name == 'Obra determinada':
             obra = self.env['hr.employee.obra'].search([('employee_id', '=', self.employee_id.id), ('project_id', '=', self.project_id.id)])
             if not obra:
                 if self.state in ('open', 'close', 'cancel'):
@@ -465,6 +537,21 @@ class HrPayslipInherit(models.Model):
             res.append(attendance_line)
         work_entry_type = self.env['hr.work.entry.type']
         return sorted(res, key=lambda d: work_entry_type.browse(d['work_entry_type_id']).sequence) 
+
+    @api.model
+    def _search(self, domain, offset=0, limit=None, order=None):
+        extra = _encargado_nomina_extra_domain(self.env)
+        return super()._search(list(domain) + extra if extra else domain,
+                                offset=offset, limit=limit, order=order)
+
+
+class HrWorkEntryEncargadoFilter(models.Model):
+    _inherit = 'hr.work.entry'
+
+    @api.model
+    def _search(self, domain, offset=0, limit=None, order=None):
+        extra = _encargado_nomina_extra_domain(self.env)
+        return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
 
 class HrPayslipWorkedDaysInherit(models.Model):
@@ -522,6 +609,8 @@ class HrPayslipWorkedDaysInherit(models.Model):
                     worked_days.amount = daily_rate * worked_days.number_of_days
                 elif worked_days.work_entry_type_id.code in ('LEAVE120P'):
                     worked_days.amount = daily_rate * worked_days.number_of_days * .25
+                elif worked_days.work_entry_type_id.code in ('LEAVE90'):
+                    worked_days.amount = 0
                 elif worked_days.work_entry_type_id.code in ('LEAVE1200'):
                     percentage = self.env['hr.leave.disease'].search([('disease_date','>=',worked_days.payslip_id.date_from), 
                         ('disease_date','<=',worked_days.payslip_id.date_to), ('employee_id','=',worked_days.payslip_id.employee_id.id)])
