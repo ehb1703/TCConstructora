@@ -18,6 +18,7 @@
             <xpath expr="//field[@name='currency_id']" position="after">
                 <field name="type_purchase"/>
                 <field name="lead_id"/>
+                <field name="empresa_solicitante" invisible="type_purchase != 'bases'" readonly="1"/>
             </xpath>
         </field>
     </record>

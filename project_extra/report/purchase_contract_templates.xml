@@ -2,7 +2,7 @@
 <odoo>          
     <data>
         <template id="report_pedido_compras" inherit_id="purchase_requisition.report_purchaserequisition_document">
-            <xpath expr="//t[@t-call='web.external_layout']" position = "replace">
+            <xpath expr="//t[@t-call='web.external_layout']" position="replace">
                 <t t-call="web.external_layout">
                     <div class="page">                        
                         <t t-set="representante" t-value="o.env['company.legal.representative'].search([('company_id','=',o.company_id.id)], limit=1)"/>
@@ -129,5 +129,94 @@
                 </t>
             </xpath>
         </template>
+
+        <template id="report_purchaseorder_bases_inherit" inherit_id="purchase.report_purchaseorder_document">
+            <xpath expr="//t[@t-call='web.external_layout']/t[@t-set='o']" position="before">
+                <t t-if="o.type_purchase == 'bases' and o.lead_id and o.lead_id.empresa_concursante_id">
+                    <t t-set="company_id" t-value="o.lead_id.empresa_concursante_id"/>
+                </t>
+            </xpath>
+            <xpath expr="//t[@t-call='web.external_layout']/t[@t-else='']" position="replace">
+                <t t-if="o.type_purchase == 'bases' and o.empresa_solicitante">
+                    <t t-set="information_block">
+                        <strong class="d-block mt-3">Dirección de envío:</strong>
+                        <div t-field="o.empresa_solicitante"
+                             t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                    </t>
+                </t>
+                <t t-else="">
+                    <t t-set="information_block">
+                        <strong class="d-block mt-3">Dirección de envío:</strong>
+                        <div t-if="o.picking_type_id and o.picking_type_id.warehouse_id">
+                            <span t-field="o.picking_type_id.warehouse_id.name"/>
+                            <div t-field="o.picking_type_id.warehouse_id.partner_id"
+                                 t-options='{"widget": "contact", "fields": ["address", "phone"], "no_marker": True, "phone_icons": True}'
+                                 name="purchase_shipping_address"/>
+                        </div>
+                    </t>
+                </t>
+            </xpath>
+        </template>
+
+        <template id="report_external_layout_standard_bases_inherit" inherit_id="web.external_layout_standard">
+            <xpath expr="//div[hasclass('d-flex')]/img[@class='o_company_logo_small']" position="replace">
+                <t t-if="o and o._name == 'purchase.order' and o.type_purchase == 'bases' and o.lead_id and o.lead_id.empresa_concursante_id">
+                    <img t-if="o.lead_id.empresa_concursante_id.logo"
+                         class="o_company_logo_small"
+                         t-att-src="image_data_uri(o.lead_id.empresa_concursante_id.logo)"
+                         alt="Logo"/>
+                </t>
+                <t t-else="">
+                    <img t-if="company.logo" class="o_company_logo_small"
+                         t-att-src="image_data_uri(company.logo)" alt="Logo"/>
+                </t>
+            </xpath>
+            <xpath expr="//div[@name='company_address']" position="replace">
+                <div class="col-6" name="company_address">
+                    <t t-if="o and o._name == 'purchase.order' and o.type_purchase == 'bases' and o.lead_id and o.lead_id.empresa_concursante_id">
+                        <ul class="list-unstyled" name="company_address_list">
+                            <li>
+                                <span t-field="o.lead_id.empresa_concursante_id.partner_id"
+                                      t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                            </li>
+                        </ul>
+                    </t>
+                    <t t-else="">
+                        <ul class="list-unstyled" name="company_address_list">
+                            <li t-if="company.is_company_details_empty">
+                                <span t-field="company.partner_id"
+                                      t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": true}'/>
+                            </li>
+                            <li t-else="">
+                                <span t-field="company.company_details"/>
+                            </li>
+                        </ul>
+                    </t>
+                </div>
+            </xpath>
+        </template>
+        <template id="report_purchasequotation_bases_inherit" inherit_id="purchase.report_purchasequotation_document">
+            <xpath expr="//t[@t-call='web.external_layout']/t[@t-else='']" position="replace">
+                <t t-if="o.type_purchase == 'bases' and o.empresa_solicitante">
+                    <t t-set="information_block">
+                        <strong class="d-block mt-3">Dirección de envío:</strong>
+                        <div t-field="o.empresa_solicitante"
+                             t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                    </t>
+                </t>
+                <t t-else="">
+                    <t t-set="information_block">
+                        <strong class="d-block mt-3">Dirección de envío:</strong>
+                        <div t-if="o.picking_type_id and o.picking_type_id.warehouse_id">
+                            <span t-field="o.picking_type_id.warehouse_id.name"/>
+                            <div t-field="o.picking_type_id.warehouse_id.partner_id"
+                                 t-options='{"widget": "contact", "fields": ["address", "phone"], "no_marker": True, "phone_icons": True}'
+                                 name="purchase_shipping_address"/>
+                        </div>
+                    </t>
+                </t>
+            </xpath>
+        </template>
+
     </data>
 </odoo>

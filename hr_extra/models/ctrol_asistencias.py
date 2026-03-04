@@ -47,24 +47,20 @@ class CtrolAsistencias(models.Model):
         for record in self:
             employee = False
             if record.registration_number:
-                employee = self.env['hr.employee'].sudo().search([
-                    ('registration_number', '=', record.registration_number)
-                ], limit=1)
+                employee = self.env['hr.employee'].sudo().search([('registration_number', '=', record.registration_number)], limit=1)
             
             # Fallback: buscar por employee_id (legacy)
             if not employee and record.employee_id:
-                employee = self.env['hr.employee'].sudo().search([
-                    ('id', '=', record.employee_id)
-                ], limit=1)
+                employee = self.env['hr.employee'].sudo().search([('id', '=', record.employee_id)], limit=1)
             
             if employee:
                 record.employee_name = employee.name
-                # Sincronizar employee_id si no existe
                 if not record.employee_id:
                     record.employee_id = employee.id
             else:
                 record.employee_name = f'Empleado #{record.registration_number or record.employee_id}'
     
+
     @api.constrains('latitude')
     def _check_latitude(self):
         for record in self:
@@ -126,13 +122,18 @@ class CtrolAsistencias(models.Model):
         
         # Convertir check_date si viene en formato ISO con T
         if vals.get('check_date') and 'T' in str(vals.get('check_date')):
-            vals['check_date'] = str(vals['check_date']).replace('T', ' ')
+            check_date_str = str(vals['check_date']).replace('T', ' ')
+            # Remover microsegundos si existen (ej: 2026-02-03 02:58:00.123456 → 2026-02-03 02:58:00)
+            if '.' in check_date_str:
+                check_date_str = check_date_str.split('.')[0]
+            vals['check_date'] = check_date_str
         
         # Crear registro
         record = self.create(vals)
         _logger.info(f"Asistencia creada en ctrol.asistencias - ID: {record.id}, "
                     f"Registration#: {vals.get('registration_number')}, "
-                    f"Tipo: {vals.get('check_type')}, Status: {vals.get('status', 'success')}")
+                    f"Tipo: {vals.get('check_type')}, Check_date: {vals.get('check_date')}, "
+                    f"Status: {vals.get('status', 'success')}")
         return record
     
 
@@ -191,50 +192,63 @@ class CtrolAsistencias(models.Model):
 
     
     def _map_to_attendance(self):
-        """ Mapea el registro a hr.attendance.
-            - Si check_type='entrada': Crea nuevo hr.attendance con check_in + coordenadas GPS entrada
-            - Si check_type='salida': Busca attendance abierto y actualiza check_out + coordenadas GPS salida """
+        """Mapea el registro a hr.attendance SIN conversión de zona horaria.
+        
+        REGLAS DE VALIDACIÓN:
+        1. Solo UNA entrada por día por empleado
+        2. Solo UNA salida por día por empleado  
+        3. Permitir procesar registros siguientes aunque haya entradas sin salida de días anteriores
+        
+        IMPORTANTE: Se usa .replace(tzinfo=None) para eliminar conversión UTC."""
         self.ensure_one()        
         employee = self._get_employee_from_registration()
         if not employee:
             return (False, f'Empleado no encontrado | Registration: {self.registration_number}')
         
+        # Trabajar con la fecha SIN zona horaria para evitar conversiones
+        check_date_naive = self.check_date.replace(tzinfo=None) if self.check_date else None
+        current_date = check_date_naive.date() if check_date_naive else None
+        
         AttendanceModel = self.env['hr.attendance'].sudo()        
         if self.check_type == 'entrada':
-            open_attendance = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '=', False)], limit=1)
-            if open_attendance:
-                # Verificar si la entrada abierta es del MISMO día que la nueva
-                open_date = open_attendance.check_in.date() if open_attendance.check_in else None
-                new_date = self.check_date.date() if self.check_date else None
-
-                if open_date and new_date and open_date == new_date:
-                    return (False, f'Entrada ya existe | Attendance ID: {open_attendance.id} | Fecha: {open_attendance.check_in}')
-                """else:
-                    # Día distinto: hay una entrada vieja sin cerrar → cerrar automáticamente
-                    # Se cierra con el mismo check_in (0 horas trabajadas) para no bloquear la nueva entrada
-                    _logger.warning(
-                        f'T0051: Entrada abierta de día anterior detectada | '
-                        f'Attendance ID: {open_attendance.id} | Fecha antigua: {open_attendance.check_in} | '
-                        f'Cerrando automáticamente para crear nueva entrada del {new_date}' )
-                    open_attendance.write({'check_out': open_attendance.check_in}) """
+            # REGLA 1: Verificar si ya existe entrada del MISMO día
+            entrada_del_dia = AttendanceModel.search([('employee_id', '=', employee.id), ('check_in', '>=', f'{current_date} 00:00:00'),
+                ('check_in', '<', f'{current_date} 23:59:59')], limit=1)
+            
+            if entrada_del_dia:
+                return (False, f'Ya existe entrada del día {current_date} | Attendance ID: {entrada_del_dia.id} | Check-in: {entrada_del_dia.check_in}')
+            
             try:
-                attendance = AttendanceModel.create({'employee_id': employee.id, 'check_in': self.check_date, 'in_latitude': self.latitude or 0.0,
+                attendance = AttendanceModel.create({'employee_id': employee.id, 'check_in': check_date_naive, 'in_latitude': self.latitude or 0.0,
                     'in_longitude': self.longitude or 0.0,})
-                return (attendance, f'Entrada registrada | Attendance ID: {attendance.id} | Check-in: {self.check_date}')
+                return (attendance, f'Entrada registrada | Attendance ID: {attendance.id} | Check-in: {check_date_naive}')
             except Exception as e:
                 return (False, f'Error al crear entrada | Error: {str(e)}')
         elif self.check_type == 'salida':
-            # Buscar entrada previa sin salida
-            open_attendance = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '=', False), ('check_in', '<=', self.check_date)], 
-                order='check_in desc', limit=1)
+            # REGLA 2: Verificar si ya existe salida del MISMO día
+            salida_del_dia = AttendanceModel.search([
+                ('employee_id', '=', employee.id),
+                ('check_out', '>=', f'{current_date} 00:00:00'),
+                ('check_out', '<', f'{current_date} 23:59:59')
+            ], limit=1)
+            
+            if salida_del_dia:
+                return (False, f'Ya existe salida del día {current_date} | Attendance ID: {salida_del_dia.id} | Check-out: {salida_del_dia.check_out}')
+            
+            # REGLA 3: Buscar entrada abierta más reciente (puede ser de días anteriores)
+            open_attendance = AttendanceModel.search([
+                ('employee_id', '=', employee.id),
+                ('check_out', '=', False),
+                ('check_in', '<=', check_date_naive)
+            ], order='check_in desc', limit=1)
             
             if not open_attendance:
-                return (False, f'Salida sin entrada previa | Employee: {employee.name} | Fecha: {self.check_date}')
-            if self.check_date <= open_attendance.check_in:
-                return (False, f'Salida debe ser posterior a entrada | Check-in: {open_attendance.check_in} | Check-out intentado: {self.check_date}')
+                return (False, f'Salida sin entrada previa | Employee: {employee.name} | Fecha: {check_date_naive}')
+            if check_date_naive <= open_attendance.check_in:
+                return (False, f'Salida debe ser posterior a entrada | Check-in: {open_attendance.check_in} | Check-out intentado: {check_date_naive}')
             
             try:
-                open_attendance.write({'check_out': self.check_date, 'out_latitude': self.latitude or 0.0, 'out_longitude': self.longitude or 0.0,})
+                open_attendance.write({'check_out': check_date_naive, 'out_latitude': self.latitude or 0.0, 'out_longitude': self.longitude or 0.0,})
                 # worked_hours se calcula automáticamente en hr.attendance
                 worked_hours = open_attendance.worked_hours
                 return (open_attendance, f'Salida registrada | Attendance ID: {open_attendance.id} | Horas trabajadas: {worked_hours:.2f}')
@@ -250,7 +264,6 @@ class CtrolAsistencias(models.Model):
             cal_tolerance = getattr(employee.resource_calendar_id, 'tolerance_minutes', None)
             if cal_tolerance is not None and cal_tolerance >= 0:
                 threshold_hours = cal_tolerance / 60.0
-                _logger.info(f'T0051: Umbral desde horario {employee.resource_calendar_id.name}: {cal_tolerance} min')
         else:
             company = employee.company_id or self.env.company
             threshold_minutes = getattr(company, 'overtime_company_threshold', None)
@@ -260,32 +273,42 @@ class CtrolAsistencias(models.Model):
         return threshold_hours
 
     def _map_to_overtime(self, attendance_id):
-        """ Registra RETRASO EN ENTRADA como hr.work.entry tipo OVERTIME.
-            Nota: se usa hr.work.entry en lugar de hr.attendance.overtime porque
-            Odoo Enterprise elimina automáticamente los registros de hr.attendance.overtime al completar la asistencia con check_out."""
+        """Registra RETRASO EN ENTRADA como hr.work.entry tipo OVERTIME.
+        Usa fecha SIN conversión de zona horaria.
+        Nota: se usa hr.work.entry en lugar de hr.attendance.overtime porque
+        Odoo Enterprise elimina automáticamente los registros de hr.attendance.overtime
+        al completar la asistencia con check_out."""
         self.ensure_one()
         if not self.lateness_time:
             return (False, 'No hay lateness_time registrado')
+
         employee = self._get_employee_from_registration()
         if not employee:
             return (False, 'Empleado no encontrado')
+
         threshold_hours = self._get_threshold_hours(employee)
         lateness_hours = self._convert_time_to_hours(self.lateness_time)
         if lateness_hours <= threshold_hours:
             threshold_min = round(threshold_hours * 60)
             return (False, f'Retraso ({self.lateness_time}) no supera umbral ({threshold_min} min)')
+
         try:
+            # Usar fecha sin timezone
+            check_date_naive = self.check_date.replace(tzinfo=None) if self.check_date else None
+            
             overtime_type = self.env['hr.work.entry.type'].sudo().search([('code', '=', 'OVERTIME')], limit=1)
-            contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']),
-                ('date_start', '<=', self.check_date.date()), '|', ('date_end', '=', False), ('date_end', '>=', self.check_date.date()),], limit=1)
+            contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']), 
+                ('date_start', '<=', check_date_naive.date()), '|', ('date_end', '=', False), ('date_end', '>=', check_date_naive.date()),], limit=1)
             if not contract:
                 contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']),], 
                     order='date_start desc', limit=1)
-            we_vals = {'employee_id': employee.id, 'name': f'Retraso {self.lateness_time} - {self.check_date.date()}', 'date_start': self.check_date,
-                'date_stop': self.check_date + timedelta(hours=lateness_hours), 'work_entry_type_id': overtime_type.id if overtime_type else False,
-                'state': 'draft', }
+                
+            we_vals = {'employee_id': employee.id, 'name': f'Retraso {self.lateness_time} - {check_date_naive.date()}', 'date_start': check_date_naive,
+                'date_stop': check_date_naive + timedelta(hours=lateness_hours), 'work_entry_type_id': overtime_type.id if overtime_type else False,
+                'state': 'draft',}
             if contract:
                 we_vals['contract_id'] = contract.id
+
             we = self.env['hr.work.entry'].sudo().create(we_vals)
             _logger.info(f'T0051: Retraso WE creado | {employee.name} | {self.lateness_time}')
             return (we, f'Retraso registrado | WE ID: {we.id} | {self.lateness_time} ({lateness_hours:.2f}h)')
@@ -324,12 +347,11 @@ class CtrolAsistencias(models.Model):
         contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']), 
             ('date_start', '<=', attendance.check_in.date()), '|', ('date_end', '=', False), ('date_end', '>=', attendance.check_in.date()),], limit=1)
         if not contract:
-            contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']),], order='date_start desc',
-                limit=1)
+            contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']),], 
+                order='date_start desc', limit=1)
 
         WorkEntryModel = self.env['hr.work.entry'].sudo()
         messages = []
-
         # CASO 1: Horas extra reales (solo si hay horario programado para ese día)
         if scheduled_hours > 0:
             extra_hours = worked_hours - scheduled_hours
@@ -340,6 +362,7 @@ class CtrolAsistencias(models.Model):
                         'work_entry_type_id': overtime_type.id if overtime_type else False, 'state': 'draft',}
                     if contract:
                         we_vals['contract_id'] = contract.id
+
                     we = WorkEntryModel.create(we_vals)
                     messages.append(f'Horas extra | WE ID: {we.id} | +{extra_hours:.2f}h')
                     _logger.info(f'T0051: Horas extra | {employee.name} | +{extra_hours:.2f}h')
@@ -372,8 +395,7 @@ class CtrolAsistencias(models.Model):
         return (False, 'Sin horas extra ni salida anticipada que registrar')
     
     def _map_to_work_entry(self, attendance_id):
-        """Crea hr.work.entry tipo WORK100 al completar la jornada (salida).
-        Verifica duplicados antes de crear para evitar estado conflict."""
+        # Crea hr.work.entry tipo WORK100 al completar la jornada (salida). Verifica duplicados antes de crear para evitar estado conflict.
         self.ensure_one()
         employee = self._get_employee_from_registration()
         if not employee:
@@ -389,12 +411,12 @@ class CtrolAsistencias(models.Model):
 
         if self.check_type == 'salida' and attendance.check_in and attendance.check_out:
             try:
-                # Verificar si ya existe work entry para este attendance (evitar duplicados/conflict)
                 existing = WorkEntryModel.search([('employee_id', '=', employee.id), ('date_start', '=', attendance.check_in), 
                     ('date_stop', '=', attendance.check_out),], limit=1)
                 if existing:
                     _logger.info(f'T0051: Work Entry ya existe ID: {existing.id} para attendance {attendance_id}, omitiendo creación')
-                    return (existing, f'Work Entry ya existía | ID: {existing.id} | Contrato: {existing.contract_id.name if existing.contract_id else "Sin contrato"}')
+                    return (existing, 
+                        f'Work Entry ya existía | ID: {existing.id} | Contrato: {existing.contract_id.name if existing.contract_id else "Sin contrato"}')
 
                 # Buscar tipo WORK100
                 work_entry_type = self.env.ref('hr_work_entry.work_entry_type_attendance', raise_if_not_found=False)
@@ -403,8 +425,7 @@ class CtrolAsistencias(models.Model):
 
                 # Buscar contrato vigente en la fecha de la asistencia
                 contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']),
-                    ('date_start', '<=', attendance.check_in.date()),
-                    '|', ('date_end', '=', False), ('date_end', '>=', attendance.check_in.date()),], limit=1)
+                    ('date_start', '<=', attendance.check_in.date()), '|', ('date_end', '=', False), ('date_end', '>=', attendance.check_in.date()),], limit=1)
                 if not contract:
                     contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']),], 
                         order='date_start desc', limit=1)
@@ -413,16 +434,11 @@ class CtrolAsistencias(models.Model):
                     'date_stop': attendance.check_out, 'work_entry_type_id': work_entry_type.id if work_entry_type else False, 'state': 'draft',}
                 if contract:
                     work_entry_vals['contract_id'] = contract.id
-                    _logger.info(f'T0051: Work Entry con contract_id: {contract.id} | {contract.name}')
-                else:
-                    _logger.warning(f'T0051: Sin contrato vigente para {employee.name} en {attendance.check_in.date()}')
-
+                
                 work_entry = WorkEntryModel.create(work_entry_vals)
                 contract_info = f' | Contrato: {contract.name}' if contract else ' | Sin contrato'
                 return (work_entry, f'Work Entry creado | ID: {work_entry.id} | Tipo: Jornada Normal{contract_info}')
-
             except Exception as e:
-                _logger.error(f"Error al crear work entry: {str(e)}")
                 return (False, f'Error al crear work entry | Error: {str(e)}')
 
         return (False, 'Condiciones no cumplidas para crear work entry')
@@ -431,34 +447,23 @@ class CtrolAsistencias(models.Model):
     @api.model
     def process_pending_logs(self):
         # Procesa registros pendientes de importación a Odoo.
-        _logger.info("="*80)
-        _logger.info("INICIANDO PROCESAMIENTO DE ASISTENCIAS PENDIENTES - TAREA 0051")
-        _logger.info("="*80)
-        
         start_time = datetime.now()
         
         # 1. EXTRACCIÓN: Obtener registros pendientes
         pending_records = self.search([('log_status', '=', 'pendiente')], order='check_date asc, id asc')
-        
         total_records = len(pending_records)
-        _logger.info(f"Total de registros pendientes encontrados: {total_records}")
         
         if total_records == 0:
-            _logger.info("No hay registros pendientes para procesar")
             return {'total_procesados': 0, 'exitosos': 0, 'errores': 0, 'detalles_errores': [], 'tiempo_ejecucion': '0 segundos'}
         
         exitosos = 0
         errores = 0
         detalles_errores = []
-        
         for record in pending_records:
             try:
-                _logger.info(f"\n--- Procesando registro ID: {record.id} | Employee: {record.registration_number} | Tipo: {record.check_type} | Fecha: {record.check_date}")
-                
                 # 2.1 VALIDACIÓN
                 is_valid, validation_message = record._validate_for_import()
                 if not is_valid:
-                    # Marcar como error
                     record.write({'log_status': 'error', 'log_message': validation_message})
                     errores += 1
                     detalles_errores.append({'id': record.id, 'employee': record.registration_number, 'error': validation_message})
@@ -472,37 +477,25 @@ class CtrolAsistencias(models.Model):
                     record.write({'log_status': 'error', 'log_message': attendance_message })
                     errores += 1
                     detalles_errores.append({'id': record.id, 'employee': record.registration_number, 'error': attendance_message})
-                    _logger.warning(f"Error en attendance: {attendance_message}")
                     continue
                 
-                # Registro exitoso hasta ahora
                 messages = [attendance_message]
-
                 # 2.3 MAPEO A hr.attendance.overtime por RETRASO EN ENTRADA
                 if record.check_type == 'entrada' and record.lateness_time:
                     overtime, overtime_message = record._map_to_overtime(attendance.id)
                     if overtime:
                         messages.append(overtime_message)
-                        _logger.info(f"Overtime retraso creado: {overtime_message}")
-                    else:
-                        _logger.info(f"Overtime retraso no creado: {overtime_message}")
 
                 # 2.4 MAPEO A hr.work.entry + HORAS EXTRA/SALIDA ANTICIPADA (solo en salida)
                 if record.check_type == 'salida':
                     work_entry, work_entry_message = record._map_to_work_entry(attendance.id)
                     if work_entry:
                         messages.append(work_entry_message)
-                        _logger.info(f"Work Entry creado: {work_entry_message}")
-                    else:
-                        _logger.info(f"Work Entry: {work_entry_message}")
 
                     # Calcular horas extra al final de jornada o salida anticipada
                     extra_ok, extra_message = record._map_to_extra_hours(attendance.id)
                     if extra_ok:
                         messages.append(extra_message)
-                        _logger.info(f"Horas extra/anticipada procesadas: {extra_message}")
-                    else:
-                        _logger.info(f"Sin horas extra/anticipada: {extra_message}")
                 
                 # 2.5 ACTUALIZACIÓN DE ESTADO: Marcar como importada
                 final_message = ' | '.join(messages)
@@ -527,15 +520,6 @@ class CtrolAsistencias(models.Model):
         execution_time = (end_time - start_time).total_seconds()
         result = {'total_procesados': total_records, 'exitosos': exitosos, 'errores': errores, 'detalles_errores': detalles_errores, 
             'tiempo_ejecucion': f'{execution_time:.2f} segundos'}
-        
-        _logger.info("\n" + "="*80)
-        _logger.info("RESUMEN DE PROCESAMIENTO:")
-        _logger.info(f"Total procesados: {total_records}")
-        _logger.info(f"Exitosos: {exitosos}")
-        _logger.info(f"Errores: {errores}")
-        _logger.info(f"Tasa de éxito: {(exitosos/total_records*100) if total_records > 0 else 0:.2f}%")
-        _logger.info(f"Tiempo de ejecución: {execution_time:.2f} segundos")
-        _logger.info("="*80 + "\n")
         return result
 
     

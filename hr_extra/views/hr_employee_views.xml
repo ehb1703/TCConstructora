@@ -65,6 +65,9 @@
             <xpath expr="//field[@name='department_id']" position="after">
                 <field name="director_ids" widget="many2many_tags" string="Director/Gerente" options="{'no_create':True, 'no_open':True, 'no_edit':True}"/>
             </xpath>
+            <xpath expr="//field[@name='employee_type']" position="after">
+                <field name="encargado_nomina"/>
+            </xpath>
             <xpath expr="//notebook/page[last()]" position="after">
                 <page string="Obras" name="obras_asignadas">
                     <field name="obra_ids">
@@ -90,7 +93,7 @@
                 <group name="payroll_group" string="Payroll">
                     <field name="legal_name"/>
                     <field name="lang" string="Idioma del recibo de nómina"/>
-                    <field name="registration_number"/>
+                    <field name="registration_number" readonly="can_number" force_save="1"/>
                     <field name="disabled"/>
                 </group>
                 <group name="otros" string="Otros">

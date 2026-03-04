@@ -11,11 +11,30 @@ class purchaseOrderInherit(models.Model):
     lead_id = fields.Many2one('crm.lead', string='Oportunidad')
     type_purchase = fields.Selection(selection=[('bases','Bases de Licitación'), ('ins', 'Insumos'), ('esp', 'Trabajos especiales')],
             string='Tipo de movimiento')
+    empresa_solicitante = fields.Many2one('res.partner', string='Empresa solicitante', compute='_compute_empresa_solicitante', store=False)
+
+    @api.depends('lead_id', 'lead_id.empresa_concursante_id')
+    def _compute_empresa_solicitante(self):
+        for order in self:
+            if order.lead_id and order.lead_id.empresa_concursante_id:
+                # res.company tiene partner_id → usamos ese partner para el reporte
+                order.empresa_solicitante = order.lead_id.empresa_concursante_id.partner_id
+            else:
+                order.empresa_solicitante = False
+
+    def get_empresa_reporte(self):
+        self.ensure_one()
+        if self.type_purchase == 'bases' and self.lead_id and self.lead_id.empresa_concursante_id:
+            return self.lead_id.empresa_concursante_id
+        return self.company_id
+
+    def action_print_order(self):
+        self.ensure_one()
+        return self.env.ref('purchase.action_report_purchase_order').report_action(self)
 
     def action_comparativo(self):
         if not self.lead_id:
             raise UserError(_('Esta solicitud no tiene una oportunidad vinculada.'))
-
         cotizaciones = self.env['purchase.order'].search([('lead_id', '=', self.lead_id.id), ('type_purchase', '=', 'ins'), ('state', '=', 'sent'),
             ('mail_reception_confirmed', '=', True)])
         if not cotizaciones:
@@ -56,10 +75,8 @@ class purchaseOrderInherit(models.Model):
         # Verifica si las facturas de bases de licitación están pagadas y actualiza el CRM
         for order in self:
             if order.type_purchase == 'bases' and order.lead_id:
-                # Buscar facturas asociadas a esta orden de compra
                 invoices = order.invoice_ids.filtered(lambda inv: inv.state == 'posted')
                 if invoices:
-                    # Verificar si todas las facturas están pagadas
                     all_paid = all(inv.payment_state == 'paid' for inv in invoices)
                     if all_paid and not order.lead_id.bases_pagado:
                         order.lead_id.sudo().write({'bases_pagado': True})
@@ -70,11 +87,9 @@ class AccountMoveInherit(models.Model):
 
     def write(self, vals):
         res = super(AccountMoveInherit, self).write(vals)
-        # Si cambió el estado de pago, verificar si hay que actualizar el CRM
         if 'payment_state' in vals:
             for move in self:
                 if move.move_type == 'in_invoice' and move.payment_state == 'paid':
-                    # Buscar órdenes de compra relacionadas
                     purchase_orders = self.env['purchase.order'].search([('invoice_ids','in',move.id), ('type_purchase','=','bases'), ('lead_id','!=',False)])
                     for po in purchase_orders:
                         po._check_bases_payment_status()
