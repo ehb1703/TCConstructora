@@ -55,11 +55,8 @@ class ResConfigSettings(models.TransientModel):
             IrConfigParam.set_param('api_checadores.jwt_secret', self.api_checadores_jwt_secret)
 
     def action_view_attendance_logs(self):
-        # Abre la vista de Control de Asistencias (ctrol.asistencias)
         self.ensure_one()
-        # Obtener el ID de la acción existente
         action = self.env.ref('hr_extra.action_ctrol_asistencias').read()[0]
-        # Actualizar el nombre
         action['name'] = 'Control de Asistencias'
         return action
     

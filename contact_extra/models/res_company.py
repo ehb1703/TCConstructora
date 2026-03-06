@@ -68,12 +68,19 @@ class respartnerCurp(models.Model):
             self.name = self.nombre
 
     def write(self, values):
-        if any(field in values for field in ['name']):
-            if values.get('name') != self.name:
-                empleado = self.env['hr.employee'].search([('work_contact_id', '=', self.id)])
-                if empleado:
-                    empleado.update({'name': values.get('name'), 'legal_name': values.get('name')})
-                    empleado.resource_id.update({'name': values.get('name')})
+        if any(field in values for field in ['name', 'vat', 'curp']):
+            empleado = self.env['hr.employee'].search([('work_contact_id', '=', self.id)])
+            if empleado:
+                if 'name' in values:
+                    if values.get('name') != self.name:
+                        empleado.update({'name': values.get('name'), 'legal_name': values.get('name')})
+                        empleado.resource_id.update({'name': values.get('name')})
+                if 'curp' in values and not self.env.context.get('syncing_info'):
+                    if values.get('curp') != self.curp:
+                        empleado.update({'l10n_mx_curp': values.get('curp')})
+                if 'vat' in values and not self.env.context.get('syncing_info'):
+                    if values.get('vat') != self.vat:
+                        empleado.with_context(syncing_info=True).update({'l10n_mx_rfc': values.get('vat')})
         return super().write(values)
 
 

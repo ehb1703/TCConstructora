@@ -6,6 +6,11 @@ from functools import wraps
 from odoo import http, SUPERUSER_ID
 from odoo.http import request, Response
 from odoo.exceptions import AccessDenied
+try:
+    import pytz
+    PYTZ_AVAILABLE = True
+except ImportError:
+    PYTZ_AVAILABLE = False
 
 # Verificar disponibilidad de PyJWT al cargar el módulo
 try:
@@ -25,6 +30,37 @@ class ApiChecadoresController(http.Controller):
         if not JWT_AVAILABLE:
             return False, self._error_response('PyJWT no está instalado. Instale con: pip install PyJWT', status=500, error_code='JWT_NOT_INSTALLED')
         return True, None
+
+    def _get_checador_tz(self):
+        # Obtiene la zona horaria del usuario api_checadores o fallback a la compañía.
+        ICP = request.env['ir.config_parameter'].sudo()
+        username = ICP.get_param('api_checadores.username', '')
+        if username:
+            user = request.env['res.users'].sudo().search([('login', '=', username)], limit=1)
+            if user and user.tz:
+                return user.tz
+
+        company = request.env.company
+        if company.resource_calendar_id and company.resource_calendar_id.tz:
+            return company.resource_calendar_id.tz
+        return 'America/Mexico_City'
+
+
+    def _local_to_utc(self, local_dt, tz_name):
+        # Convierte datetime naive (hora local) a UTC naive.
+        if not PYTZ_AVAILABLE:
+            return local_dt
+
+        try:
+            tz = pytz.timezone(tz_name)
+            try:
+                local_aware = tz.localize(local_dt, is_dst=None)
+            except pytz.exceptions.AmbiguousTimeError:
+                local_aware = tz.localize(local_dt, is_dst=False)
+            return local_aware.astimezone(pytz.utc).replace(tzinfo=None)
+        except Exception:
+            return local_dt
+
 
     def _get_jwt_secret(self):
         # Obtiene la clave secreta para firmar JWT
@@ -47,16 +83,13 @@ class ApiChecadoresController(http.Controller):
 
     def _error_response(self, message, status=400, error_code=None):
         # Genera respuesta de error estándar.
-        return self._json_response({
-            'status': 'error',
-            'timestamp': datetime.now().isoformat(),
+        return self._json_response({'status': 'error', 'timestamp': datetime.now().isoformat(), 
             'error': {'code': error_code or f'ERR_{status}', 'message': message,}}, status=status)
 
     def _validate_jwt_token(self):
         """ Valida el token JWT enviado en el header Authorization.
         Returns:
             tuple: (is_valid, error_response or user_data) """
-        # Verificar que PyJWT esté disponible
         jwt_ok, error = self._check_jwt_available()
         if not jwt_ok:
             return False, error
@@ -79,11 +112,9 @@ class ApiChecadoresController(http.Controller):
         
         token = parts[1]
         secret = self._get_jwt_secret()
-        
         try:
             # Decodificar y validar token
             payload = jwt.decode(token, secret, algorithms=['HS256'])
-            
             # Verificar expiración
             if datetime.fromtimestamp(payload['exp']) < datetime.now():
                 return False, self._error_response('Token expirado', status=401, error_code='TOKEN_EXPIRED')
@@ -100,7 +131,7 @@ class ApiChecadoresController(http.Controller):
             _logger.error(f"API Checadores: Error validando token: {str(e)}")
             return False, self._error_response('Error validando token', status=500, error_code='TOKEN_VALIDATION_ERROR')
 
-    # === ENDPOINTS ===
+    
     @http.route('/api/v1/auth/login', type='http', auth='none', methods=['POST', 'OPTIONS'], csrf=False)
     def login(self, **kwargs):
         """Autenticación para obtener token JWT.
@@ -132,7 +163,6 @@ class ApiChecadoresController(http.Controller):
             
             username = data.get('username')
             password = data.get('password')
-            
             if not username or not password:
                 return self._error_response('Username y password son requeridos', status=400, error_code='MISSING_CREDENTIALS')
             
@@ -140,7 +170,6 @@ class ApiChecadoresController(http.Controller):
             ICP = request.env['ir.config_parameter'].sudo()
             config_username = ICP.get_param('api_checadores.username', '')
             config_password = ICP.get_param('api_checadores.password', '')
-            
             if not config_username or not config_password:
                 return self._error_response('Credenciales no configuradas en el servidor', status=500, error_code='CREDENTIALS_NOT_CONFIGURED')
             
@@ -152,23 +181,12 @@ class ApiChecadoresController(http.Controller):
             # Generar token JWT
             secret = self._get_jwt_secret()
             expires_in = 86400  # 24 horas
-            
-            payload = {
-                'username': username,
-                'iat': datetime.now().timestamp(),
-                'exp': (datetime.now() + timedelta(seconds=expires_in)).timestamp()}
-            
+            payload = {'username': username, 'iat': datetime.now().timestamp(), 'exp': (datetime.now() + timedelta(seconds=expires_in)).timestamp()}
             token = jwt.encode(payload, secret, algorithm='HS256')
-            
             _logger.info(f"API Checadores: Login exitoso para '{username}' desde IP: {request.httprequest.remote_addr}")
             
-            return self._json_response({
-                'status': 'success',
-                'timestamp': datetime.now().isoformat(),
-                'token': token,
-                'expires_in': expires_in,
+            return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'token': token, 'expires_in': expires_in,
                 'token_type': 'Bearer'})
-            
         except Exception as e:
             _logger.error(f"API Checadores Login Error: {str(e)}", exc_info=True)
             return self._error_response(f'Error interno: {str(e)}', status=500, error_code='INTERNAL_ERROR')
@@ -178,14 +196,8 @@ class ApiChecadoresController(http.Controller):
     def health_check(self):
         # Health check del servicio (sin autenticación).
         api_enabled = request.env['ir.config_parameter'].sudo().get_param('api_checadores.enabled', 'False')
-        return self._json_response({
-            'status': 'ok',
-            'timestamp': datetime.now().isoformat(),
-            'service': 'api_checadores',
-            'version': '2.5.1',
-            'authentication': 'JWT',
-            'jwt_available': JWT_AVAILABLE,
-            'api_enabled': api_enabled.lower() == 'true', })
+        return self._json_response({'status': 'ok', 'timestamp': datetime.now().isoformat(), 'service': 'api_checadores', 'version': '2.5.1', 
+            'authentication': 'JWT', 'jwt_available': JWT_AVAILABLE, 'api_enabled': api_enabled.lower() == 'true', })
 
     @http.route('/api/v1/employees', type='http', auth='none', methods=['GET', 'OPTIONS'], csrf=False)
     def get_employees(self, **kwargs):
@@ -231,16 +243,9 @@ class ApiChecadoresController(http.Controller):
             _logger.info(f"API Checadores: Consulta empleados exitosa desde IP {request.httprequest.remote_addr}. "
                 f"Usuario JWT: {result.get('username')}. Total: {result_data['total_count']}, Retornados: {result_data['returned_count']}")
             
-            return self._json_response({
-                'status': 'success',
-                'timestamp': datetime.now().isoformat(),
-                'count': result_data['returned_count'],
-                'total': result_data['total_count'],
-                'limit': result_data['limit'],
-                'offset': result_data['offset'],
-                'filters_applied': filters,
-                'data': result_data['employees'],
-            })
+            return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'count': result_data['returned_count'],
+                'total': result_data['total_count'], 'limit': result_data['limit'], 'offset': result_data['offset'], 'filters_applied': filters, 
+                'data': result_data['employees'],})
         except Exception as e:
             _logger.error(f"API Checadores Error: {str(e)}", exc_info=True)
             return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
@@ -262,21 +267,14 @@ class ApiChecadoresController(http.Controller):
         
         try:
             employee = request.env(user=SUPERUSER_ID)['hr.employee'].browse(employee_id)
-            
             if not employee.exists():
                 return self._error_response(f'Empleado con ID {employee_id} no encontrado', status=404, error_code='EMPLOYEE_NOT_FOUND')
             
             employee_data = employee.get_employee_data_for_api()
             _logger.info(f"API Checadores: Consulta empleado {employee_id} desde {request.httprequest.remote_addr}. "
                 f"Usuario JWT: {result.get('username')}" )
-            
-            return self._json_response({
-                'status': 'success', 
-                'timestamp': datetime.now().isoformat(), 
-                'deprecated': True,
-                'message': 'Este endpoint está deprecado. Use /api/v1/employees/by-number/<registration_number>',
-                'data': employee_data,
-            })
+            return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'deprecated': True,
+                'message': 'Este endpoint está deprecado. Use /api/v1/employees/by-number/<registration_number>', 'data': employee_data,})
         except Exception as e:
             _logger.error(f"API Checadores Error (employee/{employee_id}): {str(e)}", exc_info=True)
             return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
@@ -302,8 +300,7 @@ class ApiChecadoresController(http.Controller):
                 "full_name": "ABEL CRUZ RIVERA",
                 ...
             }
-        }
-        """
+        } """
         if request.httprequest.method == 'OPTIONS':
             return self._json_response({'status': 'ok'})
         
@@ -312,26 +309,15 @@ class ApiChecadoresController(http.Controller):
             return result
         
         try:
-            employee = request.env(user=SUPERUSER_ID)['hr.employee'].search([
-                ('registration_number', '=', registration_number)
-            ], limit=1)
-            
+            employee = request.env(user=SUPERUSER_ID)['hr.employee'].search([('registration_number', '=', registration_number)], limit=1)
             if not employee:
-                return self._error_response(
-                    f'Empleado con número {registration_number} no encontrado', 
-                    status=404, 
-                    error_code='EMPLOYEE_NOT_FOUND'
-                )
+                return self._error_response(f'Empleado con número {registration_number} no encontrado', status=404, error_code='EMPLOYEE_NOT_FOUND')
             
             employee_data = employee.get_employee_data_for_api()
             _logger.info(f"API Checadores: Consulta empleado por número {registration_number} "
                 f"desde {request.httprequest.remote_addr}. Usuario JWT: {result.get('username')}")
             
-            return self._json_response({
-                'status': 'success', 
-                'timestamp': datetime.now().isoformat(), 
-                'data': employee_data,
-            })
+            return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'data': employee_data,})
         except Exception as e:
             _logger.error(f"API Checadores Error (employee/by-number/{registration_number}): {str(e)}", exc_info=True)
             return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
@@ -378,8 +364,7 @@ class ApiChecadoresController(http.Controller):
                         "description": "Descripción del puesto"
                     }
                 ]
-            }
-        """
+            }"""
         if request.httprequest.method == 'OPTIONS':
             return self._json_response({'status': 'ok'})
         
@@ -389,33 +374,18 @@ class ApiChecadoresController(http.Controller):
         
         try:
             jobs = request.env(user=SUPERUSER_ID)['hr.job'].search([])
-            
             jobs_data = []
             for job in jobs:
                 # Contar empleados activos con este puesto
-                employee_count = request.env(user=SUPERUSER_ID)['hr.employee'].search_count([
-                    ('job_id', '=', job.id),
-                    ('active', '=', True)
-                ])
-                
-                jobs_data.append({
-                    'id': job.id,
-                    'name': job.name or '',
-                    'department': job.department_id.name if job.department_id else '',
-                    'department_id': job.department_id.id if job.department_id else None,
-                    'employee_count': employee_count,
-                    'description': job.description or '',
-                })
+                employee_count = request.env(user=SUPERUSER_ID)['hr.employee'].search_count([('job_id', '=', job.id), ('active', '=', True)])
+                jobs_data.append({'id': job.id, 'name': job.name or '', 'department': job.department_id.name if job.department_id else '',
+                    'department_id': job.department_id.id if job.department_id else None, 'employee_count': employee_count, 
+                    'description': job.description or '',})
             
             _logger.info(f"API Checadores: Consulta job_positions exitosa desde IP {request.httprequest.remote_addr}. "
                 f"Usuario JWT: {result.get('username')}. Puestos: {len(jobs_data)}")
             
-            return self._json_response({
-                'status': 'success',
-                'timestamp': datetime.now().isoformat(),
-                'count': len(jobs_data),
-                'data': jobs_data,
-            })
+            return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'count': len(jobs_data), 'data': jobs_data,})
         except Exception as e:
             _logger.error(f"API Checadores Error (job_positions): {str(e)}", exc_info=True)
             return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
@@ -434,7 +404,6 @@ class ApiChecadoresController(http.Controller):
         try:
             calendars = request.env(user=SUPERUSER_ID)['resource.calendar'].search([])
             day_mapping = {'0': 'Lunes', '1': 'Martes', '2': 'Miércoles', '3': 'Jueves', '4': 'Viernes', '5': 'Sábado', '6': 'Domingo',}
-            
             schedules_data = []
             for cal in calendars:
                 attendance_data = []
@@ -487,8 +456,7 @@ class ApiChecadoresController(http.Controller):
             "status": "success",
             "data": {...},
             "checks_today": 3
-        }
-        """
+        } """
         if request.httprequest.method == 'OPTIONS':
             return self._json_response({'status': 'ok'})
         
@@ -500,7 +468,6 @@ class ApiChecadoresController(http.Controller):
         try:
             # Parsear datos del body
             data = json.loads(request.httprequest.data.decode('utf-8'))
-          
             # Validar campos requeridos
             if not data.get('registration_number'):
                 return self._error_response('Campo requerido: registration_number', status=400, error_code='MISSING_REGISTRATION_NUMBER')
@@ -512,69 +479,83 @@ class ApiChecadoresController(http.Controller):
             if data.get('check_type') not in ['entrada', 'salida']:
                 return self._error_response('check_type debe ser "entrada" o "salida"', status=400, error_code='INVALID_CHECK_TYPE')
             
-            # Validar formato de fecha - Si es inválido, NO guardar y devolver error
+            # Parsear la fecha del checador como hora LOCAL (el dispositivo envía hora local)
             try:
-                check_datetime = datetime.fromisoformat(data['check_date'].replace('Z', '+00:00'))
-                # Normalizar a naive: checador envia hora local MX, evita TypeError con datetime.now()
-                check_datetime = check_datetime.replace(tzinfo=None)
-            except (ValueError, TypeError) as e:
-                return self._error_response(
-                    f'Formato de fecha inválido: {data["check_date"]}. Use formato ISO 8601 (YYYY-MM-DDTHH:MM:SS)',
-                    status=400,
-                    error_code='INVALID_DATE_FORMAT'
-                )
-            
+                date_raw = data['check_date'].replace('Z', '').replace('T', ' ').strip()
+                if '.' in date_raw:
+                    date_raw = date_raw.split('.')[0]
+                # check_datetime es la hora LOCAL del checador (naive)
+                check_datetime = datetime.strptime(date_raw, '%Y-%m-%d %H:%M:%S')
+            except (ValueError, TypeError):
+                return self._error_response(f'Formato de fecha inválido: {data["check_date"]}. Use formato ISO 8601 (YYYY-MM-DDTHH:MM:SS)',
+                    status=400, error_code='INVALID_DATE_FORMAT')
+
             # Usar SUPERUSER_ID para crear registro
             env = request.env(user=SUPERUSER_ID)
-            
             # Validar que empleado existe por registration_number
             employee = env['hr.employee'].search([('registration_number','=',data['registration_number'])], limit=1)
             if not employee:
-                return self._error_response(f'Empleado con número {data["registration_number"]} no encontrado',
-                    status=404, error_code='EMPLOYEE_NOT_FOUND')
-            
-            now = datetime.now()
-            # VALIDACIÓN 1: Fecha dentro de ±1 día (según TXT)
-            one_day_ago = now - timedelta(days=1)
-            one_day_ahead = now + timedelta(days=1)
-            
+                return self._error_response(f'Empleado con número {data["registration_number"]} no encontrado', status=404, error_code='EMPLOYEE_NOT_FOUND')
+
+            # Obtener TZ del usuario checador
+            tz_name = self._get_checador_tz()
+            # VALIDACIÓN 1: Fecha dentro de ±1 día comparando en hora local
+            # Convertir "ahora" a hora local para comparar manzanas con manzanas
+            if PYTZ_AVAILABLE:
+                try:
+                    tz = pytz.timezone(tz_name)
+                    now_local = datetime.now(pytz.utc).astimezone(tz).replace(tzinfo=None)
+                except Exception:
+                    now_local = datetime.now()
+            else:
+                now_local = datetime.now()
+
+            one_day_ago = now_local - timedelta(days=1)
+            one_day_ahead = now_local + timedelta(days=1)
             if check_datetime < one_day_ago or check_datetime > one_day_ahead:
-                return self._error_response(f'La fecha de registro debe estar dentro de ±1 día de la fecha actual. '
+                return self._error_response(
+                    f'La fecha de registro debe estar dentro de ±1 día de la fecha actual (TZ: {tz_name}). '
                     f'Fecha enviada: {check_datetime.strftime("%Y-%m-%d %H:%M:%S")}, '
                     f'Rango permitido: {one_day_ago.strftime("%Y-%m-%d %H:%M:%S")} a {one_day_ahead.strftime("%Y-%m-%d %H:%M:%S")}',
                     status=400, error_code='INVALID_DATE_RANGE')
-            
-            # VALIDACIÓN 2: Máximo 6 checks por empleado por día (según TXT)
-            check_date_only = check_datetime.date()
-            checks_today = env['ctrol.asistencias'].search_count([('registration_number', '=', data['registration_number']),
-                ('check_date', '>=', f'{check_date_only} 00:00:00'), ('check_date', '<=', f'{check_date_only} 23:59:59')])
-            
+
+            # VALIDACIÓN 2: Máximo 6 checks por empleado por día LOCAL
+            # Convertir el día local a rango UTC para consultar ctrol.asistencias (que guarda en UTC)
+            check_date_local = check_datetime.date()
+            if PYTZ_AVAILABLE:
+                try:
+                    tz = pytz.timezone(tz_name)
+                    day_start_utc = tz.localize(datetime.combine(check_date_local, datetime.min.time())).astimezone(pytz.utc).replace(tzinfo=None)
+                    day_end_utc = tz.localize(datetime.combine(check_date_local, datetime.max.time().replace(microsecond=0))).astimezone(pytz.utc).replace(tzinfo=None)
+                except Exception:
+                    day_start_utc = datetime.combine(check_date_local, datetime.min.time())
+                    day_end_utc = datetime.combine(check_date_local, datetime.max.time().replace(microsecond=0))
+            else:
+                day_start_utc = datetime.combine(check_date_local, datetime.min.time())
+                day_end_utc = datetime.combine(check_date_local, datetime.max.time().replace(microsecond=0))
+
+            checks_today = env['ctrol.asistencias'].search_count([('registration_number', '=', data['registration_number']), ('check_date', '>=', day_start_utc),
+                ('check_date', '<=', day_end_utc),])
+
             if checks_today >= 6:
                 return self._error_response(
-                    f'El empleado {data["registration_number"]} ya tiene {checks_today} registros para el día {check_date_only}. Máximo permitido: 6',
+                    f'El empleado {data["registration_number"]} ya tiene {checks_today} registros para el día {check_date_local} (TZ: {tz_name}). Máximo permitido: 6',
                     status=400, error_code='MAX_CHECKS_EXCEEDED')
             
             # Preparar datos para crear registro
             data['status'] = 'success'
             data['observaciones'] = ''
-            
             # Crear registro en ctrol.asistencias
             CtrolAsistencias = env['ctrol.asistencias']
             attendance = CtrolAsistencias.create_from_checador(data)
-            
             # Actualizar contador de checks (después de crear)
             checks_today_final = checks_today + 1
-            
             _logger.info(f"API Checadores: Asistencia creada - ID: {attendance.id}, "
                         f"Empleado: {data['registration_number']}, "
                         f"Checks hoy: {checks_today_final}, Usuario JWT: {result.get('username')}")
             
-            return self._json_response({
-                'status': 'success',
-                'timestamp': datetime.now().isoformat(),
-                'data': attendance.to_json(),
+            return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'data': attendance.to_json(), 
                 'checks_today': checks_today_final})
-            
         except json.JSONDecodeError:
             return self._error_response('Body JSON inválido', status=400, error_code='INVALID_JSON')
         except Exception as e:
@@ -622,7 +603,6 @@ class ApiChecadoresController(http.Controller):
             # Filtrar por registration_number (v2.4.0)
             if filters.get('registration_number'):
                 domain.append(('registration_number', '=', filters['registration_number']))
-            
             # Mantener compatibilidad con employee_id (deprecated)
             if filters.get('employee_id'):
                 domain.append(('employee_id', '=', int(filters['employee_id'])))
@@ -630,11 +610,9 @@ class ApiChecadoresController(http.Controller):
                 domain.append(('check_type', '=', filters['check_type']))
             if filters.get('log_status'):
                 domain.append(('log_status', '=', filters['log_status']))
-            
             # Filtro por status de validación (T0049)
             if filters.get('status'):
                 domain.append(('status', '=', filters['status']))
-            
             if filters.get('date_from'):
                 domain.append(('check_date', '>=', filters['date_from']))
             if filters.get('date_to'):
@@ -654,16 +632,12 @@ class ApiChecadoresController(http.Controller):
             
             # Usar SUPERUSER_ID para consultar
             env = request.env(user=SUPERUSER_ID)
-            
             # Modelo de asistencias
             CtrolAsistencias = env['ctrol.asistencias']
-            
             # Obtener total de registros que coinciden (para paginación)
             total_count = CtrolAsistencias.search_count(domain)
-            
             # Buscar registros con paginación
             attendances = CtrolAsistencias.search(domain, limit=limit, offset=offset, order='check_date desc, id desc')
-            
             # Convertir a JSON
             attendances_data = [att.to_json() for att in attendances]
             

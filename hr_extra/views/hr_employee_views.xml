@@ -46,7 +46,7 @@
                 <field name="state" widget="statusbar"/>
             </xpath>
             <xpath expr="//sheet/div[2]/div[1]/h1[1]" position="replace">
-                <field name="work_contact_id" />
+                <field name="work_contact_id"/>
                 <h1 class="d-flex flex-row align-items-center">
                     <div invisible="not user_id" class="me-2">
                         <widget name="hr_employee_chat" invisible="not context.get('chat_icon')"/>

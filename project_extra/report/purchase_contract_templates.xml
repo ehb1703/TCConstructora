@@ -195,7 +195,14 @@
                 </div>
             </xpath>
         </template>
+        
         <template id="report_purchasequotation_bases_inherit" inherit_id="purchase.report_purchasequotation_document">
+            <!-- Setear company_id a empresa_concursante para que el external_layout use su encabezado/logo -->
+            <xpath expr="//t[@t-call='web.external_layout']/t[@t-set='o']" position="before">
+                <t t-if="o.type_purchase == 'bases' and o.lead_id and o.lead_id.empresa_concursante_id">
+                    <t t-set="company_id" t-value="o.lead_id.empresa_concursante_id"/>
+                </t>
+            </xpath>
             <xpath expr="//t[@t-call='web.external_layout']/t[@t-else='']" position="replace">
                 <t t-if="o.type_purchase == 'bases' and o.empresa_solicitante">
                     <t t-set="information_block">
