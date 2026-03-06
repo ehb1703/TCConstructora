@@ -30,8 +30,8 @@ class CrmLead(models.Model):
 
     zona_geografica_id = fields.Many2one('project.zona.geografica', string='Zona geográfica', tracking=True)
     partner_emisor_id = fields.Many2one('res.partner', string='Dependencia emisora', tracking=True)
-    tipo_obra_id = fields.Many2one('project.type', string='Tipo de obra', tracking=True)
-    especialidad_ids = fields.Many2many('project.especialidad', string='Especialidad(es) requerida(s)')
+    tipo_obra_id = fields.Many2one('project.type', string='Especialidad(es) requerida(s)', tracking=True)
+    especialidad_ids = fields.Many2many('project.especialidad', string='Tipo de obra')
     monto_min = fields.Float(string='Monto mínimo')
     monto_max = fields.Float(string='Monto máximo')
     fecha_convocatoria = fields.Date(string='Fecha de convocatoria')
@@ -172,11 +172,26 @@ class CrmLead(models.Model):
     pe_revision_ids = fields.One2many('crm.propuesta.economica.revision', 'lead_id', string='Revisiones Propuesta Económica')
     pe_autorizado = fields.Boolean(string='PE Autorizada', default=False)
     #Campos de Autorización de Presupuesto
-    pe_presupuesto_subtotal = fields.Float(string='Subtotal', readonly=True, digits=(16, 2))
-    pe_presupuesto_iva = fields.Float(string='IVA', readonly=True, digits=(16, 2))
-    pe_presupuesto_total = fields.Float(string='Total', readonly=True, digits=(16, 2))
+    pe_presupuesto_subtotal = fields.Float(string='Subtotal', digits=(16, 2))
+    pe_presupuesto_iva = fields.Float(string='IVA', compute='_compute_pe_presupuesto_iva_total', store=True, digits=(16, 2))
+    pe_presupuesto_total = fields.Float(string='Total', compute='_compute_pe_presupuesto_iva_total', store=True, digits=(16, 2))
     pe_presupuesto_revisado = fields.Boolean(string='Revisado', default=False)
     pe_presupuesto_autorizado = fields.Boolean(string='Autorizado', default=False)
+
+    @api.depends('pe_presupuesto_subtotal')
+    def _compute_pe_presupuesto_iva_total(self):
+        tax = self.env['account.tax'].search([
+            ('type_tax_use', '=', 'sale'),
+            ('amount_type', '=', 'percent'),
+            ('active', '=', True),
+            ('amount', '>', 0),
+        ], order='amount desc', limit=1)
+        iva_rate = (tax.amount / 100.0) if tax else 0.16
+        for lead in self:
+            subtotal = lead.pe_presupuesto_subtotal or 0.0
+            iva = round(subtotal * iva_rate, 2)
+            lead.pe_presupuesto_iva = iva
+            lead.pe_presupuesto_total = round(subtotal + iva, 2)
 
     @api.depends('importe_contratado', 'bases_anticipo_porcentaje', 'bases_abstinencia_anticipo')
     def _compute_importe_anticipo(self):
@@ -400,7 +415,7 @@ class CrmLead(models.Model):
                 raise ValidationError('Debe tener al menos una revisión AUTORIZADA en Propuesta Económica para avanzar de etapa.')
             if not self.pe_presupuesto_autorizado:
                 raise ValidationError('Debe AUTORIZAR el presupuesto de la propuesta económica para avanzar de etapa. '
-                                    'Cargue los datos del documento Económico 2, marque como Revisado y luego Autorice.')
+                                    'Capture el Subtotal, marque como Revisado y luego Autorice.')
 
         if self.stage_name == 'Junta de Apertura de Propuestas':
             if not self.apertura_acta:
@@ -1145,53 +1160,12 @@ class CrmLead(models.Model):
             if rec.concept_id.property_account_income_id:
                 rec.write({'account_ex': True})
 
-    def action_cargar_presupuesto_economico(self):
-        self.ensure_one()
-        docto = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',self.id), 
-                ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', ('name','ilike','E02'), ('name','ilike','Economico 2')])
-        if not docto:
-            raise ValidationError('El documento E02 no se encuentra cargado, favor de revisar la documentación.')
-
-        attachment = docto.attachment_id
-        if not attachment or not attachment.datas:
-            raise ValidationError(_('El documento Económico 2 no tiene contenido.'))
-
-        decoded_data = base64.b64decode(attachment.datas)
-        workbook = openpyxl.load_workbook(filename=io.BytesIO(decoded_data), data_only=True)
-        sheet = workbook.active
-        subtotal, iva, total = 0.0, 0.0, 0.0
-
-        for row in range(len([row for row in sheet if any(cell.value is not None for cell in row)]), sheet.max_row + 1):
-            for col in range(1, sheet.max_column + 1):
-                cell = sheet.cell(row=row, column=col)
-                if cell.value and isinstance(cell.value, str):
-                    val_upper = cell.value.upper().strip()
-                    value_cell = sheet.cell(row=row, column=col + 1)
-                    
-                    if 'SUBTOTAL' in val_upper and 'M. N.' in val_upper:
-                        if value_cell.value and isinstance(value_cell.value, (int, float)):
-                            subtotal = float(value_cell.value)
-                    elif 'IVA' in val_upper and 'M. N.' in val_upper:
-                        if value_cell.value and isinstance(value_cell.value, (int, float)):
-                            iva = float(value_cell.value)
-                    elif 'TOTAL' in val_upper and 'M. N.' in val_upper and 'SUBTOTAL' not in val_upper:
-                        if value_cell.value and isinstance(value_cell.value, (int, float)):
-                            total = float(value_cell.value)
-        
-        if subtotal ==  iva ==  total == 0.0:
-            raise ValidationError(_('No se encontraron los valores de SUBTOTAL, IVA y TOTAL. Verifique que el archivo tenga el formato correcto.'))
-        
-        self.write({'pe_presupuesto_subtotal': subtotal, 'pe_presupuesto_iva': iva, 'pe_presupuesto_total': total,})
-        
-
     def action_autorizar_presupuesto(self):
         self.ensure_one()
         if not self.pe_presupuesto_revisado:
             raise ValidationError(_('Debe marcar el campo "Revisado" antes de poder autorizar el presupuesto.'))
-        if self.pe_presupuesto_total <= 0:
-            raise ValidationError(_('Debe cargar los datos del presupuesto antes de autorizar. '
-                            'Use el botón "Cargar datos" para extraer la información del documento Económico 2.'))
-        
+        if self.pe_presupuesto_subtotal <= 0:
+            raise ValidationError(_('Debe capturar el Subtotal del presupuesto antes de autorizar.'))
         self.write({'pe_presupuesto_autorizado': True})
 
 

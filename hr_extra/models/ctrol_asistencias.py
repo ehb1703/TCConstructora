@@ -3,6 +3,7 @@ from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 import logging
 from datetime import datetime, timedelta
+import pytz
 
 _logger = logging.getLogger(__name__)
 
@@ -23,7 +24,11 @@ class CtrolAsistencias(models.Model):
     photo_url = fields.Char(string='URL Fotografía', help='URL de la foto tomada en el checador' )
     latitude = fields.Float(string='Latitud', digits=(10, 8), help='Coordenada GPS - Latitud')
     longitude = fields.Float(string='Longitud', digits=(11, 8), help='Coordenada GPS - Longitud')
-    check_date = fields.Datetime(string='Fecha de Registro', required=True, help='Fecha y hora del registro en formato aaaa-mm-dd hh:mm')    
+    # check_date almacena la hora LOCAL del checador convertida a UTC para que Odoo la gestione correctamente.
+    # La hora original del checador se preserva en check_date_local (solo lectura, para auditoría).
+    check_date = fields.Datetime(string='Fecha de Registro', required=True, help='Fecha y hora del registro (UTC)')
+    check_date_local = fields.Char(string='Hora Local Checador', readonly=True,
+        help='Hora original enviada por el checador en su zona horaria local (solo auditoría)')
     log_status = fields.Selection([('pendiente', 'Pendiente'), ('error', 'Error'), ('importada', 'Importada'), ('fallido', 'Fallido')], 
         string='Estado', default='pendiente', required=True)
     lateness_time = fields.Char(string='Tiempo de Retraso', help='Formato HH:MM - Ejemplo: 07:15')
@@ -112,27 +117,66 @@ class CtrolAsistencias(models.Model):
             'date_validated': self.date_validated.strftime('%Y-%m-%d %H:%M:%S') if self.date_validated else ''}
     
     @api.model
+    def _local_to_utc(self, local_dt, tz_name):
+        # Convierte un datetime naive (hora local del checador) a UTC naive para almacenar en Odoo.
+        try:
+            tz = pytz.timezone(tz_name)
+            local_aware = tz.localize(local_dt, is_dst=None)
+        except pytz.exceptions.AmbiguousTimeError:
+            tz = pytz.timezone(tz_name)
+            local_aware = tz.localize(local_dt, is_dst=False)
+        return local_aware.astimezone(pytz.utc).replace(tzinfo=None)
+
+    @api.model
+    def _get_checador_tz(self):
+        # Obtiene la zona horaria configurada para el usuario api_checadores.
+        ICP = self.env['ir.config_parameter'].sudo()
+        username = ICP.get_param('api_checadores.username', '')
+        if username:
+            user = self.env['res.users'].sudo().search([('login', '=', username)], limit=1)
+            if user and user.tz:
+                return user.tz
+        # Fallback: zona horaria de la compañía
+        company_tz = self.env.company.resource_calendar_id.tz if self.env.company.resource_calendar_id else ''
+        if company_tz:
+            return company_tz
+        return 'America/Mexico_City'
+
+    @api.model
     def create_from_checador(self, vals):
         """Crea un registro desde el checador validando datos.
-        Busca el employee_id usando el registration_number si no viene en vals. """
+        Convierte la hora local del checador a UTC para almacenamiento correcto en Odoo.
+        Preserva la hora original en check_date_local para auditoría."""
         if vals.get('registration_number') and not vals.get('employee_id'):
             employee = self.env['hr.employee'].sudo().search([('registration_number', '=', vals['registration_number'])], limit=1)
             if employee:
                 vals['employee_id'] = employee.id
         
-        # Convertir check_date si viene en formato ISO con T
-        if vals.get('check_date') and 'T' in str(vals.get('check_date')):
-            check_date_str = str(vals['check_date']).replace('T', ' ')
-            # Remover microsegundos si existen (ej: 2026-02-03 02:58:00.123456 → 2026-02-03 02:58:00)
-            if '.' in check_date_str:
-                check_date_str = check_date_str.split('.')[0]
-            vals['check_date'] = check_date_str
+        # Parsear check_date como hora LOCAL del checador
+        raw_date = vals.get('check_date', '')
+        if raw_date:
+            date_str = str(raw_date).replace('T', ' ').replace('Z', '')
+            if '.' in date_str:
+                date_str = date_str.split('.')[0]
+            try:
+                local_dt = datetime.strptime(date_str.strip(), '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                local_dt = datetime.strptime(date_str.strip(), '%Y-%m-%d %H:%M')
+            
+            # Guardar la hora original del checador para auditoría
+            vals['check_date_local'] = local_dt.strftime('%Y-%m-%d %H:%M:%S')
+            # Convertir hora local → UTC para almacenamiento en Odoo
+            tz_name = self._get_checador_tz()
+            utc_dt = self._local_to_utc(local_dt, tz_name)
+            vals['check_date'] = utc_dt.strftime('%Y-%m-%d %H:%M:%S')
+            _logger.info(f"Checador TZ={tz_name} | Local={local_dt} → UTC={utc_dt}")
         
         # Crear registro
         record = self.create(vals)
         _logger.info(f"Asistencia creada en ctrol.asistencias - ID: {record.id}, "
                     f"Registration#: {vals.get('registration_number')}, "
-                    f"Tipo: {vals.get('check_type')}, Check_date: {vals.get('check_date')}, "
+                    f"Tipo: {vals.get('check_type')}, Check_date_local: {vals.get('check_date_local')}, "
+                    f"Check_date_utc: {vals.get('check_date')}, "
                     f"Status: {vals.get('status', 'success')}")
         return record
     
@@ -177,7 +221,6 @@ class CtrolAsistencias(models.Model):
             2. check_date no es nulo y formato correcto
             3. check_type está en {entrada, salida} """
         self.ensure_one()
-        
         employee = self._get_employee_from_registration()
         if not employee:
             return (False, f'Empleado no encontrado | Registration: {self.registration_number}')
@@ -192,68 +235,98 @@ class CtrolAsistencias(models.Model):
 
     
     def _map_to_attendance(self):
-        """Mapea el registro a hr.attendance SIN conversión de zona horaria.
-        
-        REGLAS DE VALIDACIÓN:
-        1. Solo UNA entrada por día por empleado
-        2. Solo UNA salida por día por empleado  
-        3. Permitir procesar registros siguientes aunque haya entradas sin salida de días anteriores
-        
-        IMPORTANTE: Se usa .replace(tzinfo=None) para eliminar conversión UTC."""
-        self.ensure_one()        
+        """Mapea el registro a hr.attendance usando zona horaria local del checador.
+
+        check_date está en UTC. El día laboral se determina con check_date_local
+        (hora original del checador). El rango UTC del día local se usa para buscar
+        duplicados en hr.attendance (que también guarda en UTC).
+
+        REGLAS:
+        1. Solo UNA entrada por día laboral por empleado
+        2. Solo UNA salida por día laboral por empleado
+        3. Si no hay salida de un día anterior, no bloquea el siguiente día
+        """
+        self.ensure_one()
         employee = self._get_employee_from_registration()
         if not employee:
             return (False, f'Empleado no encontrado | Registration: {self.registration_number}')
-        
-        # Trabajar con la fecha SIN zona horaria para evitar conversiones
-        check_date_naive = self.check_date.replace(tzinfo=None) if self.check_date else None
-        current_date = check_date_naive.date() if check_date_naive else None
-        
-        AttendanceModel = self.env['hr.attendance'].sudo()        
+
+        # Determinar la hora local del checador para calcular el día laboral correcto
+        if self.check_date_local:
+            try:
+                local_dt = datetime.strptime(self.check_date_local, '%Y-%m-%d %H:%M:%S')
+            except (ValueError, TypeError):
+                local_dt = self.check_date
+        else:
+            tz_name = self._get_checador_tz()
+            try:
+                tz = pytz.timezone(tz_name)
+                utc_aware = pytz.utc.localize(self.check_date)
+                local_dt = utc_aware.astimezone(tz).replace(tzinfo=None)
+            except Exception:
+                local_dt = self.check_date
+
+        current_date = local_dt.date()
+
+        # Calcular rango UTC del día laboral local para buscar en hr.attendance
+        tz_name = self._get_checador_tz()
+        try:
+            tz = pytz.timezone(tz_name)
+            day_start_utc = tz.localize(datetime.combine(current_date, datetime.min.time())).astimezone(pytz.utc).replace(tzinfo=None)
+            day_end_utc = tz.localize(datetime.combine(current_date, datetime.max.time().replace(microsecond=0))).astimezone(pytz.utc).replace(tzinfo=None)
+        except Exception:
+            day_start_utc = datetime.combine(current_date, datetime.min.time())
+            day_end_utc = datetime.combine(current_date, datetime.max.time().replace(microsecond=0))
+
+        check_date_utc = self.check_date
+
+        AttendanceModel = self.env['hr.attendance'].sudo()
         if self.check_type == 'entrada':
-            # REGLA 1: Verificar si ya existe entrada del MISMO día
-            entrada_del_dia = AttendanceModel.search([('employee_id', '=', employee.id), ('check_in', '>=', f'{current_date} 00:00:00'),
-                ('check_in', '<', f'{current_date} 23:59:59')], limit=1)
-            
+            entrada_del_dia = AttendanceModel.search([('employee_id', '=', employee.id), ('check_in', '>=', day_start_utc), ('check_in', '<=', day_end_utc)], 
+                limit=1)
             if entrada_del_dia:
                 return (False, f'Ya existe entrada del día {current_date} | Attendance ID: {entrada_del_dia.id} | Check-in: {entrada_del_dia.check_in}')
-            
+
+            # Cerrar entradas abiertas de días ANTERIORES para evitar solapamiento en hr.attendance.
+            # Si el empleado no fichó salida en un día previo, se cierra automáticamente con check_out = 1 segundo antes del nuevo check_in. No afecta el día actual.
+            open_prev = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '=', False), ('check_in', '<', day_start_utc)], 
+                order='check_in desc')
+            for prev in open_prev:
+                auto_checkout = check_date_utc - timedelta(seconds=1)
+                prev.write({'check_out': auto_checkout})
+                _logger.info(
+                    f'Auto-cierre entrada sin salida | Attendance ID: {prev.id} '
+                    f'| Check-in: {prev.check_in} | Auto check-out: {auto_checkout} '
+                    f'| Empleado: {employee.name}'
+                )
+
             try:
-                attendance = AttendanceModel.create({'employee_id': employee.id, 'check_in': check_date_naive, 'in_latitude': self.latitude or 0.0,
+                attendance = AttendanceModel.create({'employee_id': employee.id, 'check_in': check_date_utc, 'in_latitude': self.latitude or 0.0,
                     'in_longitude': self.longitude or 0.0,})
-                return (attendance, f'Entrada registrada | Attendance ID: {attendance.id} | Check-in: {check_date_naive}')
+                auto_msg = f' (se cerraron {len(open_prev)} entrada(s) previa(s) sin salida)' if open_prev else ''
+                return (attendance, f'Entrada registrada | Attendance ID: {attendance.id} | Check-in local: {local_dt}{auto_msg}')
             except Exception as e:
                 return (False, f'Error al crear entrada | Error: {str(e)}')
+
         elif self.check_type == 'salida':
-            # REGLA 2: Verificar si ya existe salida del MISMO día
-            salida_del_dia = AttendanceModel.search([
-                ('employee_id', '=', employee.id),
-                ('check_out', '>=', f'{current_date} 00:00:00'),
-                ('check_out', '<', f'{current_date} 23:59:59')
-            ], limit=1)
-            
+            salida_del_dia = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '>=', day_start_utc), ('check_out', '<=', day_end_utc)], 
+                limit=1)
             if salida_del_dia:
                 return (False, f'Ya existe salida del día {current_date} | Attendance ID: {salida_del_dia.id} | Check-out: {salida_del_dia.check_out}')
-            
-            # REGLA 3: Buscar entrada abierta más reciente (puede ser de días anteriores)
-            open_attendance = AttendanceModel.search([
-                ('employee_id', '=', employee.id),
-                ('check_out', '=', False),
-                ('check_in', '<=', check_date_naive)
-            ], order='check_in desc', limit=1)
-            
+
+            open_attendance = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '=', False), ('check_in', '<=', check_date_utc)], 
+                order='check_in desc', limit=1)
             if not open_attendance:
-                return (False, f'Salida sin entrada previa | Employee: {employee.name} | Fecha: {check_date_naive}')
-            if check_date_naive <= open_attendance.check_in:
-                return (False, f'Salida debe ser posterior a entrada | Check-in: {open_attendance.check_in} | Check-out intentado: {check_date_naive}')
-            
+                return (False, f'Salida sin entrada previa | Employee: {employee.name} | Fecha local: {local_dt}')
+            if check_date_utc <= open_attendance.check_in:
+                return (False, f'Salida debe ser posterior a entrada | Check-in: {open_attendance.check_in} | Check-out intentado: {check_date_utc}')
             try:
-                open_attendance.write({'check_out': check_date_naive, 'out_latitude': self.latitude or 0.0, 'out_longitude': self.longitude or 0.0,})
-                # worked_hours se calcula automáticamente en hr.attendance
+                open_attendance.write({'check_out': check_date_utc, 'out_latitude': self.latitude or 0.0, 'out_longitude': self.longitude or 0.0,})
                 worked_hours = open_attendance.worked_hours
                 return (open_attendance, f'Salida registrada | Attendance ID: {open_attendance.id} | Horas trabajadas: {worked_hours:.2f}')
             except Exception as e:
                 return (False, f'Error al registrar salida | Error: {str(e)}')
+
         return (False, f'check_type inválido | Valor: {self.check_type}')
     
 

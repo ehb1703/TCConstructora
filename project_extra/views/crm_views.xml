@@ -328,23 +328,19 @@
                             <field name="pe_autorizado" invisible="1"/>
                             <group string="Autorización de Presupuesto">
                                 <group>
-                                    <label for="pe_presupuesto_subtotal" string="Subtotal"/>
-                                    <div class="o_row">
-                                        <field name="pe_presupuesto_subtotal" widget="monetary" options="{'currency_field': 'currency_id'}" nolabel="1"/>
-                                        <button name="action_cargar_presupuesto_economico" string="Cargar datos" type="object" class="btn-link" icon="fa-refresh" title="Extraer datos del documento Económico 2" invisible="pe_presupuesto_autorizado"/>
-                                    </div>
-                                    <field name="pe_presupuesto_iva" string="IVA" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                    <field name="pe_presupuesto_total" string="Total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="pe_presupuesto_subtotal" string="Subtotal" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="pe_presupuesto_autorizado"/>
+                                    <field name="pe_presupuesto_iva" string="IVA" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                    <field name="pe_presupuesto_total" string="Total" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
                                 </group>
                                 <group>
-                                    <field name="pe_presupuesto_revisado" string="Revisado" widget="boolean_toggle" readonly="pe_presupuesto_autorizado or pe_presupuesto_total == 0"/>
+                                    <field name="pe_presupuesto_revisado" string="Revisado" widget="boolean_toggle" readonly="pe_presupuesto_autorizado or pe_presupuesto_subtotal == 0"/>
                                     <field name="pe_presupuesto_autorizado" string="Autorizado" readonly="1"/>
                                 </group>
                             </group>
                             <div class="alert alert-success" role="alert" invisible="not pe_presupuesto_autorizado">
                                 <strong>✓ Presupuesto AUTORIZADO</strong> - Total: <field name="pe_presupuesto_total" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1" class="oe_inline"/>
                             </div>
-                            <div class="alert alert-warning" role="alert" invisible="pe_presupuesto_autorizado or pe_presupuesto_total == 0 or not pe_presupuesto_revisado">
+                            <div class="alert alert-warning" role="alert" invisible="pe_presupuesto_autorizado or pe_presupuesto_subtotal == 0 or not pe_presupuesto_revisado">
                                 <strong>Pendiente de autorización</strong> - Use el botón "Autorizar" en la parte superior para autorizar el presupuesto.
                             </div>
 

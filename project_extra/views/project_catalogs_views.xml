@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_project_type" model="ir.actions.act_window">
-        <field name="name">Tipo de Obra</field>
+        <field name="name">Especialidades</field>
         <field name="res_model">project.type</field>
         <field name="view_mode">list,form</field>
     </record>
@@ -11,7 +11,7 @@
         <field name="model">project.type</field>
         <field name="priority">1</field>
         <field name="arch" type="xml">
-            <list string="Tipo de Obra">
+            <list string="Especialidades">
                 <field name="code"/>
                 <field name="name"/>
                 <field name="normative_clas"/>
@@ -25,7 +25,7 @@
         <field name="name">view.project.type.from</field>
         <field name="model">project.type</field>
         <field name="arch" type="xml">
-            <form string="Tipo de Obra" delete="0" duplicate="0">
+            <form string="Especialidades" delete="0" duplicate="0">
                 <sheet>
                     <group>
                         <group>
@@ -202,7 +202,7 @@
 
     <!-- Especialidades -->
     <record id="action_especialidad" model="ir.actions.act_window">
-        <field name="name">Especialidades</field>
+        <field name="name">Tipo de obra</field>
         <field name="res_model">project.especialidad</field>
         <field name="view_mode">list,form</field>
     </record>
@@ -527,12 +527,12 @@
     </record>
 
     <menuitem id="menu_catalog_project" name="Catálogos" parent="project.menu_main_pm" sequence="200" groups="project.group_project_user,group_project_catalog">
-        <menuitem id="menu_project_type" name="Tipo de Obra" action="action_project_type" sequence="1"/>
+        <menuitem id="menu_project_type" name="Especialidades" action="action_project_type" sequence="1"/>
         <menuitem id="menu_project_docsrequeridos" name="Documentos" action="action_project_docsrequeridos" sequence="2"/>
         <menuitem id="menu_project_technical_category" name="Categoría Técnica" action="action_project_technical_category" sequence="3"/>
         <menuitem id="menu_tipos_zona" name="Tipos de Zona" action="action_tipo_zona" sequence="4"/>
         <menuitem id="menu_zonas_geo" name="Zonas Geográficas" action="action_zona_geografica" sequence="5"/> 
-        <menuitem id="menu_especialidad" name="Especialidades" action="action_especialidad" sequence="6"/>
+        <menuitem id="menu_especialidad" name="Tipo de obra" action="action_especialidad" sequence="6"/>
         <menuitem id="menu_modalidad_contrato" name="Modalidad de Contrato" action="action_modalidad_contrato" sequence="7"/>
         <menuitem id="menu_direccion_ejecutora" name="Dirección Gral. Ejecutora" action="action_direccion_ejecutora" sequence="8"/>
         <menuitem id="menu_modalidad_precios" name="Modalidad Precios Contrato" action="action_modalidad_precios" sequence="9"/>

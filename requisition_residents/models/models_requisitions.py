@@ -358,9 +358,9 @@ class requisitionDestajoLine(models.Model):
     destajo_id = fields.Many2one('requisition.destajo', readonly=True)
     fecha = fields.Date(string='Fecha')
     product_id = fields.Many2one(comodel_name='product.product', string='Concepto', change_default=True, ondelete='restrict', 
-        domain="[('purchase_ok', '=', True)]")
+        domain="[('sale_ok', '=', True)]")
     product_template_id = fields.Many2one(comodel_name='product.template', string='Product Template', compute='_compute_product_template_id',
-        search='_search_product_template_id', domain=[('purchase_ok', '=', True)])
+        search='_search_product_template_id', domain=[('sale_ok', '=', True)])
     product_uom_id = fields.Many2one(related='product_id.uom_id', depends=['product_id'], string='UdM')
     name = fields.Text(string='Descripcion')
     localizacion = fields.Char(string='Localización')

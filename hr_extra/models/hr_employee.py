@@ -93,6 +93,13 @@ class hrEmployeeInherit(models.Model):
         can_edit = self.env['ir.config_parameter'].sudo().get_param('hr.registration_active')
         self.can_number = can_edit
 
+    @api.constrains('l10n_mx_curp')
+    def _check_curp(self):
+        for record in self:
+            if record.l10n_mx_curp:
+                if len(record.l10n_mx_curp) != 18:
+                    raise ValidationError(_('El CURP debe de tener 18 caracteres'))
+
     @api.onchange('work_contact_id')
     def onchange_name(self):
         if self.work_contact_id:
@@ -148,12 +155,12 @@ class hrEmployeeInherit(models.Model):
                 if emp.work_location_id:
                     emp.current_project_name = emp.work_location_id.name
                 else:
-                    emp.current_project_name = 'Oficina'
+                    emp.current_project_name = 'OFICINA'
 
 
     def get_current_project(self):
         self.ensure_one()
-        return self.current_project_name or 'Oficina'
+        return self.current_project_name or 'OFICINA'
 
     def get_schedules_for_api(self):
         # Obtiene los horarios del empleado en formato para la API.
@@ -204,7 +211,7 @@ class hrEmployeeInherit(models.Model):
         company_name = self.empresa_empleadora.name if self.empresa_empleadora else (self.company_id.name if self.company_id else '')
         
         # Asegurar que project nunca esté vacío
-        project_name = self.current_project_name or 'Oficina'
+        project_name = self.current_project_name or 'OFICINA'
         if not project_name or project_name.strip() == '':
             project_name = 'Oficina'
         
@@ -313,12 +320,59 @@ class hrEmployeeInherit(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         can_edit = self.env['ir.config_parameter'].sudo().get_param('hr.registration_active')
-        if can_edit:
-            for vals in vals_list:
+        curp = ''
+        rfc = ''
+        work_contact = 0
+        for vals in vals_list:
+            if can_edit:
                 seq = self.env['ir.sequence'].next_by_code('numemployee')
                 vals['registration_number'] = seq
 
+            if 'l10n_mx_curp' in vals:
+                curp = vals['l10n_mx_curp']
+            if 'l10n_mx_rfc' in vals:
+                rfc = vals['l10n_mx_rfc']
+            if 'work_contact_id' in vals:
+                work_contact = vals['work_contact_id']
+
+        if work_contact == 0:
+            raise ValidationError('Es necesario agregar el contacto')
+
+        contact = self.env['res.partner'].search([('id', '=', work_contact)])
+        contact.update({'curp': curp, 'vat': rfc})
         res = super(hrEmployeeInherit, self).create(vals_list)
+        return res
+
+
+    def write(self, vals):
+        c = 0
+        if 'l10n_mx_curp' in vals:
+            c = 1
+            curp = vals['l10n_mx_curp']
+        else:
+            curp = self.l10n_mx_curp
+
+        if 'l10n_mx_rfc' in vals:
+            c = 1
+            rfc = vals['l10n_mx_rfc']
+        else:
+            rfc = self.l10n_mx_rfc
+        
+        if c != 0:
+            work_contact = 0
+            if 'work_contact_id' in vals:
+                work_contact = vals['work_contact_id']
+            else:
+                work_contact = self.work_contact_id.id
+
+            if work_contact == 0:
+                raise ValidationError('Es necesario agregar el contacto')
+
+            if not self.env.context.get('syncing_info'):
+                contact = self.env['res.partner'].search([('id', '=', work_contact)])
+                contact.with_context(syncing_info=True).update({'curp': curp, 'vat': rfc})
+
+        res = super(hrEmployeeInherit, self).write(vals)
         return res
 
 

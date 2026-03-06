@@ -10,7 +10,8 @@
                 <field name="registration_number"/>
                 <field name="employee_name"/>
                 <field name="check_type"/>
-                <field name="check_date" widget="datetime" options="{'tz': False}"/>
+                <field name="check_date_local" string="Hora Local"/>
+                <field name="check_date" widget="datetime" string="Fecha UTC" optional="hide"/>
                 <field name="status" decoration-success="status=='success'" decoration-danger="status=='error'" widget="badge"/>
                 <field name="log_status"/>
                 <field name="attendance_id" optional="show" string="Asistencia Odoo"/>
@@ -42,7 +43,8 @@
                             <field name="employee_id" invisible="1"/>
                             <field name="employee_name"/>
                             <field name="check_type"/>
-                            <field name="check_date" widget="datetime" options="{'tz': False}"/>
+                            <field name="check_date_local" string="Hora Local Checador" readonly="1"/>
+                            <field name="check_date" widget="datetime" string="Fecha UTC (almacenada)" readonly="1" options="{'tz': False}"/>
                         </group>
                         <group string="Estado de Validación">
                             <field name="status" widget="badge" decoration-success="status=='success'" decoration-danger="status=='error'"/>
@@ -91,6 +93,7 @@
             <search string="Buscar Asistencias">
                 <field name="registration_number" string="Núm. Empleado"/>
                 <field name="employee_name"/>
+                <field name="check_date_local" string="Hora Local"/>
                 <field name="check_date"/>
                 <field name="observaciones"/>
                 <separator/>
@@ -104,8 +107,9 @@
                 <filter string="Validación OK" name="status_success" domain="[('status', '=', 'success')]"/>
                 <filter string="Validación Error" name="status_error" domain="[('status', '=', 'error')]"/>
                 <separator/>
-                <filter string="Hoy" name="today" domain="[('check_date', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')), ('check_date', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
-                <filter string="Esta Semana" name="this_week" domain="[('check_date', '&gt;=', (context_today() - relativedelta(weeks=1)).strftime('%Y-%m-%d')), ('check_date', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="Hoy" name="today" domain="[('check_date_local', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')), ('check_date_local', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                <filter string="Esta Semana" name="this_week" domain="[('check_date_local', '&gt;=', (context_today() - relativedelta(weeks=1)).strftime('%Y-%m-%d 00:00:00')), ('check_date_local', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                <filter string="Ayer" name="yesterday" domain="[('check_date_local', '&gt;=', (context_today() - relativedelta(days=1)).strftime('%Y-%m-%d 00:00:00')), ('check_date_local', '&lt;=', (context_today() - relativedelta(days=1)).strftime('%Y-%m-%d 23:59:59'))]"/>
                 <group expand="0" string="Agrupar Por">
                     <filter string="Núm. Empleado" name="group_registration" context="{'group_by': 'registration_number'}"/>
                     <filter string="Empleado" name="group_employee" context="{'group_by': 'employee_name'}"/>
