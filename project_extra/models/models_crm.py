@@ -31,7 +31,7 @@ class CrmLead(models.Model):
     zona_geografica_id = fields.Many2one('project.zona.geografica', string='Zona geográfica', tracking=True)
     partner_emisor_id = fields.Many2one('res.partner', string='Dependencia emisora', tracking=True)
     tipo_obra_id = fields.Many2one('project.type', string='Especialidad(es) requerida(s)', tracking=True)
-    especialidad_ids = fields.Many2many('project.especialidad', string='Tipo de obra')
+    especialidad_id = fields.Many2one('project.especialidad', string='Tipo de obra', tracking=True)
     monto_min = fields.Float(string='Monto mínimo')
     monto_max = fields.Float(string='Monto máximo')
     fecha_convocatoria = fields.Date(string='Fecha de convocatoria')

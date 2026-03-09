@@ -62,6 +62,7 @@ class HrLeaveExtra(models.Model):
 
         return True
 
+
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
         extra = _encargado_nomina_extra_domain(self.env)
@@ -72,11 +73,12 @@ class HrLeaveExtra(models.Model):
 class HrAttendanceEncargadoFilter(models.Model):
     _inherit = 'hr.attendance'
 
+    checkout_notes = fields.Char(string='Notas de Salida')
+
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
         extra = _encargado_nomina_extra_domain(self.env)
-        return super()._search(list(domain) + extra if extra else domain,
-                                offset=offset, limit=limit, order=order)
+        return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
 
 class HrLeaveDisease(models.Model):

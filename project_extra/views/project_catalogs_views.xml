@@ -225,7 +225,7 @@
         <field name="name">project.especialidad.form</field>
         <field name="model">project.especialidad</field>
         <field name="arch" type="xml">
-            <form string="Especialidad">
+            <form string="Tipo de obra">
                 <sheet>
                     <group>
                         <group>
