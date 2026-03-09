@@ -291,26 +291,33 @@ class CtrolAsistencias(models.Model):
             # Si el empleado no fichó salida en un día previo, se cierra automáticamente con check_out = 1 segundo antes del nuevo check_in. No afecta el día actual.
             open_prev = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '=', False), ('check_in', '<', day_start_utc)], 
                 order='check_in desc')
+            auto_closed = 0
             for prev in open_prev:
                 auto_checkout = check_date_utc - timedelta(seconds=1)
-                prev.write({'check_out': auto_checkout})
+                prev.write({
+                    'check_out': auto_checkout,
+                    'checkout_notes': f'Cierre automático - sin salida registrada en checador (entrada siguiente: {local_dt})',
+                })
+                auto_closed += 1
                 _logger.info(
-                    f'Auto-cierre entrada sin salida | Attendance ID: {prev.id} '
-                    f'| Check-in: {prev.check_in} | Auto check-out: {auto_checkout} '
-                    f'| Empleado: {employee.name}'
+                    f'Auto-cierre | Attendance ID: {prev.id} | Check-in: {prev.check_in} '
+                    f'| Auto check-out: {auto_checkout} | Empleado: {employee.name}'
                 )
 
             try:
                 attendance = AttendanceModel.create({'employee_id': employee.id, 'check_in': check_date_utc, 'in_latitude': self.latitude or 0.0,
                     'in_longitude': self.longitude or 0.0,})
-                auto_msg = f' (se cerraron {len(open_prev)} entrada(s) previa(s) sin salida)' if open_prev else ''
+                auto_msg = f' (se cerraron {auto_closed} entrada(s) previa(s) sin salida)' if auto_closed else ''
                 return (attendance, f'Entrada registrada | Attendance ID: {attendance.id} | Check-in local: {local_dt}{auto_msg}')
             except Exception as e:
                 return (False, f'Error al crear entrada | Error: {str(e)}')
 
         elif self.check_type == 'salida':
-            salida_del_dia = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '>=', day_start_utc), ('check_out', '<=', day_end_utc)], 
-                limit=1)
+            """ Busca duplicado de salida verificando que el check_in también pertenezca al día laboral actual. Sin esta condición, un attendance de un día 
+            anterior (con check_in fuera del rango) podría coincidir por check_out si su salida real cae dentro del rango UTC del día actual,
+            generando un falso positivo de duplicado."""
+            salida_del_dia = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '>=', day_start_utc), ('check_out', '<=', day_end_utc),
+                ('check_in', '>=', day_start_utc),], limit=1)
             if salida_del_dia:
                 return (False, f'Ya existe salida del día {current_date} | Attendance ID: {salida_del_dia.id} | Check-out: {salida_del_dia.check_out}')
 

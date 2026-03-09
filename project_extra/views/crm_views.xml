@@ -40,7 +40,7 @@
                 <field name="stage_name" invisible="1"/>
                 <field name="stage_previous" invisible="1"/>
                 <button name="action_autorizar_presupuesto" type="object" string="Autorizar" class="btn-primary" groups="project_extra.group_budget_authorizer" invisible="stage_name != 'Propuesta Económica' or not pe_presupuesto_revisado or pe_presupuesto_autorizado"/>
-                <button name="action_advance_stage" type="object" string="Avanzar etapa" class="btn-secondary" invisible="stage_name in ('Junta de Fallo', 'Declinado', 'Ganado')"/>
+                <button name="action_advance_stage" type="object" string="Avanzar etapa" class="btn-secondary" invisible="stage_name in ('Declinado', 'Ganado')"/>
                 <button name="action_revert_stage" type="object" string="Regresar etapa" class="btn-secondary" invisible="stage_name in ('Nuevas Convocatorias', 'Declinado')"/>
                 <button name="action_genera_ordenventa" type="object" string="Orden de venta" class="btn-secondary" invisible="stage_name != 'Ganado'"/>
             </xpath>
@@ -79,7 +79,7 @@
                         <field name="partner_emisor_id" options="{'no_open':True, 'no_create':True}"/>
                         <field name="no_licitacion"/>
                         <field name="desc_licitacion"/>
-                        <field name="especialidad_ids" widget="many2many_tags" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                        <field name="especialidad_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                         <field name="zona_geografica_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                     </group>
                     <group>
@@ -254,7 +254,7 @@
 
                 <page string="Insumos">
                     <group>
-                        <field name="no_cotizar_insumos" widget="boolean_toggle"/>
+                        <field name="no_cotizar_insumos" widget="boolean_toggle" readonly="stage_name != 'Cotización de insumos y trabajos especiales'"/>
                     </group>
                     <group invisible="stage_name != 'Cotización de insumos y trabajos especiales' or no_cotizar_insumos">
                         <field name="input_filename" string="Archivo" invisible="1"/>

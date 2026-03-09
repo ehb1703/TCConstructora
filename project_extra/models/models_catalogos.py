@@ -8,10 +8,10 @@ _logger = logging.getLogger(__name__)
 class projectType(models.Model):
     _name = 'project.type'
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _description = 'Tipo de Obra'
+    _description = 'Especialidades'
     _rec_name = 'code'
 
-    code = fields.Char(string='Codigo del tipo de obra')
+    code = fields.Char(string='Codigo')
     name = fields.Char(string='Nombre')
     description = fields.Char(string='Descripción')
     normative_clas = fields.Selection(selection=[('na','No Aplica'), ('nom','NOM'), ('sct','SCT'), ('cfe','CFE'), ('conagua','CONAGUA')], 
@@ -125,11 +125,11 @@ class ZonaGeografica(models.Model):
 
 class Especialidad(models.Model):
     _name = 'project.especialidad'
-    _description = 'Especialidades'
+    _description = 'Tipo de obra'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'name'
 
-    name = fields.Char(string='Nombre de especialidad', required=True, tracking=True)
+    name = fields.Char(string='Nombre', required=True, tracking=True)
     description = fields.Char(string='Descripción', size=300)
     clasificacion_id = fields.Many2one('project.technical.category', string='Categoría técnica', tracking=True)
     active = fields.Boolean(string='Activo', default=True)

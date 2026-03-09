@@ -15,10 +15,12 @@ class crmInheritState(models.Model):
     fallo_personas_ids = fields.Many2many('hr.employee', 'crm_lead_fallo_employee_rel', 'lead_id', 'employee_id', string='Personas fallo', 
         domain="[('state', '!=', 'baja')]")
 
+
 class CrmPropuestaTecnicaRevisionInherit(models.Model):
     _inherit = 'crm.propuesta.tecnica.revision'
     
     employee_id = fields.Many2one('hr.employee', string='Nombre', required=True, domain="[('state', '!=', 'baja')]")
+
 
 class CrmPropuestaEconomicaRevisionInherit(models.Model):
     _inherit = 'crm.propuesta.economica.revision'
@@ -26,7 +28,19 @@ class CrmPropuestaEconomicaRevisionInherit(models.Model):
     employee_ids = fields.Many2many('hr.employee', 'crm_pe_revision_employee_rel', 'revision_id', 'employee_id', string='Nombre', 
         domain="[('state', '!=', 'baja')]")
 
+
 class projectResidentes(models.Model):
     _inherit = 'project.residents'
     
     resident_id = fields.Many2one('hr.employee', string='Residente de Obra', domain="[('state', '!=', 'baja'), ('job_id.name', 'ilike', 'RESIDENTE')]")
+
+
+class projectObraInherit(models.Model):
+    _inherit = 'project.project'
+    
+    def write(self, vals):
+        if 'name' in vals:
+            if vals.get('name') != self.name:
+                self.env.cr.execute("UPDATE hr_employee SET current_project_name = '{}' WHERE current_project_name = '{}' ".format(vals.get('name'), self.name))
+
+        super(projectObraInherit, self).write(vals)
