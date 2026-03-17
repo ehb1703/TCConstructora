@@ -59,3 +59,18 @@ class HrJob(models.Model):
     _inherit = 'hr.job'
 
     descripcion_puesto = fields.Text(string='Descripción del puesto')
+
+
+class HrSalarioMinimo(models.Model):
+    _name = 'hr.salario.minimo'
+    _description = 'Catálogo de Salarios Mínimos'
+    _order = 'fecha_alta desc, id desc'
+
+    salario_hora = fields.Float(string='Salario/hora', digits=(10, 2), required=True)
+    fecha_alta = fields.Date(string='Fecha de alta', required=True)
+    active = fields.Boolean(string='Activo', default=True)
+
+    @api.model
+    def get_salario_vigente(self):
+        # Retorna el salario mínimo vigente: activo con fecha_alta más reciente.
+        return self.search([('active', '=', True)], order='fecha_alta desc, id desc', limit=1)

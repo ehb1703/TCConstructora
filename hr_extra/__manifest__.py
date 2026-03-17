@@ -19,7 +19,7 @@
     """,
     'installable': True,
     'application': True,
-    'depends': ['hr_payroll', 'hr_contract', 'project', 'project_extra'],
+    'depends': ['hr_payroll', 'hr_contract', 'hr_holidays', 'hr_attendance', 'l10n_mx_hr_payroll_localisation', 'hr_work_entry', 'project', 'project_extra'],
     'data': [
         'data/ir_cron_attendance.xml',
         'data/ir_sequence.xml',
@@ -32,6 +32,7 @@
         'views/ctrol_asistencias_views.xml',
         'views/checador_sync_log_views.xml',
         'views/hr_leaves_views.xml',
+        'views/reporte_asistencias_views.xml',
         'report/hr_contract_report.xml',
         'report/report_hr_contract_prueba.xml',
         'report/report_hr_contract_obra.xml',

@@ -1,57 +1,59 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError, UserError
-from collections import defaultdict, Counter
-import pytz
-from pytz import timezone
-from markupsafe import Markup
-from odoo.tools import float_round, date_utils, convert_file, format_amount, float_compare, float_is_zero, plaintext2html
-from odoo.tools.safe_eval import safe_eval
+from odoo.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
 from datetime import date, datetime, time
 from odoo.osv import expression
 import logging
-
+from odoo.tools import (date_utils,)
 _logger = logging.getLogger(__name__)
-
-_SCHEDULE_PAY_SEMANAL = ('weekly')
-_SCHEDULE_PAY_QUINCENAL = ('bi_weekly', 'monthly', 'bi_monthly', '10_days', '14_days', 'daily')
 
 
 def _get_user_schedule_pay(env):
-    """ Lee l10n_mx_schedule_pay del contrato activo del empleado del usuario.
-    Usa SQL directo para evitar recursión: _search → ORM → _search.
-    Retorna: 'semanal', 'quincenal', o None (sin restricción).
-    - None si es ADMIN, si no tiene contrato, o si su schedule es 'ambas'. """
-    # ADMIN siempre ve todo — usa xmlid base.group_system
-    env.cr.execute("""SELECT 1 FROM res_groups_users_rel rgur JOIN ir_model_data imd ON imd.res_id = rgur.gid WHERE rgur.uid = %s AND imd.module = 'base'
-        AND imd.name = 'group_system' LIMIT 1 """, (env.uid,))
+    """Retorna 'semanal', 'quincenal', o None (sin restricción).
+    None si: ADMIN, sin empleado vinculado, encargado_nomina nulo o 'ambas'."""
+    env.cr.execute('''SELECT 1 FROM res_groups_users_rel rgur JOIN ir_model_data imd ON imd.res_id = rgur.gid
+        WHERE rgur.uid = %s AND imd.module = 'base' AND imd.name = 'group_system' LIMIT 1 ''', (env.uid,))
     if env.cr.fetchone():
         return None
 
-    # Leer encargado_nomina del empleado (campo T61 que captura el responsable)
-    env.cr.execute("""SELECT he.encargado_nomina FROM hr_employee he JOIN resource_resource rr ON rr.id = he.resource_id WHERE rr.user_id = %s
-        AND he.active = true LIMIT 1 """, (env.uid,))
+    env.cr.execute('''SELECT he.encargado_nomina FROM hr_employee he JOIN resource_resource rr ON rr.id = he.resource_id WHERE rr.user_id = %s
+        AND he.active = true LIMIT 1 ''', (env.uid,))
     row = env.cr.fetchone()
     enc = row[0] if row else None
+    return None if (not enc or enc == 'ambas') else enc
 
-    # Sin valor o ambas = sin restricción
-    if not enc or enc == 'ambas':
-        return None
-    return enc  # 'semanal' o 'quincenal'
+
+def _get_employee_ids_by_schedule(env, enc):
+    """IDs de empleados con contrato activo cuyo schedule_pay coincide con enc.
+    - semanal   → schedule_pay = 'weekly'
+    - quincenal → schedule_pay IN ('bi-weekly','monthly','bi_monthly','10_days','14_days','daily')
+    Sin contrato activo = no visible para usuarios filtrados."""
+    if enc == 'semanal':
+        schedule_values = ('weekly',)
+        placeholders = '%s'
+    else:
+        # quincenal agrupa todos los esquemas no semanales
+        schedule_values = ('bi-weekly', 'monthly', 'bi_monthly', '10_days', '14_days', 'daily')
+        placeholders = ','.join(['%s'] * len(schedule_values))
+
+    env.cr.execute(f'''SELECT DISTINCT(he.id) FROM hr_employee he WHERE he.active = true 
+          AND EXISTS (SELECT 1 FROM hr_contract hc WHERE hc.employee_id = he.id AND hc.state IN ('open', 'pending') AND hc.schedule_pay IN ({placeholders})) ''',
+          schedule_values)
+    return [row[0] for row in env.cr.fetchall()]
 
 
 def _encargado_nomina_extra_domain(env, employee_field='employee_id'):
-    """Genera dominio adicional para filtrar por Schedule Pay del usuario.
-        - Si el usuario es ADMIN o no tiene valor → sin restricción (dominio vacío)
-        - Si tiene semanal → solo ve empleados semanal + ambas + sin valor
-        - Si tiene quincenal → solo ve empleados quincenal + ambas + sin valor
-    El campo a filtrar es encargado_nomina del empleado (capturado en T61). """
+    """Dominio adicional según encargado_nomina del usuario actual.
+    Retorna [] si no aplica restricción, o [('field', 'in', ids)] / [('id','=',-1)]."""
     enc = _get_user_schedule_pay(env)
     if not enc:
         return []
-    field = 'encargado_nomina' if employee_field == 'self' else f'{employee_field}.encargado_nomina'
-    return ['|', '|', (field, '=', False), (field, '=', 'ambas'), (field, '=', enc)]
+
+    employee_ids = _get_employee_ids_by_schedule(env, enc)
+    if not employee_ids:
+        return [('id', '=', -1)] if employee_field == 'self' else [(employee_field, '=', -1)]
+    return [('id', 'in', employee_ids)] if employee_field == 'self' else [(employee_field, 'in', employee_ids)]
 
 
 class HrEmployeeObra(models.Model):
@@ -65,6 +67,16 @@ class HrEmployeeObra(models.Model):
     fecha_inicio = fields.Date(string='Fecha inicio')
     fecha_fin = fields.Date(string='Fecha fin')
     hourly_wage = fields.Float(string='Salario por hora', digits=(10, 2), default=0.0)
+
+    @api.constrains('fecha_inicio', 'fecha_fin')
+    def _chech_end_date(self):
+        for record in self:
+            obras = self.env['hr.employee.obra'].search([('employee_id', '=', record.employee_id.id), ('fecha_fin', '=', False)])
+            if len(obras) > 1:
+                raise ValidationError('La fecha final es obligatoria cuando se cambia de obra')
+
+            if record.fecha_fin and record.fecha_fin < record.fecha_inicio:
+                raise ValidationError('La fecha final no puede ser anterior a la fecha de inicio.')
 
 
 class hrEmployeeInherit(models.Model):
@@ -91,14 +103,13 @@ class hrEmployeeInherit(models.Model):
 
     def _compute_can_number(self):
         can_edit = self.env['ir.config_parameter'].sudo().get_param('hr.registration_active')
-        self.can_number = can_edit
+        self.can_number = bool(can_edit)
 
     @api.constrains('l10n_mx_curp')
     def _check_curp(self):
         for record in self:
-            if record.l10n_mx_curp:
-                if len(record.l10n_mx_curp) != 18:
-                    raise ValidationError(_('El CURP debe de tener 18 caracteres'))
+            if record.l10n_mx_curp and len(record.l10n_mx_curp) != 18:
+                raise ValidationError(_('El CURP debe de tener 18 caracteres'))
 
     @api.onchange('work_contact_id')
     def onchange_name(self):
@@ -119,102 +130,121 @@ class hrEmployeeInherit(models.Model):
         extra = _encargado_nomina_extra_domain(self.env, 'self')
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
+    def _calc_antique_temporal(self, employee_id):
+        """Calcula antigüedad en años para empleados con contratos temporales
+        (Obra determinada / Por periodo de prueba).
+        Reglas:
+          - Solo contratos en estado open o close (vencidos y en proceso).
+          - Se encadenan ordenados por date_start.
+          - Si la brecha entre date_end de un contrato y date_start del siguiente
+            supera 10 días, se reinicia la antigüedad desde ese contrato.
+        Retorna años completos (entero). """
+        today = date.today()
+
+        self.env.cr.execute('''SELECT hc.date_start, hc.date_end, hc.state
+            FROM hr_contract hc JOIN hr_contract_type hct ON hct.id = hc.contract_type_id
+            WHERE hc.employee_id = %s
+              AND hc.state IN ('open', 'close')
+              AND hct.code NOT IN ('Permanent')
+            ORDER BY hc.date_start ASC ''', (employee_id,))
+        rows = self.env.cr.fetchall()
+        if not rows:
+            return 0
+
+        block_start = rows[-1][0]
+        prev_start  = rows[-1][0]
+        for date_start, date_end, state in reversed(rows[:-1]):
+            c_end = date_end or today
+            if (prev_start - c_end).days > 10:
+                break
+            block_start = date_start
+            prev_start  = date_start
+
+        last_date_end, last_state = rows[-1][1], rows[-1][2]
+        block_end = last_date_end if last_state == 'close' else today
+        return (block_end - block_start).days // 365
+
+
     def cron_antique(self):
-        self.env.cr.execute("""UPDATE hr_employee he SET antique = t2.anios 
+        # Paso 1: actualizar todos con MAX(id) del contrato más reciente — excluye bajas.
+        self.env.cr.execute('''UPDATE hr_employee he SET antique = t2.anios
             FROM (SELECT t1.employee_id, hc.id, (CASE WHEN (now()::date - hc.date_start) > 365 
-                      THEN SPLIT_PART(AGE((CASE WHEN hc.state = 'close' THEN hc.date_end ELSE now()::date END), hc.date_start)::character varying, 'year', 1) 
-                      ELSE '0' end)::integer anios
-                FROM (SELECT hc.employee_id, MAX(hc.id) id FROM hr_contract hc JOIN hr_contract_type hct ON hc.contract_type_id = hct.id 
-                WHERE hc.state != 'cancel' /*AND hct.code = 'Permanent'*/ GROUP BY 1) as t1 JOIN hr_contract hc ON t1.id = hc.id) as t2
-            WHERE he.id = t2.employee_id; """)
+                        THEN SPLIT_PART(AGE((CASE WHEN hc.state = 'close' THEN hc.date_end ELSE now()::date END),hc.date_start)::character varying, 'year', 1)
+                        ELSE '0' END)::integer anios
+                FROM (SELECT hc.employee_id, MAX(hc.id) id FROM hr_contract hc JOIN hr_contract_type hct ON hc.contract_type_id = hct.id
+                        WHERE hc.state != 'cancel' GROUP BY 1) AS t1 JOIN hr_contract hc ON t1.id = hc.id) AS t2
+            WHERE he.id = t2.employee_id AND he.state != 'baja' ''')
+
+        # Paso 2: recalcular temporales aplicando regla de brecha de 10 días.
+        self.env.cr.execute("""SELECT DISTINCT hc.employee_id 
+            FROM hr_contract hc JOIN hr_contract_type hct ON hct.id = hc.contract_type_id
+                                JOIN hr_employee he ON he.id = hc.employee_id
+            WHERE hc.id = (SELECT MAX(hc2.id) FROM hr_contract hc2 WHERE hc2.employee_id = hc.employee_id AND hc2.state != 'cancel')
+            AND hct.code NOT IN ('Permanent')
+            AND he.state != 'baja'""")
+        temporal_ids = [r[0] for r in self.env.cr.fetchall()]
+        for emp_id in temporal_ids:
+            years = self._calc_antique_temporal(emp_id)
+            self.env.cr.execute('UPDATE hr_employee SET antique = %s WHERE id = %s AND antique != %s',(years, emp_id, years))
+
 
     @api.depends('obra_ids', 'obra_ids.project_id', 'obra_ids.project_id.active', 'obra_ids.fecha_inicio', 'obra_ids.fecha_fin', 'work_location_id')
     def _compute_current_project(self):
         today = date.today()
-        
         for emp in self:
             obra_encontrada = False
             if emp.obra_ids:
-                obras_vigentes = emp.obra_ids.filtered(lambda o: (o.project_id and o.project_id.active and o.fecha_inicio and o.fecha_fin and
-                    o.fecha_inicio <= today <= o.fecha_fin))
-                if obras_vigentes:
-                    # Tomar la más reciente
-                    obra = obras_vigentes.sorted(key=lambda o: o.id, reverse=True)[0]
-                    emp.current_project_name = obra.project_id.name
+                obras_vigentes = emp.obra_ids.filtered(
+                    lambda o: o.project_id and o.project_id.active
+                    and o.fecha_inicio and o.fecha_fin
+                    and o.fecha_inicio <= today <= o.fecha_fin)
+                obras_buscar = obras_vigentes or emp.obra_ids.filtered(
+                    lambda o: o.project_id and o.project_id.active)
+                if obras_buscar:
+                    emp.current_project_name = obras_buscar.sorted('id', reverse=True)[0].project_id.name
                     obra_encontrada = True
-                else:
-                    # Si no hay vigentes, buscar obras activas sin validar fechas
-                    obras_activas = emp.obra_ids.filtered(lambda o: o.project_id and o.project_id.active)
-                    if obras_activas:
-                        obra = obras_activas.sorted(key=lambda o: o.id, reverse=True)[0]
-                        emp.current_project_name = obra.project_id.name
-                        obra_encontrada = True
             
             if not obra_encontrada:
-                # Si no tiene obra, usar ubicación de trabajo o "Oficina"
-                if emp.work_location_id:
-                    emp.current_project_name = emp.work_location_id.name
-                else:
-                    emp.current_project_name = 'OFICINA'
+                emp.current_project_name = emp.work_location_id.name if emp.work_location_id else 'OFICINA'
 
 
     def get_current_project(self):
         self.ensure_one()
         return self.current_project_name or 'OFICINA'
 
-    def get_schedules_for_api(self):
-        # Obtiene los horarios del empleado en formato para la API.
-        self.ensure_one()
-        schedules = []
-        if not self.resource_calendar_id:
-            return schedules
-        
-        calendar = self.resource_calendar_id
-        tolerance = getattr(calendar, 'tolerance_minutes', 15) or 15
-        
-        day_mapping = {'0': 'Lunes', '1': 'Martes', '2': 'Miércoles', '3': 'Jueves', '4': 'Viernes', '5': 'Sábado', '6': 'Domingo',}
-        
-        for attendance in calendar.attendance_ids:
-            hour_from = self._decimal_to_time(attendance.hour_from)
-            hour_to = self._decimal_to_time(attendance.hour_to)
-            schedules.append({
-                'day_of_week': day_mapping.get(attendance.dayofweek, attendance.dayofweek),
-                'day_of_week_number': int(attendance.dayofweek),
-                'hour_from': hour_from,
-                'hour_to': hour_to,
-                'tolerance_minutes': tolerance,
-                'name': attendance.name or '',})
-        return schedules
-
-
     def _decimal_to_time(self, decimal_hour):
-        # Convierte hora decimal a formato HH:MM:SS
         hours = int(decimal_hour)
         minutes = int((decimal_hour - hours) * 60)
         return f"{hours:02d}:{minutes:02d}:00"
 
-    def get_employee_data_for_api(self):
-        # Retorna todos los datos del empleado para la API de checadores.
+    def get_schedules_for_api(self):
         self.ensure_one()
-        contract = self.contract_id or self.env['hr.contract'].search([('employee_id', '=', self.id), ('state', '=', 'open')], limit=1)
-        work_entry_type = ''
-        if contract and hasattr(contract, 'work_entry_source'):
-            work_entry_type = contract.work_entry_source or ''
-        
-        # Obtener foto del empleado (image_1920 es el campo nativo de Odoo)
+        if not self.resource_calendar_id:
+            return []
+        calendar = self.resource_calendar_id
+        tolerance = getattr(calendar, 'tolerance_minutes', 15) or 15
+        day_mapping = {'0': 'Lunes', '1': 'Martes', '2': 'Miércoles', '3': 'Jueves', '4': 'Viernes', '5': 'Sábado', '6': 'Domingo'}
+        return [{
+            'day_of_week': day_mapping.get(att.dayofweek, att.dayofweek),
+            'day_of_week_number': int(att.dayofweek),
+            'hour_from': self._decimal_to_time(att.hour_from),
+            'hour_to': self._decimal_to_time(att.hour_to),
+            'tolerance_minutes': tolerance,
+            'name': att.name or '',
+        } for att in calendar.attendance_ids]
+
+    def get_employee_data_for_api(self):
+        self.ensure_one()
+        contract = self.contract_id or self.env['hr.contract'].search(
+            [('employee_id', '=', self.id), ('state', '=', 'open')], limit=1)
+        work_entry_type = (contract.work_entry_source or '') if contract and hasattr(contract, 'work_entry_source') else ''
         photo_base64 = None
         if self.image_1920:
-            # image_1920 ya está en base64
             photo_base64 = self.image_1920.decode('utf-8') if isinstance(self.image_1920, bytes) else str(self.image_1920)
-        
-        # Obtener company: usa empresa_empleadora si está capturada, si no usa company_id del empleado
-        company_name = self.empresa_empleadora.name if self.empresa_empleadora else (self.company_id.name if self.company_id else '')
-        
-        # Asegurar que project nunca esté vacío
+        company = self.empresa_empleadora or self.company_id
+        company_name = company.name if company else ''
+        company_id = company.id if company else None
         project_name = self.current_project_name or 'OFICINA'
-        if not project_name or project_name.strip() == '':
-            project_name = 'Oficina'
-        
         return {
             'id': self.id,
             'registration_number': self.registration_number or '',
@@ -230,6 +260,7 @@ class hrEmployeeInherit(models.Model):
             'work_location': self.work_location_id.name if self.work_location_id else '',
             'project': project_name,
             'company': company_name,
+            'company_id': company_id,
             'work_entry_type': work_entry_type,
             'schedule_id': self.resource_calendar_id.id if self.resource_calendar_id else None,
             'schedule_name': self.resource_calendar_id.name if self.resource_calendar_id else '',
@@ -238,84 +269,36 @@ class hrEmployeeInherit(models.Model):
             'work_email': self.work_email or '',
             'work_phone': self.work_phone or '',
             'mobile_phone': self.mobile_phone or '',
-            'photo': photo_base64,  # Foto en base64 (puede ser None si no tiene)
-        }
-
+            'photo': photo_base64,}
 
     @api.model
     def get_employees_for_api(self, filters=None):
-        """Obtiene empleados para la API con paginación y búsqueda.
-        Args:
-            filters (dict): Diccionario con filtros opcionales:
-                - active_only (bool): Solo empleados activos (default True)
-                - department_id (int): Filtrar por departamento
-                - registration_number (str): Buscar por número de empleado
-                - with_contract (bool): Solo con contrato vigente
-                - search (str): Búsqueda por nombre o número de empleado
-                - limit (int): Límite de resultados (default 100, max 1000)
-                - offset (int): Desplazamiento para paginación (default 0)
-        Returns:
-            dict: Diccionario con employees, total_count, limit, offset """
         filters = filters or {}
-        domain = []
-        
-        # Filtro de activos
-        if filters.get('active_only', True):
-            domain.append(('active', '=', True))
-        
-        # Filtro por departamento
+        domain = [('active', '=', True)] if filters.get('active_only', True) else []
         if filters.get('department_id'):
             domain.append(('department_id', '=', int(filters['department_id'])))
-        
-        # Filtro por número de registro
         if filters.get('registration_number'):
             domain.append(('registration_number', '=', filters['registration_number']))
-        
-        # Filtro con contrato
         if filters.get('with_contract'):
-            domain.append(('contract_id', '!=', False))
-            domain.append(('contract_id.state', '=', 'open'))
-        
-        # Búsqueda por nombre o número de empleado
+            domain += [('contract_id', '!=', False), ('contract_id.state', '=', 'open')]
         if filters.get('search'):
-            search_term = filters['search'].strip()
-            search_domain = ['|', '|', '|', ('name', 'ilike', search_term), ('registration_number', 'ilike', search_term), 
-                ('work_contact_id.name', 'ilike', search_term), ('work_contact_id.vat', 'ilike', search_term)]
-            domain = expression.AND([domain, search_domain])
-        
-        # Paginación
-        limit = int(filters.get('limit', 100))
-        offset = int(filters.get('offset', 0))
-        
-        # Validar límites
-        if limit > 1000:
-            limit = 1000
-        if limit < 1:
-            limit = 100
-        if offset < 0:
-            offset = 0
-        
-        # Buscar empleados con límite y offset
+            term = filters['search'].strip()
+            domain = expression.AND([domain, ['|', '|', '|',
+                ('name', 'ilike', term), ('registration_number', 'ilike', term),
+                ('work_contact_id.name', 'ilike', term), ('work_contact_id.vat', 'ilike', term)]])
+
+        limit = min(max(int(filters.get('limit', 100)), 1), 1000)
+        offset = max(int(filters.get('offset', 0)), 0)
         employees = self.search(domain, limit=limit, offset=offset, order='id asc')
-        
-        # Contar total (para paginación)
         total_count = self.search_count(domain)
-        
         result = []
         for emp in employees:
             try:
                 result.append(emp.get_employee_data_for_api())
             except Exception as e:
-                _logger.error(f"Error obteniendo datos del empleado {emp.id}: {str(e)}")
-                continue
-        
-        return {
-            'employees': result,
-            'total_count': total_count,
-            'limit': limit,
-            'offset': offset,
-            'returned_count': len(result)}
-
+                _logger.error(f"Error obteniendo datos del empleado {emp.id}: {e}")
+        return {'employees': result, 'total_count': total_count,
+                'limit': limit, 'offset': offset, 'returned_count': len(result)}
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -327,7 +310,7 @@ class hrEmployeeInherit(models.Model):
             if can_edit:
                 seq = self.env['ir.sequence'].next_by_code('numemployee')
                 vals['registration_number'] = seq
-
+                vals['identification_id'] = seq
             if 'l10n_mx_curp' in vals:
                 curp = vals['l10n_mx_curp']
             if 'l10n_mx_rfc' in vals:
@@ -384,15 +367,14 @@ class hrContractInherit(models.Model):
     contract_type_name = fields.Char(string='Tipo de contrato nombre', related='contract_type_id.name', store=False)
     project_id = fields.Many2one('project.project', string='Obra')
     empresa_contrato_id = fields.Many2one('hr.contract.empresa', string='Empresa para contrato', compute='_compute_empresa_contrato', store=False)
-    l10n_mx_schedule_pay_temp = fields.Selection(selection=[('daily', 'Diario'), ('weekly', 'Semanal'), ('10_days', '10 Dias'), ('14_days', '14 Dias'), 
-        ('bi_weekly', 'Quincenal'), ('monthly', 'Mensual'), ('bi_monthly', 'Bimestral'),], 
-        compute='_compute_l10n_mx_schedule_pay', store=True, readonly=False, required=True, string='Pago', default='weekly', index=True)
+    schedule_pay = fields.Selection(selection=[('bi-weekly', 'Bi-weekly'), ('weekly', 'Weekly')],
+        string='Programar pago', default='weekly')
     wage_type = fields.Selection([('monthly', 'Fixed Wage'), ('hourly', 'Hourly Wage')], compute='_compute_wage_type', store=True, readonly=True)
     daily_wage = fields.Monetary(string='Salario diario')
     work_entry_source = fields.Selection(selection=[('calendar', 'Horario de trabajo'), ('attendance', 'Asistencia'),],
         default='attendance')
 
-    @api.depends('beneficiario_ids', 'beneficiario_ids.porcentaje')
+    @api.depends('beneficiario_ids.porcentaje')
     def _compute_total_porcentaje(self):
         for contract in self:
             contract.total_porcentaje = sum(contract.beneficiario_ids.mapped('porcentaje'))
@@ -403,13 +385,10 @@ class hrContractInherit(models.Model):
             salary = 0
             if contract.hourly_wage:
                 salary = contract.hourly_wage * 8
-            if contract.wage:
-                if contract.l10n_mx_schedule_pay_temp == 'dialy':
-                    salary = contract.wage
-                if contract.l10n_mx_schedule_pay_temp == 'weekly':
-                    salary = contract.wage / 7
-                if contract.l10n_mx_schedule_pay_temp == 'bi_weekly':
-                    salary = contract.wage / 15
+            elif contract.wage:
+                divisor = {'daily': 1, 'weekly': 7, 'bi-weekly': 15}.get(contract.schedule_pay)
+                if divisor:
+                    salary = contract.wage / divisor
             contract.daily_wage = salary
 
     @api.constrains('beneficiario_ids')
@@ -422,14 +401,13 @@ class hrContractInherit(models.Model):
     @api.depends('contract_type_id')
     def _compute_empresa_contrato(self):
         for contract in self:
-            empresa = self.env['hr.contract.empresa'].search([('tipo_contrato_id', '=', contract.contract_type_id.id)], limit=1)
-            contract.empresa_contrato_id = empresa
+            contract.empresa_contrato_id = self.env['hr.contract.empresa'].search(
+                [('tipo_contrato_id', '=', contract.contract_type_id.id)], limit=1)
 
     def _get_empresa_contrato(self):
-        # Obtiene la empresa configurada para el tipo de contrato actual.
         self.ensure_one()
-        empresa = self.env['hr.contract.empresa'].search([('tipo_contrato_id', '=', self.contract_type_id.id)], limit=1)
-        return empresa
+        return self.env['hr.contract.empresa'].search(
+            [('tipo_contrato_id', '=', self.contract_type_id.id)], limit=1)
 
     def action_report_contract(self):
         tipo = self.contract_type_id.name
@@ -443,28 +421,19 @@ class hrContractInherit(models.Model):
             return self.env.ref('hr_extra.action_report_hr_contract_prueba').report_action(self)
 
     def action_report_indeterminado_con_convenio(self):
-        # Genera contrato indeterminado + convenio de confidencialidad como documentos combinados.
-        contrato_action = self.env.ref('hr_extra.action_report_hrcontract_indeterminado').report_action(self)
-        return contrato_action
+        return self.env.ref('hr_extra.action_report_hrcontract_indeterminado').report_action(self)
 
     def action_report_convenio(self):
-        # Genera el convenio de confidencialidad
         return self.env.ref('hr_extra.action_report_convenio_confidencialidad').report_action(self)
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
         extra = _encargado_nomina_extra_domain(self.env)
-        return super()._search(list(domain) + extra if extra else domain,
-                                offset=offset, limit=limit, order=order)
+        return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
     def get_salario_en_letra(self, numero):
-        # Convierte número a texto usando función nativa de Odoo
         self.ensure_one()
-        if self.company_id:
-            currency = self.company_id.currency_id
-        else:
-            currency = self.env.company.currency_id
-        
+        currency = self.company_id.currency_id if self.company_id else self.env.company.currency_id
         entero = int(numero)
         decimal = round(numero - entero, 2)
         salary = currency.amount_to_text(entero).upper()
@@ -486,20 +455,31 @@ class hrContractInherit(models.Model):
         attendance_contracts = self.filtered(lambda c: c.work_entry_source == 'attendance' and c.wage_type == 'hourly')
         overtime_work_entry_type = self.env.ref('hr_work_entry.overtime_work_entry_type', False)
         default_work_entry_type = self.structure_type_id.default_work_entry_type_id
-
         if not attendance_contracts or not overtime_work_entry_type or len(default_work_entry_type) != 1:
             return
 
-        overtime_hours = self.env['hr.attendance.overtime']._read_group(
-            [('employee_id', 'in', self.employee_id.ids), ('date', '>=', date_from), ('date', '<=', date_to)], [], ['duration:sum'],)[0][0]
+        overtime_hours = self.env['hr.attendance.overtime']._read_group([('employee_id', 'in', self.employee_id.ids), ('date', '>=', date_from), 
+            ('date', '<=', date_to)], [], ['duration:sum'],)[0][0]
         unapproved_overtime_hours = round(self.env['hr.attendance'].sudo()._read_group([('employee_id', 'in', self.employee_id.ids), 
             ('check_in', '>=', date_from), ('check_out', '<=', date_to), ('overtime_hours', '>', 0), ('overtime_status', '!=', 'approved')], [], 
             ['overtime_hours:sum'],)[0][0], 2)
+
         if overtime_hours or overtime_hours > 0:
             work_data[default_work_entry_type.id] -= overtime_hours
             overtime_hours -= unapproved_overtime_hours
 
         empleados = str(self.employee_id.ids)
+        if self.schedule_pay == 'bi-weekly':
+            if date_to.date().strftime('%d') == '31':
+                self.env.cr.execute("""SELECT coalesce(sum(hao.duration), 0.0) duration 
+                    FROM hr_work_entry hao WHERE hao.employee_id IN (""" + empleados[1:-1] + ") AND hao.DATE_START::DATE = '" + str(date_to) + "'::DATE ")
+                out_day = self.env.cr.dictfetchall()
+                if out_day[0]['duration'] > 0:
+                    work_data[default_work_entry_type.id] -= out_day[0]['duration']
+
+            if date_to.date().strftime('%d') == '28':
+                work_data[default_work_entry_type.id] += 20
+
         self.env.cr.execute("""SELECT coalesce(sum(hao.duration), 0.0) duration 
             FROM hr_attendance_overtime hao JOIN resource_calendar_leaves rcl ON hao.date = rcl.date_from::date 
             WHERE hao.employee_id IN (""" + empleados[1:-1] + ") AND hao.DATE BETWEEN '" + str(date_from) + "' AND '" + str(date_to) + "'")
@@ -516,9 +496,9 @@ class hrContractInherit(models.Model):
         inhabiles = self.env.cr.dictfetchall()
         if inhabiles[0]['num'] > 0:
             inhabil_type = self.env['hr.work.entry.type'].search([('code', '=', 'FESTNOT')])
-            work_data[inhabiles_type.id] = inhabiles[0]['num'] * 10
+            work_data[inhabil_type.id] = inhabiles[0]['num'] * 10
 
-        if overtime_hours > 0:
+        if overtime_hours != 0:
             work_data[overtime_work_entry_type.id] = overtime_hours
 
         self.env.cr.execute('''SELECT * FROM hr_leave hl JOIN hr_leave_type hlt ON hl.holiday_status_id = hlt.id AND hlt.name->>'es_MX' = 'Vacaciones' 
@@ -561,7 +541,7 @@ class HrPayslipInherit(models.Model):
 
     amount = fields.Float(string='Total a pagar', compute='_compute_amount', store=True)
 
-    @api.depends('worked_days_line_ids')
+    @api.depends('worked_days_line_ids.amount')
     def _compute_amount(self):
         for payslip in self:
             payslip.amount = sum(payslip.worked_days_line_ids.mapped('amount'))
@@ -573,30 +553,66 @@ class HrPayslipInherit(models.Model):
 
     def _get_worked_day_lines_values(self, domain=None):
         self.ensure_one()
-        res = []
         hours_per_day = self._get_worked_day_lines_hours_per_day()
         work_hours = self.contract_id.get_work_hours(self.date_from, self.date_to, domain=domain)
         work_hours_ordered = sorted(work_hours.items(), key=lambda x: x[1])
-        biggest_work = work_hours_ordered[-1][0] if work_hours_ordered else 0
         add_days_rounding = 0
+        res = []
         for work_entry_type_id, hours in work_hours_ordered:
             work_entry_type = self.env['hr.work.entry.type'].browse(work_entry_type_id)
             days = round(hours / hours_per_day, 5) if hours_per_day else 0
-            """if work_entry_type_id == biggest_work:
-                days += add_days_rounding """
             day_rounded = self._round_days(work_entry_type, days)
             add_days_rounding += (days - day_rounded)
             attendance_line = {'sequence': work_entry_type.sequence, 'work_entry_type_id': work_entry_type_id, 'number_of_days': day_rounded, 
                 'number_of_hours': hours,}
             res.append(attendance_line)
+
         work_entry_type = self.env['hr.work.entry.type']
         return sorted(res, key=lambda d: work_entry_type.browse(d['work_entry_type_id']).sequence) 
+
+
+    @api.depends('date_from', 'date_to', 'struct_id')
+    def _compute_warning_message(self):
+        for slip in self:
+            slip.warning_message = False
+            if not slip.date_from or not slip.date_to:
+                continue
+            warnings = []
+            if slip.contract_id and (slip.date_from < slip.contract_id.date_start
+                    or (slip.contract_id.date_end and slip.date_to > slip.contract_id.date_end)):
+                warnings.append(_('El período seleccionado no coincide con el período de validez del contrato.'))
+
+            if slip.date_to > date_utils.end_of(fields.Date.today(), 'month'):
+                warnings.append(_(
+                    'Es posible que no se generen entradas de trabajo para el período comprendido entre %(start)s a %(end)s.',
+                    start=date_utils.add(date_utils.end_of(fields.Date.today(), 'month'), days=1),
+                    end=slip.date_to,))
+
+            if (slip.contract_id.schedule_pay or slip.contract_id.structure_type_id.default_schedule_pay)\
+                    and slip.date_from + slip._get_schedule_timedelta() != slip.date_to:
+                warnings.append(_('La duración de un recibo de nómina no es exacta según el tipo de estructura.'))
+
+            inconsistencia = self.env['hr.attendance'].search([('employee_id', '=', slip.employee_id.id), ('check_in', '>=', slip.date_from), 
+                ('check_in', '<=', slip.date_to), ('worked_hours', '>', 16)])
+            if len(inconsistencia) > 0:
+                warnings.append(_('Existen asistencias inconsistentes en el periodo'))
+
+            if warnings:
+                warnings = [_('Este recibo de nómina puede estar incorrecto: ')] + warnings
+                slip.warning_message = "\n  ・ ".join(warnings)
+
+
+    def compute_sheet(self):
+        payslips = self.filtered(lambda slip: slip.state in ['draft', 'verify'])
+        for payslip in payslips:
+            if payslip.warning_message:
+                raise ValidationError('Existen inconsistencias en el recibo, favor de resolver antes de continuar con el proceso')
+        return super().compute_sheet()
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
         extra = _encargado_nomina_extra_domain(self.env)
-        return super()._search(list(domain) + extra if extra else domain,
-                                offset=offset, limit=limit, order=order)
+        return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
 
 class HrWorkEntryEncargadoFilter(models.Model):
@@ -629,14 +645,10 @@ class HrPayslipWorkedDaysInherit(models.Model):
                 total_costo += obra.hourly_wage
                 total_dias += 1
             current += relativedelta(days=1)
+        return (total_costo / total_dias) if total_dias else None
 
-        if not total_dias:
-            return None
-
-        return total_costo / total_dias
-
-
-    @api.depends('is_paid', 'is_credit_time', 'number_of_hours', 'payslip_id', 'contract_id.wage', 'payslip_id.sum_worked_hours')
+    @api.depends('is_paid', 'is_credit_time', 'number_of_hours', 'payslip_id',
+                 'contract_id.wage', 'payslip_id.sum_worked_hours')
     def _compute_amount(self):
         for worked_days in self:
             if worked_days.payslip_id.edited or worked_days.payslip_id.state not in ['draft', 'verify']:

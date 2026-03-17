@@ -34,4 +34,9 @@ access_hr_contract_empresa_user,hr.contract.empresa.user,model_hr_contract_empre
 access_hr_contract_empresa_manager,hr.contract.empresa.manager,model_hr_contract_empresa,hr.group_hr_manager,1,1,1,1
 access_hr_leave_vacation_days,hr.leave.vacation.days,model_hr_leave_vacation_days,hr.group_hr_manager,1,1,1,1
 
+access_hr_salario_minimo_user,hr.salario.minimo.user,model_hr_salario_minimo,hr.group_hr_user,1,0,0,0
+access_hr_salario_minimo_manager,hr.salario.minimo.manager,model_hr_salario_minimo,hr.group_hr_manager,1,1,1,1
+
 access_hr_employee,access_hr_employee,model_hr_employee,,1,0,0,0
+access_wizard_reporte_asistencias_user,wizard.reporte.asistencias.user,model_wizard_reporte_asistencias,hr.group_hr_user,1,1,1,1
+access_wizard_reporte_asistencias_manager,wizard.reporte.asistencias.manager,model_wizard_reporte_asistencias,hr.group_hr_manager,1,1,1,1

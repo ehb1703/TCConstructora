@@ -254,21 +254,21 @@
 
                 <page string="Insumos">
                     <group>
-                        <field name="no_cotizar_insumos" widget="boolean_toggle" readonly="stage_name != 'Cotización de insumos y trabajos especiales'"/>
+                        <field name="no_cotizar_insumos" widget="boolean_toggle" invisible="1"/>
                     </group>
-                    <group invisible="stage_name != 'Cotización de insumos y trabajos especiales' or no_cotizar_insumos">
+                    <group invisible="stage_name != 'Cotización de insumos y trabajos especiales'">
                         <field name="input_filename" string="Archivo" invisible="1"/>
                         <field name="input_file" widget="binary" filename="input_filename"/>
                     </group>
-                    <group invisible="stage_name != 'Cotización de insumos y trabajos especiales' or no_cotizar_insumos">
+                    <group invisible="stage_name != 'Cotización de insumos y trabajos especiales'">
                         <div class="oe_button_box" invisible="input_file == False">                                    
                             <button class="oe_stat_button" icon="fa-upload" name="action_cargar_insumos" string="Cargar" type="object" invisible="input_ids" confirm="Se agregará el contenido del archivo seleccionado, ¿continuar?"/>
                             <button class="oe_stat_button" icon="fa-upload" name="action_genera_insumos" string="Insumos" type="object" invisible="not input_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
-                            <button class="oe_stat_button" icon="fa-upload" name="action_genera_cotizaciones" string="Cotizaciones" type="object" invisible="not input_ids"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_genera_cotizaciones" string="Cotizaciones" type="object" invisible="not input_ids or no_cotizar_insumos"/>
                             <button class="oe_stat_button" confirm="¿Está seguro que desea eliminar los registros cargados?" icon="fa-times" name="action_unlink_insumos" string="Eliminar Detalle" type="object" invisible="not input_ids"/>
                         </div>
                     </group>
-                    <field name="input_ids" widget="one2many_list" invisible="no_cotizar_insumos">
+                    <field name="input_ids" widget="one2many_list">
                         <list string="Detalles" delete="0" create="0" edit="0" context="{'default_lead_id': id}">
                             <field name="col1"/>
                             <field name="col2"/>

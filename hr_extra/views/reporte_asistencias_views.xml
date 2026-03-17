@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_wizard_reporte_asistencias" model="ir.actions.act_window">
+        <field name="name">Reportes de asistencia</field>
+        <field name="res_model">wizard.reporte.asistencias</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_wizard_reporte_asistencias_form" model="ir.ui.view">
+        <field name="name">wizard.reporte.asistencias.form</field>
+        <field name="model">wizard.reporte.asistencias</field>
+        <field name="arch" type="xml">
+            <form string="Reportes de asistencia">
+                <sheet>
+                    <group string="Periodo">
+                        <group>
+                            <field name="fecha_inicio"/>
+                        </group>
+                        <group>
+                            <field name="fecha_fin"/>
+                        </group>
+                    </group>
+                    <group string="Filtros (dejar vacío para incluir todos)">
+                        <group>
+                            <field name="employee_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="department_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
+                        </group>
+                        <group>
+                            <field name="job_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="project_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_generar_excel" string="Generar Excel" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_reporte_asistencias_checadores" name="Reportes de asistencia" parent="hr_payroll.menu_hr_payroll_report" action="action_wizard_reporte_asistencias" sequence="20"/>
+</odoo>

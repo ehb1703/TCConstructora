@@ -76,7 +76,7 @@ ESTADÍSTICAS DE PROCESAMIENTO
     Último Procesamiento: {stats['ultimo_procesamiento'] or 'Nunca'}
     Empleados con Errores: {stats['empleados_con_errores']}
 
- Los registros se procesan automáticamente cada {self.attendance_process_interval or 10} minutos. """
+ Los registros se procesan automáticamente cada 10 minutos. """
         
         return {
             'type': 'ir.actions.client',
