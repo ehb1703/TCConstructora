@@ -66,8 +66,7 @@ class HrLeaveExtra(models.Model):
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
         extra = _encargado_nomina_extra_domain(self.env)
-        return super()._search(list(domain) + extra if extra else domain,
-                                offset=offset, limit=limit, order=order)
+        return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
 
 class HrAttendanceEncargadoFilter(models.Model):
@@ -102,3 +101,10 @@ class HrLeaveVacations(models.Model):
     numinical = fields.Integer(string='Antiguedad')
     numfinal = fields.Integer(string='Final')
     numdias = fields.Integer(string='Núm. dias')
+
+
+class HrPayrollHeadcountLine(models.Model):
+    _inherit = 'hr.payroll.headcount.line'
+    
+    department_id = fields.Many2one(related='employee_id.department_id', string='Departamento')
+    job_id = fields.Many2one(related='employee_id.job_id', string='Puesto de trabajo')

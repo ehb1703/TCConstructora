@@ -111,7 +111,7 @@ class CrmLead(models.Model):
     input_ids = fields.One2many('crm.input.line', 'lead_id', string='Insumos')
     input_file = fields.Binary(string='Archivo', attachment=True)
     input_filename = fields.Char(string='Nombre del archivo de Insumos', tracking=True)
-    no_cotizar_insumos = fields.Boolean(string='No se necesita cotizar insumos', default=False)
+    no_cotizar_insumos = fields.Boolean(string='No se necesita cotizar insumos', default=True)
     # Junta de Apertura de Propuestas
     apertura_obligatoria = fields.Boolean('Asistencia obligatoria')
     apertura_personas_ids = fields.Many2many('hr.employee', 'crm_lead_apertura_employee_rel', 'lead_id', 'employee_id', 'Personas asignadas')

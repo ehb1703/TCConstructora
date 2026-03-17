@@ -53,11 +53,8 @@ class CtrolAsistencias(models.Model):
             employee = False
             if record.registration_number:
                 employee = self.env['hr.employee'].sudo().search([('registration_number', '=', record.registration_number)], limit=1)
-            
-            # Fallback: buscar por employee_id (legacy)
             if not employee and record.employee_id:
                 employee = self.env['hr.employee'].sudo().search([('id', '=', record.employee_id)], limit=1)
-            
             if employee:
                 record.employee_name = employee.name
                 if not record.employee_id:
@@ -171,7 +168,6 @@ class CtrolAsistencias(models.Model):
             vals['check_date'] = utc_dt.strftime('%Y-%m-%d %H:%M:%S')
             _logger.info(f"Checador TZ={tz_name} | Local={local_dt} → UTC={utc_dt}")
         
-        # Crear registro
         record = self.create(vals)
         _logger.info(f"Asistencia creada en ctrol.asistencias - ID: {record.id}, "
                     f"Registration#: {vals.get('registration_number')}, "
@@ -207,7 +203,6 @@ class CtrolAsistencias(models.Model):
 
 
     def _get_employee_from_registration(self):
-        # Busca el empleado usando registration_number.
         self.ensure_one()
         if self.registration_number:
             employee = self.env['hr.employee'].sudo().search([('registration_number', '=', self.registration_number)], limit=1)
@@ -296,8 +291,7 @@ class CtrolAsistencias(models.Model):
                 auto_checkout = check_date_utc - timedelta(seconds=1)
                 prev.write({
                     'check_out': auto_checkout,
-                    'checkout_notes': f'Cierre automático - sin salida registrada en checador (entrada siguiente: {local_dt})',
-                })
+                    'checkout_notes': f'Cierre automático - sin salida registrada en checador (entrada siguiente: {local_dt})',})
                 auto_closed += 1
                 _logger.info(
                     f'Auto-cierre | Attendance ID: {prev.id} | Check-in: {prev.check_in} '
@@ -352,103 +346,6 @@ class CtrolAsistencias(models.Model):
                 _logger.info(f'T0051: Umbral desde config empresa: {threshold_minutes} min')
         return threshold_hours
 
-    def _map_to_overtime(self, attendance_id):
-        """Registra RETRASO EN ENTRADA como hr.work.entry tipo OVERTIME.
-        Usa fecha SIN conversión de zona horaria.
-        Nota: se usa hr.work.entry en lugar de hr.attendance.overtime porque
-        Odoo Enterprise elimina automáticamente los registros de hr.attendance.overtime
-        al completar la asistencia con check_out."""
-        self.ensure_one()
-        if not self.lateness_time:
-            return (False, 'No hay lateness_time registrado')
-
-        employee = self._get_employee_from_registration()
-        if not employee:
-            return (False, 'Empleado no encontrado')
-
-        threshold_hours = self._get_threshold_hours(employee)
-        lateness_hours = self._convert_time_to_hours(self.lateness_time)
-        if lateness_hours <= threshold_hours:
-            threshold_min = round(threshold_hours * 60)
-            return (False, f'Retraso ({self.lateness_time}) no supera umbral ({threshold_min} min)')
-
-        try:
-            # Usar fecha sin timezone
-            check_date_naive = self.check_date.replace(tzinfo=None) if self.check_date else None
-            
-            overtime_type = self.env['hr.work.entry.type'].sudo().search([('code', '=', 'OVERTIME')], limit=1)
-            contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']), 
-                ('date_start', '<=', check_date_naive.date()), '|', ('date_end', '=', False), ('date_end', '>=', check_date_naive.date()),], limit=1)
-            if not contract:
-                contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']),], 
-                    order='date_start desc', limit=1)
-                
-            we_vals = {'employee_id': employee.id, 'name': f'Retraso {self.lateness_time} - {check_date_naive.date()}', 'date_start': check_date_naive,
-                'date_stop': check_date_naive + timedelta(hours=lateness_hours), 'work_entry_type_id': overtime_type.id if overtime_type else False,
-                'state': 'draft',}
-            if contract:
-                we_vals['contract_id'] = contract.id
-
-            we = self.env['hr.work.entry'].sudo().create(we_vals)
-            _logger.info(f'T0051: Retraso WE creado | {employee.name} | {self.lateness_time}')
-            return (we, f'Retraso registrado | WE ID: {we.id} | {self.lateness_time} ({lateness_hours:.2f}h)')
-        except Exception as e:
-            _logger.error(f'T0051: Error WE retraso: {str(e)}')
-            return (False, f'Error al registrar retraso | Error: {str(e)}')
-
-
-    def _map_to_extra_hours(self, attendance_id):
-        """Registra HORAS EXTRA y/o SALIDA ANTICIPADA como hr.work.entry tipo OVERTIME.
-            - Horas extra: worked_hours > scheduled_hours + umbral → WE positivo
-            - Salida anticipada: left_early_time del checador > umbral → WE siempre, incluso si el día no tiene horario programado (ej: domingo)."""
-        self.ensure_one()
-        employee = self._get_employee_from_registration()
-        if not employee:
-            return (False, 'Empleado no encontrado')
-        attendance = self.env['hr.attendance'].sudo().browse(attendance_id)
-        if not attendance.exists() or not attendance.check_in or not attendance.check_out:
-            return (False, 'Attendance incompleto para calcular horas extra')
-
-        worked_hours = attendance.worked_hours
-        threshold_hours = self._get_threshold_hours(employee)
-
-        # Horas programadas del horario para ese día de la semana
-        scheduled_hours = 0.0
-        try:
-            if employee.resource_calendar_id:
-                day_of_week = attendance.check_in.weekday()
-                day_lines = employee.resource_calendar_id.attendance_ids.filtered(lambda l: int(l.dayofweek) == day_of_week)
-                for line in day_lines:
-                    scheduled_hours += (line.hour_to - line.hour_from)
-        except Exception as e:
-            _logger.warning(f'T0051: No se pudieron obtener horas programadas: {str(e)}')
-
-        overtime_type = self.env['hr.work.entry.type'].sudo().search([('code', '=', 'OVERTIME')], limit=1)
-        contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']), 
-            ('date_start', '<=', attendance.check_in.date()), '|', ('date_end', '=', False), ('date_end', '>=', attendance.check_in.date()),], limit=1)
-        if not contract:
-            contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']),], 
-                order='date_start desc', limit=1)
-
-        WorkEntryModel = self.env['hr.work.entry'].sudo()
-        messages = []
-        # CASO 1: Horas extra reales (solo si hay horario programado para ese día)
-        if scheduled_hours > 0:
-            extra_hours = worked_hours - scheduled_hours
-            if extra_hours > threshold_hours:
-                try:
-                    we_vals = {'employee_id': employee.id, 'name': f'Horas extra {extra_hours:.2f}h - {attendance.check_in.date()}',
-                        'date_start': attendance.check_out, 'date_stop': attendance.check_out + timedelta(hours=extra_hours),
-                        'work_entry_type_id': overtime_type.id if overtime_type else False, 'state': 'draft',}
-                    if contract:
-                        we_vals['contract_id'] = contract.id
-
-                    we = WorkEntryModel.create(we_vals)
-                    messages.append(f'Horas extra | WE ID: {we.id} | +{extra_hours:.2f}h')
-                    _logger.info(f'T0051: Horas extra | {employee.name} | +{extra_hours:.2f}h')
-                except Exception as e:
-                    _logger.error(f'T0051: Error WE horas extra: {str(e)}')
-
         # CASO 2: Salida anticipada — registrar siempre si viene del checador
         if self.left_early_time:
             early_hours = self._convert_time_to_hours(self.left_early_time)
@@ -473,55 +370,6 @@ class CtrolAsistencias(models.Model):
             threshold_min = round(threshold_hours * 60)
             return (False, f'left_early_time ({self.left_early_time}) no supera umbral ({threshold_min} min)')
         return (False, 'Sin horas extra ni salida anticipada que registrar')
-    
-    def _map_to_work_entry(self, attendance_id):
-        # Crea hr.work.entry tipo WORK100 al completar la jornada (salida). Verifica duplicados antes de crear para evitar estado conflict.
-        self.ensure_one()
-        employee = self._get_employee_from_registration()
-        if not employee:
-            return (False, 'Empleado no encontrado')
-
-        WorkEntryModel = self.env['hr.work.entry'].sudo()
-        attendance = self.env['hr.attendance'].sudo().browse(attendance_id)
-        if not attendance.exists():
-            return (False, f'Attendance ID {attendance_id} no encontrado')
-
-        if self.check_type == 'entrada' and not attendance.check_out:
-            return (False, 'Entrada sin salida - Work entry se creará al registrar salida')
-
-        if self.check_type == 'salida' and attendance.check_in and attendance.check_out:
-            try:
-                existing = WorkEntryModel.search([('employee_id', '=', employee.id), ('date_start', '=', attendance.check_in), 
-                    ('date_stop', '=', attendance.check_out),], limit=1)
-                if existing:
-                    _logger.info(f'T0051: Work Entry ya existe ID: {existing.id} para attendance {attendance_id}, omitiendo creación')
-                    return (existing, 
-                        f'Work Entry ya existía | ID: {existing.id} | Contrato: {existing.contract_id.name if existing.contract_id else "Sin contrato"}')
-
-                # Buscar tipo WORK100
-                work_entry_type = self.env.ref('hr_work_entry.work_entry_type_attendance', raise_if_not_found=False)
-                if not work_entry_type:
-                    work_entry_type = self.env['hr.work.entry.type'].sudo().search([('code', '=', 'WORK100')], limit=1)
-
-                # Buscar contrato vigente en la fecha de la asistencia
-                contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']),
-                    ('date_start', '<=', attendance.check_in.date()), '|', ('date_end', '=', False), ('date_end', '>=', attendance.check_in.date()),], limit=1)
-                if not contract:
-                    contract = self.env['hr.contract'].sudo().search([('employee_id', '=', employee.id), ('state', 'in', ['open', 'pending']),], 
-                        order='date_start desc', limit=1)
-
-                work_entry_vals = {'employee_id': employee.id, 'name': f'Asistencia {attendance.check_in.date()}', 'date_start': attendance.check_in,
-                    'date_stop': attendance.check_out, 'work_entry_type_id': work_entry_type.id if work_entry_type else False, 'state': 'draft',}
-                if contract:
-                    work_entry_vals['contract_id'] = contract.id
-                
-                work_entry = WorkEntryModel.create(work_entry_vals)
-                contract_info = f' | Contrato: {contract.name}' if contract else ' | Sin contrato'
-                return (work_entry, f'Work Entry creado | ID: {work_entry.id} | Tipo: Jornada Normal{contract_info}')
-            except Exception as e:
-                return (False, f'Error al crear work entry | Error: {str(e)}')
-
-        return (False, 'Condiciones no cumplidas para crear work entry')
 
     
     @api.model
@@ -560,23 +408,6 @@ class CtrolAsistencias(models.Model):
                     continue
                 
                 messages = [attendance_message]
-                # 2.3 MAPEO A hr.attendance.overtime por RETRASO EN ENTRADA
-                if record.check_type == 'entrada' and record.lateness_time:
-                    overtime, overtime_message = record._map_to_overtime(attendance.id)
-                    if overtime:
-                        messages.append(overtime_message)
-
-                # 2.4 MAPEO A hr.work.entry + HORAS EXTRA/SALIDA ANTICIPADA (solo en salida)
-                if record.check_type == 'salida':
-                    work_entry, work_entry_message = record._map_to_work_entry(attendance.id)
-                    if work_entry:
-                        messages.append(work_entry_message)
-
-                    # Calcular horas extra al final de jornada o salida anticipada
-                    extra_ok, extra_message = record._map_to_extra_hours(attendance.id)
-                    if extra_ok:
-                        messages.append(extra_message)
-                
                 # 2.5 ACTUALIZACIÓN DE ESTADO: Marcar como importada
                 final_message = ' | '.join(messages)
                 write_vals = {'log_status': 'importada', 'log_message': final_message}

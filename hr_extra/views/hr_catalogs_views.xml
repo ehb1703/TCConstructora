@@ -101,6 +101,50 @@
         </field>
     </record>
 
+    <!-- Salarios mínimos -->
+    <record id="action_hr_salario_minimo" model="ir.actions.act_window">
+        <field name="name">Salarios mínimos</field>
+        <field name="res_model">hr.salario.minimo</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registrar nuevo salario mínimo</p>
+            <p>Catálogo histórico de salarios mínimos por hora. El registro activo más reciente se aplicará automáticamente al crear contratos.</p>
+        </field>
+    </record>
+
+    <record id="view_hr_salario_minimo_list" model="ir.ui.view">
+        <field name="name">hr.salario.minimo.list</field>
+        <field name="model">hr.salario.minimo</field>
+        <field name="arch" type="xml">
+            <list string="Salarios mínimos" default_order="fecha_alta desc">
+                <field name="salario_hora" string="Salario/hora"/>
+                <field name="fecha_alta" string="Fecha de alta"/>
+                <field name="active" string="Activo"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hr_salario_minimo_form" model="ir.ui.view">
+        <field name="name">hr.salario.minimo.form</field>
+        <field name="model">hr.salario.minimo</field>
+        <field name="arch" type="xml">
+            <form string="Salario mínimo">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="salario_hora" string="Salario/hora"/>
+                            <field name="fecha_alta" string="Fecha de alta"/>
+                        </group>
+                        <group>
+                            <field name="active" string="Activo"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <menuitem id="menu_hr_contract_empresa" name="Empresas para contratos" parent="hr_contract.menu_human_resources_configuration_contract" action="action_hr_contract_empresa" sequence="10"/>
     <menuitem id="menu_hr_parentesco" name="Parentescos" parent="hr_contract.menu_human_resources_configuration_contract" action="action_hr_parentesco" sequence="12"/>
+    <menuitem id="menu_hr_salario_minimo" name="Salarios mínimos" parent="hr_contract.menu_human_resources_configuration_contract" action="action_hr_salario_minimo" sequence="14"/>
 </odoo>

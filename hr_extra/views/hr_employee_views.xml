@@ -46,7 +46,7 @@
                 <field name="state" widget="statusbar"/>
             </xpath>
             <xpath expr="//sheet/div[2]/div[1]/h1[1]" position="replace">
-                <field name="work_contact_id"/>
+                <field name="work_contact_id" domain="[('is_company', '=', False)]"/>
                 <h1 class="d-flex flex-row align-items-center">
                     <div invisible="not user_id" class="me-2">
                         <widget name="hr_employee_chat" invisible="not context.get('chat_icon')"/>
@@ -65,8 +65,14 @@
             <xpath expr="//field[@name='department_id']" position="after">
                 <field name="director_ids" widget="many2many_tags" string="Director/Gerente" options="{'no_create':True, 'no_open':True, 'no_edit':True}"/>
             </xpath>
+            <xpath expr="//field[@name='identification_id']" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </xpath>
             <xpath expr="//field[@name='employee_type']" position="after">
                 <field name="encargado_nomina"/>
+            </xpath>
+            <xpath expr="//field[@name='leave_manager_id']" position="attributes">
+                <attribute name="string">Permisos</attribute>
             </xpath>
             <xpath expr="//notebook/page[last()]" position="after">
                 <page string="Obras" name="obras_asignadas">
@@ -185,6 +191,20 @@
         </field>
     </record>
 
+    <record id="hr_contract_schedule_inherit_form" model="ir.ui.view">
+        <field name="name">hr.contract.schedule.inherit.form</field>
+        <field name="model">hr.contract</field>
+        <field name="inherit_id" ref="l10n_mx_hr_payroll_localisation.hr_contract_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='schedule_pay']" position="attributes">
+                <attribute name="invisible">0</attribute>
+            </xpath>
+            <xpath expr="//field[@name='l10n_mx_schedule_pay_temp']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>    
+
     <record id="hr_work_entry_type_percentage_view_form_inherit" model="ir.ui.view">
         <field name="name">hr.work.entry.type.percentage.view.form.inherit</field>
         <field name="model">hr.work.entry.type</field>
@@ -209,4 +229,26 @@
             </xpath>
         </field>
     </record>
+
+    <record id="hr_employee_time_off_button_rename" model="ir.ui.view">
+        <field name="name">hr.employee.time.off.button.rename</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr_holidays.view_employee_form_leave_inherit"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_time_off_dashboard'][@icon='fa-calendar']" position="replace">
+                <button name="action_time_off_dashboard" type="object" class="oe_stat_button" icon="fa-calendar" invisible="not show_leaves" context="{'search_default_employee_ids': id}" groups="base.group_user">
+                    <div class="o_field_widget o_stat_info" invisible="allocation_display == '0'">
+                        <span class="o_stat_value">
+                            <field name="allocation_remaining_display"/>/<field name="allocation_display"/> D&#237;as
+                        </span>
+                        <span class="o_stat_text">Permisos</span>
+                    </div>
+                    <div class="o_field_widget o_stat_info" invisible="allocation_display != '0'">
+                        <span class="o_stat_text">Permisos</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>
