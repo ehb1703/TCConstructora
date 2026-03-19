@@ -22,6 +22,11 @@
                             <field name="fecha_fin"/>
                         </group>
                     </group>
+                    <group string="Tipo de Nómina" invisible="not mostrar_tipo_pago">
+                        <field name="mostrar_tipo_pago" invisible="1"/>
+                        <field name="tipo_pago" required="mostrar_tipo_pago"
+                            help="Encargado de ambas nóminas: seleccione el tipo de pago a reportar."/>
+                    </group>
                     <group string="Filtros (dejar vacío para incluir todos)">
                         <group>
                             <field name="employee_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>

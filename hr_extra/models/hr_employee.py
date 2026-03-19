@@ -43,9 +43,19 @@ def _get_employee_ids_by_schedule(env, enc):
     return [row[0] for row in env.cr.fetchall()]
 
 
+def _get_encargado_nomina_usuario(env):
+    """Retorna el valor de encargado_nomina del empleado vinculado al usuario actual.
+    Retorna None si no tiene empleado vinculado o no tiene valor asignado."""
+    env.cr.execute('''SELECT he.encargado_nomina FROM hr_employee he JOIN resource_resource rr ON rr.id = he.resource_id
+        WHERE rr.user_id = %s AND he.active = true LIMIT 1''', (env.uid,))
+    row = env.cr.fetchone()
+    return row[0] if row else None
+
+
 def _encargado_nomina_extra_domain(env, employee_field='employee_id'):
     """Dominio adicional según encargado_nomina del usuario actual.
-    Retorna [] si no aplica restricción, o [('field', 'in', ids)] / [('id','=',-1)]."""
+    Retorna [] si no aplica restricción, o [('field', 'in', ids)] / [('id','=',-1)].
+    Si enc='none_assigned': el usuario tiene empleado vinculado sin valor asignado → ve nada."""
     enc = _get_user_schedule_pay(env)
     if not enc:
         return []
@@ -75,7 +85,7 @@ class HrEmployeeObra(models.Model):
             if len(obras) > 1:
                 raise ValidationError('La fecha final es obligatoria cuando se cambia de obra')
 
-            if record.fecha_fin and record.fecha_fin < record.fecha_inicio:
+            if record.fecha_inicio and record.fecha_fin and record.fecha_fin < record.fecha_inicio:
                 raise ValidationError('La fecha final no puede ser anterior a la fecha de inicio.')
 
 
@@ -100,10 +110,29 @@ class hrEmployeeInherit(models.Model):
     encargado_nomina = fields.Selection(selection=[('quincenal', 'Quincenal'), ('semanal', 'Semanal'), ('ambas', 'Ambas')],
         string='Encargado de Nómina')
     can_number = fields.Boolean(compute='_compute_can_number')
+    hourly_cost = fields.Monetary(string='Salario por hora', currency_field='currency_id', store=True, readonly=True, compute='_compute_salary')
+    is_system_user = fields.Boolean(compute='_compute_is_system_user')
+
+    def _compute_is_system_user(self):
+        is_admin = self.env.user.has_group('base.group_system')
+        for record in self:
+            record.is_system_user = is_admin
 
     def _compute_can_number(self):
         can_edit = self.env['ir.config_parameter'].sudo().get_param('hr.registration_active')
         self.can_number = bool(can_edit)
+
+    @api.depends('obra_ids.hourly_wage')
+    def _compute_salary(self):
+        cost = 0.00
+        c = 0
+        for rec in self.obra_ids:
+            if rec.hourly_wage > 0:
+                c += 1
+                cost += rec.hourly_wage
+                
+        self.hourly_cost = cost/c
+
 
     @api.constrains('l10n_mx_curp')
     def _check_curp(self):
@@ -194,12 +223,9 @@ class hrEmployeeInherit(models.Model):
         for emp in self:
             obra_encontrada = False
             if emp.obra_ids:
-                obras_vigentes = emp.obra_ids.filtered(
-                    lambda o: o.project_id and o.project_id.active
-                    and o.fecha_inicio and o.fecha_fin
+                obras_vigentes = emp.obra_ids.filtered(lambda o: o.project_id and o.project_id.active and o.fecha_inicio and o.fecha_fin
                     and o.fecha_inicio <= today <= o.fecha_fin)
-                obras_buscar = obras_vigentes or emp.obra_ids.filtered(
-                    lambda o: o.project_id and o.project_id.active)
+                obras_buscar = obras_vigentes or emp.obra_ids.filtered(lambda o: o.project_id and o.project_id.active)
                 if obras_buscar:
                     emp.current_project_name = obras_buscar.sorted('id', reverse=True)[0].project_id.name
                     obra_encontrada = True
@@ -235,11 +261,10 @@ class hrEmployeeInherit(models.Model):
 
     def get_employee_data_for_api(self):
         self.ensure_one()
-        contract = self.contract_id or self.env['hr.contract'].search(
-            [('employee_id', '=', self.id), ('state', '=', 'open')], limit=1)
+        contract = self.contract_id or self.env['hr.contract'].search([('employee_id', '=', self.id), ('state', '=', 'open')], limit=1)
         work_entry_type = (contract.work_entry_source or '') if contract and hasattr(contract, 'work_entry_source') else ''
         photo_base64 = None
-        if self.image_1920:
+        if self.state not in ('baja', 'pensionado') and self.image_1920:
             photo_base64 = self.image_1920.decode('utf-8') if isinstance(self.image_1920, bytes) else str(self.image_1920)
         company = self.empresa_empleadora or self.company_id
         company_name = company.name if company else ''
@@ -265,7 +290,7 @@ class hrEmployeeInherit(models.Model):
             'schedule_id': self.resource_calendar_id.id if self.resource_calendar_id else None,
             'schedule_name': self.resource_calendar_id.name if self.resource_calendar_id else '',
             'schedules': self.get_schedules_for_api(),
-            'active': self.active,
+            'active': self.active and self.state not in ('baja', 'pensionado'),
             'work_email': self.work_email or '',
             'work_phone': self.work_phone or '',
             'mobile_phone': self.mobile_phone or '',
@@ -356,6 +381,8 @@ class hrEmployeeInherit(models.Model):
                 contact.with_context(syncing_info=True).update({'curp': curp, 'vat': rfc})
 
         res = super(hrEmployeeInherit, self).write(vals)
+        if self.hourly_cost == 0.00:
+            raise ValidationError('Es necesario capturar el salario diario en obras')
         return res
 
 
@@ -549,7 +576,8 @@ class HrPayslipInherit(models.Model):
     @api.depends('contract_id')
     def _compute_daily_salary(self):
         for payslip in self:
-            payslip.l10n_mx_daily_salary = payslip.contract_id.daily_wage
+            cost = payslip.employee_id.hourly_cost
+            payslip.l10n_mx_daily_salary = cost * 8
 
     def _get_worked_day_lines_values(self, domain=None):
         self.ensure_one()
@@ -631,7 +659,7 @@ class HrPayslipWorkedDaysInherit(models.Model):
         if not employee or not date_from or not date_to:
             return None
 
-        obras = employee.obra_ids.filtered(lambda o: o.hourly_wage and o.fecha_inicio and o.fecha_fin)
+        obras = employee.obra_ids.filtered(lambda o: o.hourly_wage and o.fecha_inicio)
         if not obras:
             return None
 
@@ -639,7 +667,7 @@ class HrPayslipWorkedDaysInherit(models.Model):
         total_costo = 0.0
         current = date_from
         while current <= date_to:
-            obra_dia = obras.filtered(lambda o: o.fecha_inicio <= current <= o.fecha_fin)
+            obra_dia = obras.filtered(lambda o: o.fecha_inicio <= current)
             if obra_dia:
                 obra = obra_dia.sorted(key=lambda o: o.id, reverse=True)[0]
                 total_costo += obra.hourly_wage
@@ -647,8 +675,8 @@ class HrPayslipWorkedDaysInherit(models.Model):
             current += relativedelta(days=1)
         return (total_costo / total_dias) if total_dias else None
 
-    @api.depends('is_paid', 'is_credit_time', 'number_of_hours', 'payslip_id',
-                 'contract_id.wage', 'payslip_id.sum_worked_hours')
+
+    @api.depends('is_paid', 'is_credit_time', 'number_of_hours', 'payslip_id', 'contract_id.wage', 'payslip_id.sum_worked_hours')
     def _compute_amount(self):
         for worked_days in self:
             if worked_days.payslip_id.edited or worked_days.payslip_id.state not in ['draft', 'verify']:
@@ -656,7 +684,7 @@ class HrPayslipWorkedDaysInherit(models.Model):
             if not worked_days.contract_id or worked_days.code == 'OUT' or worked_days.is_credit_time:
                 worked_days.amount = 0
                 continue
-            if worked_days.payslip_id.wage_type == "hourly":
+            if worked_days.payslip_id.wage_type == 'hourly':
                 costo_hora_obra = self._get_costo_hora_por_fecha(worked_days.payslip_id.employee_id, worked_days.payslip_id.date_from, 
                     worked_days.payslip_id.date_to)
                 hourly_rate = costo_hora_obra if costo_hora_obra else worked_days.payslip_id.contract_id.hourly_wage

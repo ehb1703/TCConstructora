@@ -43,3 +43,5 @@ class HrDepartureWizard(models.TransientModel):
 
                 for rec in self.employee_id.obra_ids.filtered(lambda c: not c.fecha_fin):
                     rec.update({'fecha_fin': self.departure_date})
+                    if not rec.fecha_inicio:
+                        rec.update({'fecha_inicio': self.departure_date})

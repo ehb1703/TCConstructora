@@ -20,6 +20,12 @@ class ChecadorSyncLog(models.Model):
     last_sync_reference = fields.Datetime(string='Referencia Última Sync', help='Fecha de la última sincronización usada como referencia')
     notes = fields.Text(string='Observaciones', help='Notas adicionales sobre la sincronización')
     display_name = fields.Char(string='Nombre', compute='_compute_display_name', store=True)
+    is_system_user = fields.Boolean(compute='_compute_is_system_user')
+
+    def _compute_is_system_user(self):
+        is_admin = self.env.user.has_group('base.group_system')
+        for record in self:
+            record.is_system_user = is_admin
 
     @api.depends('sync_date', 'device_id', 'sync_type')
     def _compute_display_name(self):

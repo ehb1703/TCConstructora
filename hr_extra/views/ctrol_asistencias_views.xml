@@ -5,7 +5,7 @@
         <field name="name">ctrol.asistencias.tree</field>
         <field name="model">ctrol.asistencias</field>
         <field name="arch" type="xml">
-            <list string="Asistencias Checadores" decoration-success="log_status=='importada' and status=='success'" decoration-danger="log_status=='error' or status=='error'" decoration-warning="log_status=='pendiente'">
+            <list string="Asistencias Checadores" decoration-success="log_status=='importada' and status=='success'" decoration-danger="log_status=='error' or status=='error'" decoration-warning="log_status=='pendiente'" edit="0">
                 <field name="id"/>
                 <field name="registration_number"/>
                 <field name="employee_name"/>
@@ -20,6 +20,7 @@
                 <field name="match_percentage"/>
                 <field name="observaciones" optional="hide"/>
                 <field name="createdAt"/>
+                <button name="action_reenviar_a_pendiente" string="Reenviar" type="object" icon="fa-refresh" title="Reenviar a Pendiente" invisible="log_status != 'error'" groups="base.group_system"/>
             </list>
         </field>
     </record>
@@ -29,8 +30,9 @@
         <field name="name">ctrol.asistencias.form</field>
         <field name="model">ctrol.asistencias</field>
         <field name="arch" type="xml">
-            <form string="Asistencia Checador">
+            <form string="Asistencia Checador" readonly="not is_system_user">
                 <header>
+                    <button name="action_reenviar_a_pendiente" string="Reenviar a Pendiente" type="object" class="btn-warning" invisible="log_status != 'error'" confirm="¿Desea marcar este registro como Pendiente para reintento?" groups="base.group_system"/>
                     <field name="log_status" widget="statusbar" statusbar_visible="pendiente,importada"/>
                 </header>
                 <sheet>

@@ -647,10 +647,11 @@ class requisitionFuel(models.Model):
     partner_id = fields.Many2one('res.partner', string='Proveedor')
     reference = fields.Char(string='Referencia')
     observaciones = fields.Char(string='Observaciones')
-    amount = fields.Float(string='Monto Gasto')
+    amount = fields.Float(string='Monto Gasto', compute='_compute_amount', store=True, readonly=True)
     comprobantes_ids = fields.Many2many(comodel_name='ir.attachment', string='Comprobantes')
     account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
     type_pay = fields.Char(string='Tipo de pago', compute='_compute_type_pay', store=True, readonly=True)
+    line_ids = fields.One2many('requisition.fuel.line', 'fuel_id')
 
     @api.depends('product_id')
     def _compute_product_template_id(self):
@@ -668,6 +669,23 @@ class requisitionFuel(models.Model):
                     req.type_pay = 'FISCAL'
                 else:
                     req.type_pay = 'EFECTIVO'
+
+    @api.depends('line_ids.amount')
+    def _compute_amount(self):
+        for req in self:
+            total = 0.0
+            for line in req.line_ids:
+                total += line.amount
+            req.amount = total
+
+
+class requisitionFuelLine(models.Model):
+    _name = 'requisition.fuel.line'
+    _description = 'Desglose de uso de combustible'
+
+    fuel_id = fields.Many2one('requisition.fuel', readonly=True)
+    equipo = fields.Char(string='Unidad')
+    amount = fields.Float(string='Importe')
 
 
 class requisitionNomina(models.Model):
