@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_requisition_hr_solicitud" model="ir.actions.act_window">
+        <field name="name">Solicitudes</field>
+        <field name="res_model">requisition.hr.solicitud</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_requisition_hr_solicitud_list" model="ir.ui.view">
+        <field name="name">view.requisition.hr.solicitud.list</field>
+        <field name="model">requisition.hr.solicitud</field>
+        <field name="arch" type="xml">
+            <list string="Solicitudes">
+                <field name="nombre" string="Nombre(s)"/>
+                <field name="apellido_paterno" string="Apellido paterno"/>
+                <field name="apellido_materno" string="Apellido materno"/>
+                <field name="codigo_postal" string="Código postal"/>
+                <field name="tipo_tramite" string="Tipo de trámite"/>
+                <field name="fecha_aplicacion" string="Fecha de aplicación"/>
+                <field name="nss" string="NSS"/>
+                <field name="rfc" string="RFC"/>
+                <field name="curp" string="CURP"/>
+                <field name="genero" string="Género"/>
+                <field name="fecha_nacimiento" string="F.Nacimiento"/>
+                <field name="ciudad_nacimiento" string="Ciudad de nacimiento"/>
+                <field name="observaciones" string="Observaciones"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_requisition_hr_solicitud_form" model="ir.ui.view">
+        <field name="name">view.requisition.hr.solicitud.form</field>
+        <field name="model">requisition.hr.solicitud</field>
+        <field name="arch" type="xml">
+            <form string="Solicitud">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="nombre" string="Nombre(s)"/>
+                            <field name="apellido_paterno" string="Apellido paterno"/>
+                            <field name="apellido_materno" string="Apellido materno"/>
+                            <field name="codigo_postal" string="Código postal"/>
+                            <field name="tipo_tramite" string="Tipo de Trámite"/>
+                            <field name="fecha_aplicacion" string="Fecha de aplicación"/>
+                            <field name="genero" string="Género"/>
+                        </group>
+                        <group>
+                            <field name="nss" string="NSS"/>
+                            <field name="rfc" string="RFC"/>
+                            <field name="curp" string="CURP"/>
+                            <field name="fecha_nacimiento" string="Fecha de nacimiento"/>
+                            <field name="ciudad_nacimiento" string="Ciudad de nacimiento"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="observaciones" string="Observaciones"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_tramites_rh" name="Trámites RH" parent="reports_menu_root" groups="group_requisition_admin,group_requisition_capture" sequence="15">
+        <menuitem id="menu_hr_solicitudes" name="Solicitudes" action="action_requisition_hr_solicitud" groups="group_requisition_admin,group_requisition_capture" sequence="10"/>
+    </menuitem>
+
+</odoo>

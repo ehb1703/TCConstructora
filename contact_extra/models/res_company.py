@@ -73,7 +73,7 @@ class respartnerCurp(models.Model):
             if empleado:
                 if 'name' in values:
                     if values.get('name') != self.name:
-                        empleado.update({'name': values.get('name'), 'legal_name': values.get('name')})
+                        empleado.with_context(syncing_info=True).update({'name': values.get('name'), 'legal_name': values.get('name')})
                         empleado.resource_id.update({'name': values.get('name')})
                 if 'curp' in values and not self.env.context.get('syncing_info'):
                     if values.get('curp') != self.curp:

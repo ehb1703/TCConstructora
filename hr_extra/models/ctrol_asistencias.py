@@ -46,7 +46,13 @@ class CtrolAsistencias(models.Model):
     user_valid_id = fields.Integer(string='ID Usuario Validador')
     date_validated = fields.Datetime(string='Fecha de Validación')
     employee_name = fields.Char(string='Nombre Empleado', compute='_compute_employee_name', store=True)
-    
+    is_system_user = fields.Boolean(compute='_compute_is_system_user')
+
+    def _compute_is_system_user(self):
+        is_admin = self.env.user.has_group('base.group_system')
+        for record in self:
+            record.is_system_user = is_admin
+
     @api.depends('registration_number', 'employee_id')
     def _compute_employee_name(self):
         for record in self:
@@ -213,12 +219,17 @@ class CtrolAsistencias(models.Model):
     def _validate_for_import(self):
         """ Valida que el registro pueda importarse a Odoo. 
             1. employee_id existe en hr.employee
-            2. check_date no es nulo y formato correcto
-            3. check_type está en {entrada, salida} """
+            2. Empleado tiene contrato activo (state='open')
+            3. check_date no es nulo y formato correcto
+            4. check_type está en {entrada, salida} """
         self.ensure_one()
         employee = self._get_employee_from_registration()
         if not employee:
             return (False, f'Empleado no encontrado | Registration: {self.registration_number}')
+        contract = self.env['hr.contract'].sudo().search(
+            [('employee_id', '=', employee.id), ('state', '=', 'open')], limit=1)
+        if not contract:
+            return (False, f'Sin contrato activo | Empleado: {employee.name} | Registration: {self.registration_number}')
         if not self.check_date:
             return (False, 'Formato de fecha inválido | check_date es nulo')
         if not isinstance(self.check_date, datetime):
@@ -228,6 +239,22 @@ class CtrolAsistencias(models.Model):
         
         return (True, '')
 
+    def action_reenviar_a_pendiente(self):
+        """Regresa registros con log_status='error' a 'pendiente' para reintento.
+        Funciona desde el formulario (registro individual) y desde la lista (selección múltiple)."""
+        errores = self.filtered(lambda r: r.log_status == 'error')
+        if not errores:
+            raise ValidationError(_('No hay registros en estado Error seleccionados.'))
+        errores.write({'log_status':'pendiente', 'log_message':False, 'attendance_id':False,})
+        _logger.info(f'Reenviados a pendiente: {len(errores)} registro(s) | IDs: {errores.ids}')
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Reenviados a Pendiente'),
+                'message': _('%d registro(s) marcados como Pendiente para reintento.') % len(errores),
+                'type': 'success',
+                'sticky': False,},}
     
     def _map_to_attendance(self):
         """Mapea el registro a hr.attendance usando zona horaria local del checador.
