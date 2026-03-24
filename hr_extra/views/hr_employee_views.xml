@@ -70,6 +70,10 @@
             </xpath>
             <xpath expr="//field[@name='user_id']" position="attributes">
                 <attribute name="readonly">not is_system_user</attribute>
+                <attribute name="options">{'no_create': True, 'no_open': True, 'no_edit': True}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='user_id']" position="before">
+                <field name="is_system_user" invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='employee_type']" position="after">
                 <field name="encargado_nomina" readonly="not is_system_user"/>

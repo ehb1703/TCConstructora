@@ -78,8 +78,9 @@ class GenerateRequisitionWizard(models.TransientModel):
                  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
                 UNION ALL
                 SELECT rr.id, rr.name, rr.project_id, rr.finicio, rf.partner_id, 'COMBUSTIBLE ' category, type_pay, account_id,
-                    STRING_AGG(rf.OBSERVACIONES, ', ') CONCEPTO, count(*), 0, sum(rf.amount)
+                    STRING_AGG(rfl.EQUIPO||' $'||rfl.AMOUNT::character VARYING, ', ') CONCEPTO, count(*), 0, sum(rfl.amount)
                   FROM requisition_residents rr JOIN requisition_fuel rf ON rr.id = rf.req_id
+                                                JOIN requisition_fuel_line rfl ON rf.id = rfl.fuel_id 
                  WHERE rr.id in """ + child + " AND rf.partner_id = " + str(rec['partner_id']) + " GROUP BY 1, 2, 3, 4, 5, 6, 7, 8 ORDER BY 1 ")
             self.env.cr.execute(consulta)
             cargos = self.env.cr.dictfetchall()

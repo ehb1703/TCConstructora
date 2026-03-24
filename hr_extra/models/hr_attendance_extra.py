@@ -19,6 +19,44 @@ class HrLeaveExtra(models.Model):
 
     disease_ids = fields.One2many('hr.leave.disease', 'leave_id', string='Riesgo de trabajo')
 
+    @staticmethod
+    def _calcular_dias_habiles(date_from, date_to):
+        return sum(1 for n in range((date_to - date_from).days + 1) if (date_from + timedelta(days=n)).weekday() < 5)
+
+    @api.constrains('holiday_status_id', 'request_date_from', 'request_date_to', 'employee_id')
+    def _check_maternidad_paternidad_dias(self):
+        for leave in self:
+            if not leave.holiday_status_id or not leave.request_date_from or not leave.request_date_to:
+                continue
+
+            nombre_tipo = (leave.holiday_status_id.name or '').lower()
+            es_maternidad = 'maternidad' in nombre_tipo
+            es_paternidad = 'paternidad' in nombre_tipo
+            if not es_maternidad and not es_paternidad:
+                continue
+
+            gender = leave.employee_id.gender if leave.employee_id else False
+            dias_habiles = self._calcular_dias_habiles(leave.request_date_from, leave.request_date_to)
+            if es_maternidad:
+                if gender == 'male':
+                    raise ValidationError(_(
+                        'El permiso de Maternidad (IMSS) solo puede ser solicitado por empleadas. '
+                        'Para empleados masculinos utilice el permiso de Paternidad (IMSS).'))
+                if dias_habiles > 90:
+                    raise ValidationError(_(
+                        'El permiso de Maternidad (IMSS) no puede exceder 90 días hábiles.\n'
+                        'Días hábiles solicitados: %d' % dias_habiles))
+            elif es_paternidad:
+                if gender == 'female':
+                    raise ValidationError(_(
+                        'El permiso de Paternidad (IMSS) solo puede ser solicitado por empleados masculinos. '
+                        'Para empleadas utilice el permiso de Maternidad (IMSS).'))
+                if dias_habiles > 5:
+                    raise ValidationError(_(
+                        'El permiso de Paternidad (IMSS) no puede exceder 5 días hábiles.\n'
+                        'Días hábiles solicitados: %d' % dias_habiles))
+
+
     def action_approve(self, check_state=True):
         vacation_type = self.env['hr.leave.type'].search([('name', '=', 'Vacaciones')])
         if self.holiday_status_id.id == vacation_type.id and self.employee_id.antique == 0:
@@ -65,6 +103,8 @@ class HrLeaveExtra(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
+        if self.env.su:
+            return super()._search(domain, offset=offset, limit=limit, order=order)
         extra = _encargado_nomina_extra_domain(self.env)
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
@@ -76,6 +116,8 @@ class HrAttendanceEncargadoFilter(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
+        if self.env.su:
+            return super()._search(domain, offset=offset, limit=limit, order=order)
         extra = _encargado_nomina_extra_domain(self.env)
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 

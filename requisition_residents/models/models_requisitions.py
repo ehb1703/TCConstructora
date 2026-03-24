@@ -4,6 +4,7 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tools import html_escape
 from markupsafe import Markup
 from datetime import date, datetime, timedelta, time
+from dateutil.relativedelta import relativedelta
 import json
 import logging
 
@@ -584,11 +585,18 @@ class requisitionCash(models.Model):
     def _compute_domain_obra(self):
         for record in self:
             if record.req_id:
-                residentes = self.env['project.residents'].search([('resident_id','=',record.req_id.employee_id.id)])
                 lista = []
-                for x in residentes:
-                    lista.append(x.project_id.id)
+                if self.env.user.has_group('requisition_residents.group_requisition_admin'):
+                    projects = self.env['project.project'].search([('stage_id.name','!=','Cancelada')])
+                    for x in projects:
+                        lista.append(x.id)
+                else:
+                    residentes = self.env['project.residents'].search([('resident_id','=',record.req_id.employee_id.id)])
+                    for x in residentes:
+                        lista.append(x.project_id.id)
+
                 record.project_domain = json.dumps([('id', 'in', lista)])
+
 
     req_id = fields.Many2one('requisition.residents', readonly=True)
     project_id = fields.Many2one('project.project', string='Obra')
@@ -621,7 +629,8 @@ class requisitionCash(models.Model):
     @api.onchange('fecha')
     def onchange_fecha(self):
         if self.fecha:
-            if self.fecha > self.req_id.ffinal or self.fecha < self.req_id.finicio:
+            finicio = self.req_id.finicio - relativedelta(months=1)
+            if self.fecha > self.req_id.ffinal or self.fecha < finicio:
                 raise ValidationError('La fecha capturada no esta dentro del periodo capturado')
 
     @api.onchange('amount')

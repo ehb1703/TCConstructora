@@ -29,5 +29,33 @@
             </field>
         </record>
 
+        <record id="mail_tmpl_requisition_rh_solicitud" model="mail.template">
+            <field name="name">Empleados</field>
+            <field name="model_id" ref="model_requisition_hr_solicitud"/>
+            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
+            <field name="email_to"></field>
+            <field name="subject">[Rec. Humanos] {{object.tipo_tramite.upper()}}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+                    <p>Estimado/a,</p>
+                    <p>Se ha registrado la siguiente solicitud:</p>
+                    <ul>
+                        <li><b>Trámite: </b><t t-if="object.tipo_tramite"><span t-out="object.tipo_tramite.upper() or ''"/></t></li>
+                        <li><b>Nombre: </b><t t-out="object.nombre"/> <t t-out="object.apellido_paterno"/> <t t-out="object.apellido_materno"/></li>
+                        <li><b>Obra: </b><t t-out="object.project_id.name"/></li>
+                    </ul>
+                    <table align="center">
+                        <tr>
+                            <td>
+                                <a t-att-href="'%s/web#id=%s&amp;model=requisition.hr.solicitud&amp;view_type=form' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#6c757d; color:#fff; border-radius:4px; text-decoration:none;font-size:12px;">Ver</a>
+                            </td>
+                        </tr>
+                    </table>
+                    <p>Enviado automáticamente por el Sistema.</p>
+                </div>
+            </field>
+        </record>
+
+
     </data>
 </odoo>

@@ -82,7 +82,7 @@
                                     <field name="project_domain" column_invisible="True"/>
                                     <field name="foto_name" column_invisible="True"/>
                                     <field name="product_template_id" column_invisible="1"/>
-                                    <field name="project_id" domain="project_domain"/>
+                                    <field name="project_id" domain="project_domain" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="product_id"/>
                                     <field name="fecha"/>
                                     <field name="partner_id"/>

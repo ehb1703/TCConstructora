@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import fields, models, _
 from odoo.exceptions import ValidationError, UserError
 
 class HrDepartureWizard(models.TransientModel):
     _inherit = 'hr.departure.wizard'
     
     def action_register_departure(self):
-        # Esperar que comenta Arturo
         employee = self.employee_id
         if employee.state == 'activo':
             current_contract = self.sudo().employee_id.contract_id
             if current_contract and current_contract.date_start > self.departure_date:
-                raise UserError(_("Departure date can't be earlier than the start date of current contract."))
+                raise UserError(_('La fecha de salida no puede ser anterior a la fecha de inicio del contrato actual.'))
 
             if self.departure_reason_id.name.upper() in ['RETIRO']:
                 description = 'pensionado'
