@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Tipo de entrada de trabajo: Paternidad (IMSS) -->
+        <record id="work_entry_type_paternidad" model="hr.work.entry.type">
+            <field name="name">Paternidad (IMSS)</field>
+            <field name="code">PATERNIDAD</field>
+            <field name="color">4</field>
+            <field name="is_leave">True</field>
+        </record>
+
+        <!-- Tipo de permiso: Paternidad (IMSS) -->
+        <record id="holiday_status_paternidad" model="hr.leave.type">
+            <field name="name">Paternidad (IMSS)</field>
+            <field name="work_entry_type_id" ref="work_entry_type_paternidad"/>
+            <field name="leave_validation_type">manager</field>
+            <field name="requires_allocation">no</field>
+            <field name="active">True</field>
+        </record>
+
+    </data>
+</odoo>

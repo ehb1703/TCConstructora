@@ -11,7 +11,10 @@ _logger = logging.getLogger(__name__)
 
 def _get_user_schedule_pay(env):
     """Retorna 'semanal', 'quincenal', o None (sin restricción).
-    None si: ADMIN, sin empleado vinculado, encargado_nomina nulo o 'ambas'."""
+    None si: ADMIN, sin empleado vinculado, encargado_nomina nulo o 'ambas'.
+    Si el usuario tiene empleado vinculado con encargado_nomina nulo y pertenece
+    a grupos de RRHH/nómina, se restringe a dominio vacío (ve nada) para evitar
+    que vea toda la información sin filtro asignado."""
     env.cr.execute('''SELECT 1 FROM res_groups_users_rel rgur JOIN ir_model_data imd ON imd.res_id = rgur.gid
         WHERE rgur.uid = %s AND imd.module = 'base' AND imd.name = 'group_system' LIMIT 1 ''', (env.uid,))
     if env.cr.fetchone():
@@ -20,26 +23,35 @@ def _get_user_schedule_pay(env):
     env.cr.execute('''SELECT he.encargado_nomina FROM hr_employee he JOIN resource_resource rr ON rr.id = he.resource_id WHERE rr.user_id = %s
         AND he.active = true LIMIT 1 ''', (env.uid,))
     row = env.cr.fetchone()
-    enc = row[0] if row else None
-    return None if (not enc or enc == 'ambas') else enc
+    if not row:
+        return None
+
+    enc = row[0]
+    # encargado_nomina nulo: el usuario tiene empleado pero sin valor asignado
+    # → retornar 'none_assigned' para que _encargado_nomina_extra_domain restrinja a vacío
+    if not enc:
+        return 'none_assigned'
+    return None if enc == 'ambas' else enc
 
 
 def _get_employee_ids_by_schedule(env, enc):
-    """IDs de empleados con contrato activo cuyo schedule_pay coincide con enc.
+    """IDs de empleados visibles para el encargado de nómina según enc.
+    Incluye:
+    - Empleados con contrato activo (open/pending) cuyo schedule_pay coincide con enc
+    - Empleados SIN ningún contrato (para que el encargado pueda crearles uno)
     - semanal   → schedule_pay = 'weekly'
-    - quincenal → schedule_pay IN ('bi-weekly','monthly','bi_monthly','10_days','14_days','daily')
-    Sin contrato activo = no visible para usuarios filtrados."""
+    - quincenal → schedule_pay IN ('bi-weekly','monthly','bi_monthly','10_days','14_days','daily') """
     if enc == 'semanal':
         schedule_values = ('weekly',)
         placeholders = '%s'
     else:
-        # quincenal agrupa todos los esquemas no semanales
         schedule_values = ('bi-weekly', 'monthly', 'bi_monthly', '10_days', '14_days', 'daily')
         placeholders = ','.join(['%s'] * len(schedule_values))
 
-    env.cr.execute(f'''SELECT DISTINCT(he.id) FROM hr_employee he WHERE he.active = true 
-          AND EXISTS (SELECT 1 FROM hr_contract hc WHERE hc.employee_id = he.id AND hc.state IN ('open', 'pending') AND hc.schedule_pay IN ({placeholders})) ''',
-          schedule_values)
+    env.cr.execute(f'''SELECT DISTINCT(he.id) FROM hr_employee he WHERE he.active = true
+          AND (
+              EXISTS (SELECT 1 FROM hr_contract hc WHERE hc.employee_id = he.id AND hc.state IN ('open', 'pending') AND hc.schedule_pay IN ({placeholders}))
+              OR NOT EXISTS (SELECT 1 FROM hr_contract hc WHERE hc.employee_id = he.id AND hc.state != 'cancel'))''', schedule_values)
     return [row[0] for row in env.cr.fetchall()]
 
 
@@ -47,22 +59,42 @@ def _get_encargado_nomina_usuario(env):
     """Retorna el valor de encargado_nomina del empleado vinculado al usuario actual.
     Retorna None si no tiene empleado vinculado o no tiene valor asignado."""
     env.cr.execute('''SELECT he.encargado_nomina FROM hr_employee he JOIN resource_resource rr ON rr.id = he.resource_id
-        WHERE rr.user_id = %s AND he.active = true LIMIT 1''', (env.uid,))
+           WHERE rr.user_id = %s AND he.active = true LIMIT 1''', (env.uid,))
     row = env.cr.fetchone()
     return row[0] if row else None
 
+def _get_own_employee_id(env):
+    """Retorna el ID del empleado vinculado al usuario actual, o None si no tiene."""
+    env.cr.execute('''SELECT he.id FROM hr_employee he JOIN resource_resource rr ON rr.id = he.resource_id
+           WHERE rr.user_id = %s AND he.active = true LIMIT 1''', (env.uid,))
+    row = env.cr.fetchone()
+    return row[0] if row else None
 
 def _encargado_nomina_extra_domain(env, employee_field='employee_id'):
     """Dominio adicional según encargado_nomina del usuario actual.
-    Retorna [] si no aplica restricción, o [('field', 'in', ids)] / [('id','=',-1)].
-    Si enc='none_assigned': el usuario tiene empleado vinculado sin valor asignado → ve nada."""
+    Retorna [] si no aplica restricción.
+    REGLA: el propio empleado del usuario SIEMPRE es visible, sin importar el enc.
+    Esto evita errores de acceso cuando Odoo lee internamente el registro del usuario."""
     enc = _get_user_schedule_pay(env)
     if not enc:
         return []
 
+    # Siempre obtener el propio empleado para incluirlo en cualquier caso
+    own_id = _get_own_employee_id(env)
+    if enc == 'none_assigned':
+        # Sin encargado_nomina asignado → solo ve su propio empleado
+        if own_id:
+            return [('id', '=', own_id)] if employee_field == 'self' else [(employee_field, '=', own_id)]
+        return []
+
     employee_ids = _get_employee_ids_by_schedule(env, enc)
+    # Incluir siempre el propio empleado para evitar errores de acceso internos
+    if own_id and own_id not in employee_ids:
+        employee_ids = list(employee_ids) + [own_id]
+
     if not employee_ids:
-        return [('id', '=', -1)] if employee_field == 'self' else [(employee_field, '=', -1)]
+        return []
+
     return [('id', 'in', employee_ids)] if employee_field == 'self' else [(employee_field, 'in', employee_ids)]
 
 
@@ -131,7 +163,10 @@ class hrEmployeeInherit(models.Model):
                 c += 1
                 cost += rec.hourly_wage
                 
-        self.hourly_cost = cost/c
+        if c != 0:
+            self.hourly_cost = cost/c
+        else:
+            self.hourly_cost = 0
 
 
     @api.constrains('l10n_mx_curp')
@@ -156,6 +191,9 @@ class hrEmployeeInherit(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
+        # No aplicar restricción si es sudo o superusuario
+        if self.env.su:
+            return super()._search(domain, offset=offset, limit=limit, order=order)
         extra = _encargado_nomina_extra_domain(self.env, 'self')
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
@@ -381,8 +419,8 @@ class hrEmployeeInherit(models.Model):
                 contact.with_context(syncing_info=True).update({'curp': curp, 'vat': rfc})
 
         res = super(hrEmployeeInherit, self).write(vals)
-        if self.hourly_cost == 0.00:
-            raise ValidationError('Es necesario capturar el salario diario en obras')
+        """if self.hourly_cost == 0.00:
+            raise ValidationError('Es necesario capturar el salario diario en obras') """
         return res
 
 
@@ -394,8 +432,6 @@ class hrContractInherit(models.Model):
     contract_type_name = fields.Char(string='Tipo de contrato nombre', related='contract_type_id.name', store=False)
     project_id = fields.Many2one('project.project', string='Obra')
     empresa_contrato_id = fields.Many2one('hr.contract.empresa', string='Empresa para contrato', compute='_compute_empresa_contrato', store=False)
-    schedule_pay = fields.Selection(selection=[('bi-weekly', 'Bi-weekly'), ('weekly', 'Weekly')],
-        string='Programar pago', default='weekly')
     wage_type = fields.Selection([('monthly', 'Fixed Wage'), ('hourly', 'Hourly Wage')], compute='_compute_wage_type', store=True, readonly=True)
     daily_wage = fields.Monetary(string='Salario diario')
     work_entry_source = fields.Selection(selection=[('calendar', 'Horario de trabajo'), ('attendance', 'Asistencia'),],
@@ -455,6 +491,8 @@ class hrContractInherit(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
+        if self.env.su:
+            return super()._search(domain, offset=offset, limit=limit, order=order)
         extra = _encargado_nomina_extra_domain(self.env)
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
@@ -537,6 +575,25 @@ class hrContractInherit(models.Model):
             work_data[prima_type.id] = prima[0]['number_of_hours']
 
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        salario = self.env['hr.salario.minimo'].get_salario_vigente()
+        for vals in vals_list:
+            if salario and not vals.get('hourly_wage'):
+                vals['hourly_wage'] = salario.salario_hora
+                vals['daily_wage'] = salario.salario_hora * 8
+        return super(hrContractInherit, self).create(vals_list)
+
+    @api.onchange('contract_type_id', 'employee_id')
+    def _onchange_set_salario_minimo(self):
+        try:
+            if not self.hourly_wage:
+                salario = self.env['hr.salario.minimo'].get_salario_vigente()
+                if salario:
+                    self.hourly_wage = salario.salario_hora
+        except Exception:
+            pass
+
     def write(self, vals):
         c = 0
         if 'state' in vals or 'project_id' in vals:
@@ -544,17 +601,18 @@ class hrContractInherit(models.Model):
 
         res = super(hrContractInherit, self).write(vals)
         if c == 1 and self.contract_type_name == 'Obra determinada':
-            obra = self.env['hr.employee.obra'].search([('employee_id', '=', self.employee_id.id), ('project_id', '=', self.project_id.id)])
-            if not obra:
-                if self.state in ('open', 'close', 'cancel'):
-                    self.env['hr.employee.obra'].sudo().create({'employee_id':self.employee_id.id, 'project_id':self.project_id.id, 
-                        'fecha_inicio':self.date_start, 'fecha_fin':self.date_end, 'hourly_wage':self.daily_wage/8})
-                
-            if len(obra) == 1:
-                if not obra.fecha_inicio: 
-                    obra.write({'fecha_inicio': self.date_start})
-                if not obra.hourly_wage:
-                    obra.write({'hourly_wage':self.daily_wage/8})
+            if self.project_id:
+                obra = self.env['hr.employee.obra'].search([('employee_id', '=', self.employee_id.id), ('project_id', '=', self.project_id.id)])
+                if not obra:
+                    if self.state in ('open', 'close', 'cancel'):
+                        self.env['hr.employee.obra'].sudo().create({'employee_id':self.employee_id.id, 'project_id':self.project_id.id, 
+                            'fecha_inicio':self.date_start, 'fecha_fin':self.date_end, 'hourly_wage':self.daily_wage/8})
+                    
+                if len(obra) == 1:
+                    if not obra.fecha_inicio: 
+                        obra.write({'fecha_inicio': self.date_start})
+                    if not obra.hourly_wage:
+                        obra.write({'hourly_wage':self.daily_wage/8})
         return res
 
 class HrWorkEntryTypeInherit(models.Model):

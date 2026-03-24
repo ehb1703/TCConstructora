@@ -23,29 +23,30 @@
         <field name="name">checador.sync.log.form</field>
         <field name="model">checador.sync.log</field>
         <field name="arch" type="xml">
-            <form string="Detalle de Sincronización" readonly="not is_system_user">
+            <form string="Detalle de Sincronización">
                 <sheet>
+                    <field name="is_system_user" invisible="1"/>
                     <div class="oe_title">
                         <h1>
-                            <field name="display_name"/>
+                            <field name="display_name" readonly="1"/>
                         </h1>
                     </div>
                     <group>
                         <group string="Información de Sincronización">
-                            <field name="sync_date"/>
-                            <field name="sync_type"/>
-                            <field name="status"/>
-                            <field name="records_synced"/>
+                            <field name="sync_date" readonly="not is_system_user"/>
+                            <field name="sync_type" readonly="not is_system_user"/>
+                            <field name="status" readonly="not is_system_user"/>
+                            <field name="records_synced" readonly="not is_system_user"/>
                         </group>
                         <group string="Dispositivo">
-                            <field name="device_id"/>
-                            <field name="ip_address"/>
-                            <field name="user_jwt"/>
+                            <field name="device_id" readonly="not is_system_user"/>
+                            <field name="ip_address" readonly="not is_system_user"/>
+                            <field name="user_jwt" readonly="not is_system_user"/>
                         </group>
                     </group>
                     <group string="Referencias">
-                        <field name="last_sync_reference"/>
-                        <field name="notes"/>
+                        <field name="last_sync_reference" readonly="not is_system_user"/>
+                        <field name="notes" readonly="not is_system_user"/>
                     </group>
                 </sheet>
             </form>

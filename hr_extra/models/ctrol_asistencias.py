@@ -49,7 +49,7 @@ class CtrolAsistencias(models.Model):
     is_system_user = fields.Boolean(compute='_compute_is_system_user')
 
     def _compute_is_system_user(self):
-        is_admin = self.env.user.has_group('base.group_system')
+        is_admin = (self.env.user.has_group('base.group_system') or self.env.user.has_group('base.group_erp_manager'))
         for record in self:
             record.is_system_user = is_admin
 

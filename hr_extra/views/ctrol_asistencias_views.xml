@@ -6,6 +6,7 @@
         <field name="model">ctrol.asistencias</field>
         <field name="arch" type="xml">
             <list string="Asistencias Checadores" decoration-success="log_status=='importada' and status=='success'" decoration-danger="log_status=='error' or status=='error'" decoration-warning="log_status=='pendiente'" edit="0">
+                <field name="is_system_user" column_invisible="1"/>
                 <field name="id"/>
                 <field name="registration_number"/>
                 <field name="employee_name"/>
@@ -20,7 +21,7 @@
                 <field name="match_percentage"/>
                 <field name="observaciones" optional="hide"/>
                 <field name="createdAt"/>
-                <button name="action_reenviar_a_pendiente" string="Reenviar" type="object" icon="fa-refresh" title="Reenviar a Pendiente" invisible="log_status != 'error'" groups="base.group_system"/>
+                <button name="action_reenviar_a_pendiente" string="Reenviar" type="object" icon="fa-refresh" title="Reenviar a Pendiente" invisible="log_status != 'error' or not is_system_user"/>
             </list>
         </field>
     </record>
@@ -30,49 +31,50 @@
         <field name="name">ctrol.asistencias.form</field>
         <field name="model">ctrol.asistencias</field>
         <field name="arch" type="xml">
-            <form string="Asistencia Checador" readonly="not is_system_user">
+            <form string="Asistencia Checador">
                 <header>
-                    <button name="action_reenviar_a_pendiente" string="Reenviar a Pendiente" type="object" class="btn-warning" invisible="log_status != 'error'" confirm="¿Desea marcar este registro como Pendiente para reintento?" groups="base.group_system"/>
-                    <field name="log_status" widget="statusbar" statusbar_visible="pendiente,importada"/>
+                    <button name="action_reenviar_a_pendiente" string="Reenviar a Pendiente" type="object" class="btn-warning" invisible="log_status != 'error' or not is_system_user" confirm="¿Desea marcar este registro como Pendiente para reintento?" groups="base.group_system"/>
+                    <field name="log_status" widget="statusbar" statusbar_visible="pendiente,importada" readonly="not is_system_user"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <widget name="web_ribbon" title="Error" bg_color="text-bg-danger" invisible="status != 'error'"/>
                     </div>
+                    <field name="is_system_user" invisible="1"/>
                     <group>
                         <group string="Información del Empleado">
-                            <field name="registration_number"/>
+                            <field name="registration_number" readonly="not is_system_user"/>
                             <field name="employee_id" invisible="1"/>
-                            <field name="employee_name"/>
-                            <field name="check_type"/>
+                            <field name="employee_name" readonly="1"/>
+                            <field name="check_type" readonly="not is_system_user"/>
                             <field name="check_date_local" string="Hora Local Checador" readonly="1"/>
                             <field name="check_date" widget="datetime" string="Fecha UTC (almacenada)" readonly="1" options="{'tz': False}"/>
                         </group>
                         <group string="Estado de Validación">
-                            <field name="status" widget="badge" decoration-success="status=='success'" decoration-danger="status=='error'"/>
-                            <field name="observaciones" placeholder="Detalles del error o advertencia..."/>
+                            <field name="status" widget="badge" decoration-success="status=='success'" decoration-danger="status=='error'" readonly="not is_system_user"/>
+                            <field name="observaciones" placeholder="Detalles del error o advertencia..." readonly="not is_system_user"/>
                         </group>
                     </group>
                     <group>
                         <group string="Tiempo y Estado">
-                            <field name="lateness_time"/>
-                            <field name="left_early_time"/>
-                            <field name="is_active"/>
-                            <field name="verification_status"/>
-                            <field name="match_percentage"/>
+                            <field name="lateness_time" readonly="not is_system_user"/>
+                            <field name="left_early_time" readonly="not is_system_user"/>
+                            <field name="is_active" readonly="not is_system_user"/>
+                            <field name="verification_status" readonly="not is_system_user"/>
+                            <field name="match_percentage" readonly="not is_system_user"/>
                         </group>
                         <group string="Ubicación GPS">
-                            <field name="latitude"/>
-                            <field name="longitude"/>
-                            <field name="photo_url" widget="url"/>
+                            <field name="latitude" readonly="not is_system_user"/>
+                            <field name="longitude" readonly="not is_system_user"/>
+                            <field name="photo_url" widget="url" readonly="not is_system_user"/>
                         </group>
                     </group>
                     <group string="Información de Log">
-                        <field name="log_message" colspan="2"/>
-                        <field name="attendance_id" string="Asistencia Odoo Generada" invisible="attendance_id == False"/>
-                        <field name="sigob_log_folio"/>
-                        <field name="user_valid_id"/>
-                        <field name="date_validated"/>
+                        <field name="log_message" colspan="2" readonly="not is_system_user"/>
+                        <field name="attendance_id" string="Asistencia Odoo Generada" invisible="attendance_id == False" readonly="not is_system_user"/>
+                        <field name="sigob_log_folio" readonly="not is_system_user"/>
+                        <field name="user_valid_id" readonly="not is_system_user"/>
+                        <field name="date_validated" readonly="not is_system_user"/>
                     </group>
                     <group string="Timestamps">
                         <group>

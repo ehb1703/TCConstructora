@@ -147,7 +147,7 @@
         </field>
     </record>
 
-    <menuitem id="menu_movimientos" name="Movimientos" groups="group_requisition_admin" parent="reports_menu_root" sequence="20">
+    <menuitem id="menu_movimientos" name="Movimientos" groups="group_requisition_move" parent="reports_menu_root" sequence="20">
         <menuitem id="menu_requisition_bank_account" name="Diario - Cuentas bancarias" action="action_requisition_bank_account" sequence="1"/>
         <menuitem id="menu_requisition_general" name="Pagos Generales" action="action_requisition_general" sequence="5"/>
         <menuitem id="menu_requisition_debt" name="Estado de cuenta" action="action_requisition_debt" sequence="10"/>
