@@ -64,6 +64,8 @@ class documentosRequeridos(models.Model):
     desc_archivo = fields.Char(string='Descripcion', tracking=True)
     model_id = fields.Many2one('ir.model', string='Modelo')
     etapa = fields.Selection(selection=[('tecnica','Propuesta Técnica'),('economica','Propuesta Económica')], string='Etapa')
+    dependencia_ids = fields.Many2many('res.partner', 'project_docsrequeridos_partner_rel', 'doc_id', 'partner_id', string='Dependencia/Cliente', tracking=True)
+    tipo_venta_id = fields.Many2one('crm.lead.type', string='Tipo de Venta', tracking=True)
     active = fields.Boolean(string='Activo', tracking=True, default=True, required=True)
 
     @api.constrains('nombre_archivo')
@@ -168,9 +170,19 @@ class CrmAnalyst(models.Model):
     agility_operativa = fields.Selection([('alta','Alta'),('media','Media'),('baja','Baja')], string='Agilidad operativa', tracking=True)
     availability = fields.Selection([('disponible','Disponible'),('parcial','Parcial'),('no_disponible','No disponible')], string='Disponibilidad', tracking=True)
     compromiso_institucional = fields.Selection([('alto','Alto'),('medio','Medio'),('bajo','Bajo')], string='Compromiso institucional', tracking=True)
-    proyectos_asignados = fields.Integer(string='Proyectos asignados actuales', tracking=True)
+    lead_ids = fields.One2many('crm.lead', 'analista_id', string='Proyectos asignados')
+    proyectos_asignados = fields.Integer(string='Proyectos activos', compute='_compute_proyectos_asignados', store=True)
     ultima_evaluacion = fields.Date(string='Última evaluación de desempeño', tracking=True)
     observaciones = fields.Text(string='Observaciones', tracking=True)
+
+    @api.depends('lead_ids', 'lead_ids.stage_id')
+    def _compute_proyectos_asignados(self):
+        stage_apertura = self.env['crm.stage'].search([('name', '=', 'Junta de Apertura de Propuestas')], limit=1)
+        seq_limite = stage_apertura.sequence if stage_apertura else 999
+        for rec in self:
+            rec.proyectos_asignados = len(rec.lead_ids.filtered(
+                lambda l: l.stage_id.sequence < seq_limite
+            ))
 
     @api.depends('origen', 'employee_id', 'partner_id')
     def _compute_name(self):

@@ -20,4 +20,21 @@
         <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
         <field name="comment">Permite autorizar presupuestos en la etapa de Propuesta Económica del CRM.</field>
     </record>
+
+    <record id="group_erp_reading" model="res.groups" >
+        <field name="name">Empresas - Lectura</field>
+        <field name="category_id" ref="base.module_category_administration_administration"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="res_company_rule_erp_reading" model="ir.rule">
+        <field name="name">company rule erp reading</field>
+        <field name="model_id" ref="base.model_res_company"/>
+        <field name="domain_force">[(1,'=',1)]</field>
+        <field name="groups" eval="[(4, ref('project_extra.group_erp_reading'))]"/>        
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
 </odoo>

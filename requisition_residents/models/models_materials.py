@@ -52,11 +52,14 @@ class requisitionMaterialsLine(models.Model):
     _name = 'requisition.materials.line'
     _description = 'Líneas de requisición'
 
+    def _default_taxes_id(self):
+        return self.req_id.company_id.account_purchase_tax_id
+
     req_id = fields.Many2one('requisition.materials', readonly=True)
     urgencia = fields.Selection(selection=[('baja','Baja'), ('media','Media'), ('alta','Alta'), ('critica','Critica')],
         string='Urgencia', default='baja')
     product_qty = fields.Float(string='Cantidad', digits='Product Unit of Measure', required=True, readonly=False)
-    taxes_id = fields.Many2many('account.tax', string='Taxes', domain="[('type_tax_use','=','purchase')]")
+    taxes_id = fields.Many2many('account.tax', string='Taxes', domain="[('type_tax_use','=','purchase')]", default=_default_taxes_id)
     product_id = fields.Many2one(comodel_name='product.product', string='Material', change_default=True, ondelete='restrict', 
         domain="[('purchase_ok', '=', True)]")
     product_uom_id = fields.Many2one(related='product_id.uom_id', string='UdM')

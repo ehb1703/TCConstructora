@@ -191,10 +191,15 @@ class hrEmployeeInherit(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
-        # No aplicar restricción si es sudo o superusuario
         if self.env.su:
             return super()._search(domain, offset=offset, limit=limit, order=order)
-        extra = _encargado_nomina_extra_domain(self.env, 'self')
+        
+        display = self._context.get('special_display', False)
+        if self._context.get('special_display', False):
+            extra = []
+        else:
+            extra = _encargado_nomina_extra_domain(self.env, 'self')
+            
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
     def _calc_antique_temporal(self, employee_id):
@@ -203,8 +208,7 @@ class hrEmployeeInherit(models.Model):
         Reglas:
           - Solo contratos en estado open o close (vencidos y en proceso).
           - Se encadenan ordenados por date_start.
-          - Si la brecha entre date_end de un contrato y date_start del siguiente
-            supera 10 días, se reinicia la antigüedad desde ese contrato.
+          - Si la brecha entre date_end de un contrato y date_start del siguiente supera 10 días, se reinicia la antigüedad desde ese contrato.
         Retorna años completos (entero). """
         today = date.today()
 
@@ -464,13 +468,11 @@ class hrContractInherit(models.Model):
     @api.depends('contract_type_id')
     def _compute_empresa_contrato(self):
         for contract in self:
-            contract.empresa_contrato_id = self.env['hr.contract.empresa'].search(
-                [('tipo_contrato_id', '=', contract.contract_type_id.id)], limit=1)
+            contract.empresa_contrato_id = self.env['hr.contract.empresa'].search([('tipo_contrato_id', '=', contract.contract_type_id.id)], limit=1)
 
     def _get_empresa_contrato(self):
         self.ensure_one()
-        return self.env['hr.contract.empresa'].search(
-            [('tipo_contrato_id', '=', self.contract_type_id.id)], limit=1)
+        return self.env['hr.contract.empresa'].search([('tipo_contrato_id', '=', self.contract_type_id.id)], limit=1)
 
     def action_report_contract(self):
         tipo = self.contract_type_id.name
@@ -508,6 +510,7 @@ class hrContractInherit(models.Model):
         salary = salary.replace('UNO PESOS', 'UN PESOS') + ' ' + str(decimal).split('.')[1] + '/100 M.N.'
         return salary
 
+
     def _preprocess_work_hours_data(self, work_data, date_from, date_to):
         self.env.cr.execute("SELECT COUNT(*) num FROM (SELECT * FROM generate_series('" + str(date_from) + "'::date, '" + str(date_to) + 
             "'::date, '1 day') as d ORDER BY 1) as t1 WHERE NOT EXISTS(SELECT * FROM resource_calendar_attendance rca WHERE rca.calendar_id = " + 
@@ -534,7 +537,7 @@ class hrContractInherit(models.Model):
             overtime_hours -= unapproved_overtime_hours
 
         empleados = str(self.employee_id.ids)
-        if self.schedule_pay == 'bi-weekly':
+        if self.schedule_pay != 'weekly':
             if date_to.date().strftime('%d') == '31':
                 self.env.cr.execute("""SELECT coalesce(sum(hao.duration), 0.0) duration 
                     FROM hr_work_entry hao WHERE hao.employee_id IN (""" + empleados[1:-1] + ") AND hao.DATE_START::DATE = '" + str(date_to) + "'::DATE ")
@@ -697,6 +700,8 @@ class HrPayslipInherit(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
+        if self.env.su:
+            return super()._search(domain, offset=offset, limit=limit, order=order)
         extra = _encargado_nomina_extra_domain(self.env)
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
@@ -706,6 +711,8 @@ class HrWorkEntryEncargadoFilter(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
+        if self.env.su:
+            return super()._search(domain, offset=offset, limit=limit, order=order)
         extra = _encargado_nomina_extra_domain(self.env)
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
@@ -751,13 +758,16 @@ class HrPayslipWorkedDaysInherit(models.Model):
                 else:
                     daily_rate = worked_days.payslip_id.contract_id.daily_wage
 
+                #Horas extras
                 if worked_days.work_entry_type_id.code == 'OVERTIME':
                     worked_days.amount = hourly_rate * worked_days.number_of_hours if worked_days.is_paid else 0
+                #Domingos
                 elif worked_days.work_entry_type_id.code == 'DESC':
                     worked_days.amount = daily_rate * worked_days.number_of_days if worked_days.is_paid else 0
+                #Festivos trabajados
                 elif worked_days.work_entry_type_id.code == 'FESTTRAB':
                     worked_days.amount = daily_rate * worked_days.number_of_days * 2 if worked_days.is_paid else 0
-                elif worked_days.work_entry_type_id.code in ('LEAVE120', 'LEAVE1000', 'LEAVE1100'):
+                elif worked_days.work_entry_type_id.code in ('LEAVE120', 'LEAVE1000', 'LEAVE1100', 'PATERNIDAD'):
                     worked_days.amount = daily_rate * worked_days.number_of_days
                 elif worked_days.work_entry_type_id.code in ('LEAVE120P'):
                     worked_days.amount = daily_rate * worked_days.number_of_days * .25

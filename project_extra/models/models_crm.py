@@ -149,7 +149,7 @@ class CrmLead(models.Model):
     orden_trabajo_doc = fields.Binary('Orden de trabajo', attachment=True, help='Documento de orden de trabajo entregado por la dependencia')
     orden_trabajo_doc_name = fields.Char('Nombre orden de trabajo')
     # Nuevos campos etapa Ganado
-    empresa_concursante_id = fields.Many2one('res.company', string='Empresa concursante', help='Empresa del grupo que participa en la licitación')
+    empresa_concursante_id = fields.Many2one('res.company', string='Empresa concursante')
     clave_unidad_sat_id = fields.Many2one('product.unspsc.code', string='Clave Unidad de Medida',
         domain="[('applies_to', '=', 'uom')]")
     clave_producto_servicio_id = fields.Many2one('product.unspsc.code', string='Clave producto/Servicio',
@@ -180,12 +180,8 @@ class CrmLead(models.Model):
 
     @api.depends('pe_presupuesto_subtotal')
     def _compute_pe_presupuesto_iva_total(self):
-        tax = self.env['account.tax'].search([
-            ('type_tax_use', '=', 'sale'),
-            ('amount_type', '=', 'percent'),
-            ('active', '=', True),
-            ('amount', '>', 0),
-        ], order='amount desc', limit=1)
+        tax = self.env['account.tax'].search([('type_tax_use', '=', 'sale'), ('amount_type', '=', 'percent'), ('active', '=', True), ('amount', '>', 0)], 
+            order='amount desc', limit=1)
         iva_rate = (tax.amount / 100.0) if tax else 0.16
         for lead in self:
             subtotal = lead.pe_presupuesto_subtotal or 0.0
@@ -225,6 +221,15 @@ class CrmLead(models.Model):
     def _compute_name_stage(self):
         for record in self:
             record.stage_name = record.stage_id.name
+
+    @api.depends('no_licitacion', 'name')
+    def _compute_display_name(self):
+        if self._context.get('special_display_name', False):
+            for rec in self:
+                rec.display_name = f'{rec.name}'
+        else:
+            for rec in self:
+                rec.display_name = f'{rec.no_licitacion}'
 
     @api.depends('pe_doc_line_ids', 'pt_doc_line_ids')
     def _compute_documents_count(self):

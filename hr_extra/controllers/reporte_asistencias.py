@@ -64,7 +64,7 @@ class ControllerReporteAsistencias(http.Controller):
         fmt_centro = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'valign': 'vcenter', 'align': 'center', 'top': 1, 'bottom': 1, 'left': 1, 'right': 1})
 
         # Anchos columnas — se agrega col I para Tipo de Pago
-        for col, ancho in enumerate([35, 25, 25, 30, 15, 18, 18, 15, 15]):
+        for col, ancho in enumerate([35, 25, 25, 30, 15, 18, 15, 18, 15, 15]):
             ws.set_column(col, col, ancho)
 
         ws.set_row(0, 22)
@@ -77,14 +77,14 @@ class ControllerReporteAsistencias(http.Controller):
             tipo_label = ' — ' + dict([('semanal', 'Semanal'), ('quincenal', 'Quincenal')]).get(wizard.tipo_pago, '')
 
         # Fila 1: Título
-        ws.merge_range(0, 0, 0, 8, 'Reporte de asistencia de personal' + tipo_label, fmt_titulo)
+        ws.merge_range(0, 0, 0, 9, 'Reporte de asistencia de personal' + tipo_label, fmt_titulo)
         # Fila 2: Periodo
-        ws.merge_range(1, 0, 1, 8,
+        ws.merge_range(1, 0, 1, 9,
             'Periodo %s - %s' % (fecha_inicio.strftime('%d/%m/%Y'), fecha_fin.strftime('%d/%m/%Y')),
             fmt_periodo)
 
         # Fila 3: Encabezados
-        for col, nombre in enumerate(['Nombre', 'Departamento', 'Puesto', 'Obra', 'Fecha', 'Hora de Entrada', 'Hora de Salida', 'Tiempo Extra', 'Tipo de Pago']):
+        for col, nombre in enumerate(['Nombre', 'Departamento', 'Puesto', 'Obra', 'Fecha', 'Hora de Entrada', 'Fecha de Salida', 'Hora de Salida', 'Tiempo Extra', 'Tipo de Pago']):
             ws.write(2, col, nombre, fmt_encabezado)
 
         # Datos
@@ -113,9 +113,10 @@ class ControllerReporteAsistencias(http.Controller):
             ws.write(fila, 3, emp.current_project_name or '', fmt_centro)
             ws.write(fila, 4, check_in_local.strftime('%d/%m/%Y') if check_in_local else '', fmt_centro)
             ws.write(fila, 5, check_in_local.strftime('%H:%M') if check_in_local else '', fmt_centro)
-            ws.write(fila, 6, check_out_local.strftime('%H:%M') if check_out_local else '', fmt_centro)
-            ws.write(fila, 7, tiempo_extra, fmt_centro)
-            ws.write(fila, 8, tipo_pago_emp, fmt_centro)
+            ws.write(fila, 6, check_out_local.strftime('%d/%m/%Y') if check_out_local else '', fmt_centro)
+            ws.write(fila, 7, check_out_local.strftime('%H:%M') if check_out_local else '', fmt_centro)
+            ws.write(fila, 8, tiempo_extra, fmt_centro)
+            ws.write(fila, 9, tipo_pago_emp, fmt_centro)
             ws.set_row(fila, 15)
             fila += 1
 
