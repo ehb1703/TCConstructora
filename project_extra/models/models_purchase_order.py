@@ -12,12 +12,15 @@ class purchaseOrderInherit(models.Model):
     type_purchase = fields.Selection(selection=[('bases','Bases de Licitación'), ('ins', 'Insumos'), ('esp', 'Trabajos especiales')],
             string='Tipo de movimiento')
     empresa_solicitante = fields.Many2one('res.partner', string='Empresa solicitante', compute='_compute_empresa_solicitante', store=False)
+    bitacora_ids = fields.One2many('purchase.order.bitacora', 'order_id', string='Bitácora')
+
+    STATES_LABELS = {'draft': 'Solicitud de cotización', 'sent': 'Solicitud de cotización enviada', 'purchase': 'Orden de compra', 'done': 'Bloqueado',
+        'cancel': 'Cancelado'}
 
     @api.depends('lead_id', 'lead_id.empresa_concursante_id')
     def _compute_empresa_solicitante(self):
         for order in self:
             if order.lead_id and order.lead_id.empresa_concursante_id:
-                # res.company tiene partner_id → usamos ese partner para el reporte
                 order.empresa_solicitante = order.lead_id.empresa_concursante_id.partner_id
             else:
                 order.empresa_solicitante = False
@@ -81,6 +84,17 @@ class purchaseOrderInherit(models.Model):
                     if all_paid and not order.lead_id.bases_pagado:
                         order.lead_id.sudo().write({'bases_pagado': True})
 
+    def write(self, vals):
+        old_states = {order.id: order.state for order in self} if 'state' in vals else {}
+        res = super().write(vals)
+        if 'state' in vals:
+            for order in self:
+                old_state = old_states[order.id]
+                if old_state != order.state:
+                    self.env['purchase.order.bitacora'].create({'order_id':order.id, 'fecha':fields.Datetime.now(), 'usuario':self.env.user.name, 
+                        'etapa_anterior':order.STATES_LABELS.get(old_state, old_state), 'etapa_nueva':order.STATES_LABELS.get(order.state, order.state)})
+        return res
+
 
 class AccountMoveInherit(models.Model):
     _inherit = 'account.move'
@@ -111,3 +125,31 @@ class purchaseRequisitionInherit(models.Model):
     schedule = fields.Char(string='Horario de entrega')
     warranty_period = fields.Char(string='Periodo de garantía')
     signature_date = fields.Date(string='Fecha de firma del contrato')
+
+
+class PurchaseAsignacion(models.Model):
+    _name = 'purchase.asignacion'
+    _description = 'Asignación de solicitudes de cotización'
+    _order = 'fecha_asignacion desc'
+
+    nombre_id = fields.Many2one('hr.employee', string='Nombre',
+        domain="[('department_id.name', 'ilike', 'compras')]")
+    referencia_id = fields.Many2one('purchase.order', string='Referencia',
+        domain="[('lead_id', '!=', False)]")
+    fecha_asignacion = fields.Date(string='Fecha de asignación', default=fields.Date.context_today)
+    fecha_limite = fields.Datetime(string='Fecha límite', related='referencia_id.date_order', readonly=True)
+    observaciones = fields.Char(string='Observaciones')
+
+
+class PurchaseOrderBitacora(models.Model):
+    _name = 'purchase.order.bitacora'
+    _description = 'Bitácora de solicitudes de cotización'
+    _order = 'fecha asc'
+
+    order_id = fields.Many2one('purchase.order', string='Solicitud', required=True, ondelete='cascade')
+    fecha = fields.Datetime(string='Fecha', default=fields.Datetime.now, readonly=True)
+    usuario = fields.Char(string='Usuario', readonly=True)
+    etapa_anterior = fields.Char(string='Etapa anterior', readonly=True)
+    etapa_nueva = fields.Char(string='Etapa nueva', readonly=True)
+    motivo_id = fields.Many2one('crm.revert.reason', string='Motivo', domain="[('tipo', '=', 'av')]")
+    observaciones = fields.Char(string='Observaciones')

@@ -19,21 +19,22 @@ class RequisitionHrSolicitud(models.Model):
     def _compute_domain_employee(self):
         lista = []
         for record in self:
-            employee = self.env['hr.employee'].search([('state','not in',['baja','pensionado'])])
+            employee = self.env['hr.employee'].sudo().search([('state','not in',['baja','pensionado'])])
             if self.tipo_tramite == 'rehabilitacion':
-                employee = self.env['hr.employee'].search([('state','=','baja')])
+                employee = self.env['hr.employee'].sudo().search([('state','=','baja')])
 
             for x in employee:
-                if x.contract_id.schedule_pay == 'weekly':
-                    lista.append(x.id)
-                elif not x.contract_id:
-                    lista.append(x.id)
+                if x.name != 'ADMINISTRADOR':
+                    if x.contract_id.schedule_pay == 'weekly':
+                        lista.append(x.id)
+                    elif not x.contract_id:
+                        lista.append(x.id)
             record.employee_domain = json.dumps([('id', 'in', lista)])
 
     tipo_tramite = fields.Selection(selection=[('alta','Alta'), ('rehabilitacion','Rehabilitación'), ('actualizacion','Actualización de datos'), 
         ('baja','Baja')], 
         string='Tipo de Trámite', required=True)
-    employee_id = fields.Many2one('hr.employee', string='Empleado', domain="[('state','!=','baja'), ('contract','!=','baja')]")
+    employee_id = fields.Many2one('hr.employee', string='Empleado')
     employee_domain = fields.Char(readonly=True, store=False, compute=_compute_domain_employee)
     nombre = fields.Char(string='Nombre(s)')
     apellido_paterno = fields.Char(string='Apellido paterno')
@@ -242,5 +243,42 @@ class RequisitionHrSolicitud(models.Model):
                 'date_start':self.fecha_aplicacion, 'resource_calendar_id':self.resource_calendar_id.id, 'work_entry_source':'attendance', 
                 'structure_type_id':est.id, 'job_id':self.job_id.id, 'department_id':depto.id, 'contract_type_id':type.id, 'project_id':self.project_id.id,
                 'wage_type':'hourly', 'schedule_pay':'weekly', 'state':'open', 'wage':0})
+
+        if self.tipo_tramite == 'actualizacion':
+            emp = {}
+            con = {}
+            if self.fecha_nacimiento != self.employee_id.birthday:
+                emp['birthday'] =  self.fecha_nacimiento
+            if self.ciudad_nacimiento != self.employee_id.place_of_birth:
+                emp['place_of_birth'] =  self.ciudad_nacimiento
+            if self.genero != self.employee_id.gender:
+                emp['gender'] =  self.genero
+            if self.rfc != self.employee_id.l10n_mx_rfc:
+                emp['l10n_mx_rfc'] = self.rfc
+            if self.curp != self.employee_id.l10n_mx_curp:
+                emp['l10n_mx_curp'] = self.curp
+            if self.nss != self.employee_id.ssnid:
+                emp['ssnid'] = self.nss
+            if self.calle != self.employee_id.private_street:
+                emp['private_street'] = self.calle
+                con['street'] = self.calle
+            if self.colonia != self.employee_id.private_street2:
+                emp['private_street2'] = self.colonia
+                con['street2'] = self.colonia
+            if self.codigo_postal != self.employee_id.private_zip:
+                emp['private_zip'] = self.codigo_postal
+                con['zip'] = self.codigo_postal
+            if self.estado_id.country_id.id != self.employee_id.private_country_id.id:
+                emp['private_country_id'] = self.estado_id.country_id.id
+                con['country_id'] = self.estado_id.country_id.id
+            if self.municipio_id:
+                if self.municipio_id.municipio != self.employee_id.private_city:
+                    emp['private_city'] = self.municipio_id.municipio
+                    con['city'] = self.municipio_id.municipio
+
+            if emp:
+                self.employee_id.write(emp)
+            if con:
+                self.employee_id.work_contact_id.write(con)
 
         self.state = 'aprobado'

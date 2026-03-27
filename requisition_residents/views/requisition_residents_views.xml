@@ -51,7 +51,7 @@
                             <field name="project_id" domain="project_domain" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                         </group>
                         <group>
-                            <field name="employee_id" invisible="state == 'draft'" readonly="state != 'draft'"/>
+                            <field name="employee_id" invisible="state == 'draft'" readonly="state != 'draft'" context="{'special_display':True}"/>
                             <field name="company_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                         </group>
                     </group>
@@ -144,7 +144,7 @@
                         <page string="Nómina">
                             <field name="nom_ids" widget="one2many_list">
                                 <list create="false" delete="false" editable="bottom" context="{'default_req_id': id}">
-                                    <field name="employee_id" readonly="1"/>
+                                    <field name="employee_id" readonly="1" context="{'special_display':True}"/>
                                     <field name="job_id" readonly="1"/>
                                     <field name="salary" sum="salary" readonly="1"/>
                                     <field name="observaciones"/>

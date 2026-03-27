@@ -37,7 +37,7 @@
                     </div>
                     <group>
                         <group>
-                            <field name="employee_id" invisible="state == 'draft'" readonly="state != 'draft'"/>
+                            <field name="employee_id" invisible="state == 'draft'" readonly="state != 'draft'" context="{'special_display':True}"/>
                             <field name="project_id"/>
                             <field name="company_id"/>
                         </group>
@@ -50,17 +50,17 @@
                                     <field name="urgencia"/>
                                     <field name="product_id"/>
                                     <field name="product_uom_id" readonly="1"/>
-                                    <field name="price_unit"/>
+                                    <field name="price_unit" column_invisible="1"/>
                                     <field name="product_qty"/>
                                     <field name="taxes_id" widget="many2many_tags" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
-                                    <field name="price_amount"/>
-                                    <field name="price_tax"/>
-                                    <field name="price_total"/>
+                                    <field name="price_amount" column_invisible="1"/>
+                                    <field name="price_tax" column_invisible="1"/>
+                                    <field name="price_total" column_invisible="1"/>
                                 </list>
                                 <form><p>Información no disponible a través de esta vista</p></form>
                             </field>
                         </page>
-                        <group>
+                        <!--group>
                             <group/>
                             <group class="oe_subtotal_footer">
                                 <field name="amount_untaxed" widget="monetary" readonly="1"/>
@@ -68,7 +68,7 @@
                                 <field name="amount_total" widget="monetary" readonly="1"/>
                             </group>
                         </group>
-                        <div class="clearfix"/>
+                        <div class="clearfix"/-->
                     </notebook>
                 </sheet>
                 <chatter/>

@@ -50,34 +50,34 @@
                             <field name="departure_reason_id" invisible="tipo_tramite != 'baja'"/>
                         </group>
                         <group>    
-                            <field name="employee_id" invisible="tipo_tramite == 'alta'" options="{'no_open':True, 'no_create':True, 'no_edit':True}" domain="employee_domain"/>
+                            <field name="employee_id" invisible="tipo_tramite == 'alta'" required="tipo_tramite != 'alta'" options="{'no_open':True, 'no_create':True, 'no_edit':True}" context="{'special_display':True}" domain="employee_domain"/>
                             <field name="nombre" readonly="tipo_tramite != 'alta'" force_save="1"/>
                             <field name="apellido_paterno" readonly="tipo_tramite != 'alta'" force_save="1"/>
                             <field name="apellido_materno" readonly="tipo_tramite != 'alta'" force_save="1"/>
-                            <field name="genero" readonly="tipo_tramite != 'alta'" force_save="1"/>
+                            <field name="genero" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
                         </group>
                         <group>
-                            <field name="fecha_nacimiento" readonly="tipo_tramite != 'alta'" force_save="1"/>
-                            <field name="ciudad_nacimiento" readonly="tipo_tramite != 'alta'" force_save="1"/>
-                            <field name="nss" readonly="tipo_tramite != 'alta'" force_save="1"/>
-                            <field name="rfc" readonly="tipo_tramite != 'alta'" force_save="1"/>
-                            <field name="curp" readonly="tipo_tramite != 'alta'" force_save="1" required="tipo_tramite == 'alta'"/>
+                            <field name="fecha_nacimiento" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
+                            <field name="ciudad_nacimiento" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
+                            <field name="nss" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
+                            <field name="rfc" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
+                            <field name="curp" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1" required="tipo_tramite == 'alta'"/>
                         </group>
                         <group string="Dirección" invisible="tipo_tramite in ['baja', 'rehabilitacion']">
-                            <field name="calle" readonly="tipo_tramite != 'alta'" force_save="1"/>
-                            <field name="colonia" readonly="tipo_tramite != 'alta'" force_save="1"/>
-                            <field name="codigo_postal" readonly="tipo_tramite != 'alta'" force_save="1"/>
-                            <field name="estado_id" readonly="tipo_tramite != 'alta'" force_save="1"/>
+                            <field name="calle" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
+                            <field name="colonia" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
+                            <field name="codigo_postal" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
+                            <field name="estado_id" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
                             <field name="municipio_id" domain="[('state_id','=',estado_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}" force_save="1"/>
                         </group>
-                        <group string="Método de pago" invisible="tipo_tramite in ['baja', 'rehabilitacion']">
+                        <group string="Método de pago" invisible="tipo_tramite in ['baja', 'rehabilitacion', 'actualizacion']">
                             <field name="res_bank" readonly="tipo_tramite != 'alta'" options="{'no_open':True, 'no_create':True, 'no_edit':True}" force_save="1"/>
                             <field name="notarjeta" readonly="tipo_tramite != 'alta'" force_save="1"/>
                             <field name="clabe" readonly="tipo_tramite != 'alta'" force_save="1"/>
                             <field name="nocuenta" readonly="tipo_tramite != 'alta'" force_save="1"/>
                             <field name="type_pay" invisible="state == 'draft'" groups="requisition_residents.group_requisition_admin"/>
                         </group>
-                        <group string="Contrato" colspan="2" invisible="tipo_tramite in ['baja', 'rehabilitacion']">
+                        <group string="Contrato" colspan="2" invisible="tipo_tramite in ['baja', 'rehabilitacion', 'actualizacion']">
                             <group>
                                 <field name="company_id" invisible="state == 'draft'" groups="requisition_residents.group_requisition_admin" required="tipo_tramite in ['alta', 'rehabilitacion']" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                 <field name="project_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}" required="tipo_tramite in ['alta', 'rehabilitacion']"/>

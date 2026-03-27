@@ -47,4 +47,49 @@
         </field>
     </record>
 
+    <!-- Asignación de solicitudes de cotización -->
+    <record id="action_purchase_asignacion" model="ir.actions.act_window">
+        <field name="name">Asignación de solicitudes de cotización</field>
+        <field name="res_model">purchase.asignacion</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="view_purchase_asignacion_list" model="ir.ui.view">
+        <field name="name">view.purchase.asignacion.list</field>
+        <field name="model">purchase.asignacion</field>
+        <field name="arch" type="xml">
+            <list string="Asignación de solicitudes de cotización" editable="top">
+                <field name="nombre_id" options="{'no_create':True, 'no_edit':True}"/>
+                <field name="referencia_id" options="{'no_create':True, 'no_edit':True}"/>
+                <field name="fecha_asignacion"/>
+                <field name="fecha_limite"/>
+                <field name="observaciones"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Pestaña Bitácora en form de purchase.order -->
+    <record id="view_purchase_order_bitacora_tab" model="ir.ui.view">
+        <field name="name">view.purchase.order.bitacora.tab</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Bitácora" name="bitacora">
+                    <field name="bitacora_ids" nolabel="1" readonly="1">
+                        <list>
+                            <field name="fecha" string="Fecha"/>
+                            <field name="usuario" string="Usuario"/>
+                            <field name="etapa_anterior" string="Etapa anterior"/>
+                            <field name="etapa_nueva" string="Etapa nueva"/>
+                            <field name="motivo_id" string="Motivo" readonly="0"/>
+                            <field name="observaciones" string="Observaciones" readonly="0"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <menuitem id="menu_purchase_asignacion" name="Asignación" parent="purchase.menu_procurement_management" action="action_purchase_asignacion" sequence="2"/>
 </odoo>
