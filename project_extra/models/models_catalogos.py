@@ -68,13 +68,7 @@ class documentosRequeridos(models.Model):
     tipo_venta_id = fields.Many2one('crm.lead.type', string='Tipo de Venta', tracking=True)
     active = fields.Boolean(string='Activo', tracking=True, default=True, required=True)
 
-    @api.constrains('nombre_archivo')
-    def fnc_check_codigo(self):
-        for x in self:
-            if x.nombre_archivo:
-                res = self.search([('nombre_archivo','=',x.nombre_archivo), ('id','!=',x.id)])
-                if res:
-                    raise UserError('Ya existe el archivo')
+    _sql_constraints = [('nombre_archivo_uniq', 'unique(nombre_archivo, desc_archivo)', 'El archivo debe de ser único.'),]
 
     @api.depends('nombre_archivo', 'desc_archivo')
     def _compute_display_name(self):
@@ -175,14 +169,11 @@ class CrmAnalyst(models.Model):
     ultima_evaluacion = fields.Date(string='Última evaluación de desempeño', tracking=True)
     observaciones = fields.Text(string='Observaciones', tracking=True)
 
-    @api.depends('lead_ids', 'lead_ids.stage_id')
+    @api.depends('lead_ids', 'lead_ids.stage_id', 'lead_ids.active', 'lead_ids.probability')
     def _compute_proyectos_asignados(self):
-        stage_apertura = self.env['crm.stage'].search([('name', '=', 'Junta de Apertura de Propuestas')], limit=1)
-        seq_limite = stage_apertura.sequence if stage_apertura else 999
+        etapas_cerradas = {'Ganado', 'Declinado'}
         for rec in self:
-            rec.proyectos_asignados = len(rec.lead_ids.filtered(
-                lambda l: l.stage_id.sequence < seq_limite
-            ))
+            rec.proyectos_asignados = len(rec.lead_ids.filtered(lambda l: l.active and not l.stage_id.is_won and l.stage_id.name not in etapas_cerradas))
 
     @api.depends('origen', 'employee_id', 'partner_id')
     def _compute_name(self):
@@ -201,6 +192,18 @@ class CrmAnalyst(models.Model):
         return super().create(vals_list)
 
 
+class ProjectBloque(models.Model):
+    _name = 'project.bloque'
+    _description = 'Bloque de obras'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'name'
+    _order = 'name'
+
+    name = fields.Char(string='Nombre', required=True, tracking=True)
+    lead_ids = fields.One2many('crm.lead', 'bloque_id', string='Oportunidades')
+    active = fields.Boolean(default=True)
+
+
 class CrmRevertReason(models.Model):
     _name = 'crm.revert.reason'
     _description = 'Catálogo de motivos de reversión'
@@ -211,6 +214,7 @@ class CrmRevertReason(models.Model):
     tipo = fields.Selection(selection=[('av','Avanzar etapa'),('rt','Retroceso de Etapa')],
         string='Tipo', default='rt')
     active = fields.Boolean(default=True)
+
 
 class crmStageTypeBills(models.Model):
     _inherit = 'crm.stage'
@@ -314,11 +318,13 @@ class ProductTemplateInsumo(models.Model):
     
     tipo_insumo_id = fields.Many2one('product.tipo.insumo', string='Tipo de insumo', tracking=True, help='Clasificación del insumo para procesos de compra')
 
+
 class ResPartnerTipoInsumo(models.Model):
     _inherit = 'res.partner'
     
     tipo_insumo_ids = fields.Many2many('product.tipo.insumo', 'res_partner_tipo_insumo_rel', 'partner_id', 'tipo_insumo_id', string='Tipos de insumo',
         help='Tipos de insumo que provee este proveedor')
+
 
 class DireccionGeneralEjecutora(models.Model):
     _name = 'project.direccion.ejecutora'
@@ -389,6 +395,7 @@ class Normatividad(models.Model):
                 rec.display_name = f'{rec.codigo} - {rec.nombre}'
             else:
                 rec.display_name = rec.nombre or rec.codigo or ''
+
 
 class tipoDestajo(models.Model):
     _name = 'project.piecework'

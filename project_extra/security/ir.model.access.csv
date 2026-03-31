@@ -59,3 +59,4 @@ access_crm_circular_line,access_crm_circular_line,model_crm_circular_line,,1,1,1
 reports.consult_report_tipodocumento,reports.consult_report_tipodocumento,reports.model_report_tipodocumento,,1,0,0,0
 access_purchase_asignacion,purchase_asignacion,model_purchase_asignacion,base.group_user,1,1,1,1
 access_purchase_order_bitacora,purchase_order_bitacora,model_purchase_order_bitacora,base.group_user,1,1,1,1
+access_project_bloque,access_project_bloque,model_project_bloque,base.group_user,1,1,1,1

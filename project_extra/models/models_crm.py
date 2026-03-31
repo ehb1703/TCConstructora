@@ -28,6 +28,8 @@ class CrmRevertLog(models.Model):
 class CrmLead(models.Model):
     _inherit = 'crm.lead'
 
+    bloque_id = fields.Many2one('project.bloque', string='Bloque', tracking=True)
+    nombre_interno = fields.Char(string='Nombre interno de la obra', tracking=True)
     zona_geografica_id = fields.Many2one('project.zona.geografica', string='Zona geográfica', tracking=True)
     partner_emisor_id = fields.Many2one('res.partner', string='Dependencia emisora', tracking=True)
     tipo_obra_id = fields.Many2one('project.type', string='Especialidad(es) requerida(s)', tracking=True)
@@ -41,6 +43,7 @@ class CrmLead(models.Model):
     convocatoria_pdf_name = fields.Char(string='Nombre del archivo de convocatoria')
     origen_id = fields.Many2one('crm.lead.type', string='Tipo de Venta')
     origen_name = fields.Char(string='Tipo nombre', compute='_compute_bases')
+    with_project = fields.Boolean(string='Con proyecto')
     req_bases = fields.Boolean(string='Requiere pago de bases', compute='_compute_bases')
     tipo_obra_ok = fields.Boolean('Tipo de obra cumple', tracking=True)
     dependencia_ok = fields.Boolean('Dependencia emisora cumple', tracking=True)
@@ -224,7 +227,7 @@ class CrmLead(models.Model):
 
     @api.depends('no_licitacion', 'name')
     def _compute_display_name(self):
-        if self._context.get('special_display_name', False):
+        if not self._context.get('special_display_name', False):
             for rec in self:
                 rec.display_name = f'{rec.name}'
         else:
@@ -295,14 +298,12 @@ class CrmLead(models.Model):
         self.ensure_one()
         if self.env.context.get('allow_lost_any_stage'):
             return
-
-        stage_name = (self.stage_id.name or '').strip().lower()
-        if stage_name != 'junta de fallo':
+        if self.origen_name == 'Público' and self.stage_name != 'Junta de Fallo':
             raise UserError(_('Solo puede marcar Perdido en la etapa JUNTA DE FALLO.'))
-
+        if self.origen_name == 'Privado' and self.stage_name != 'Propuesta Económica':
+            raise UserError(_('Solo puede marcar Perdido en la etapa PROPUESTA ECONÓMICA.'))
 
     def _get_authorizer_emails_from_group(self, grupo):
-        # Obtiene correos de los usuarios del grupo project_extra.group_conv_authorizer.
         emails = set()
         group = self.env.ref(grupo, raise_if_not_found=False)
         if group:
@@ -430,19 +431,17 @@ class CrmLead(models.Model):
             if not self.fallo_acta:
                 raise ValidationError('Falta cargar el Acta de Fallo.')
             if not self.fallo_ganado:
-                raise ValidationError(
-                    'Debe marcar la casilla "Ganado" para avanzar a la siguiente etapa. '
-                    'Si la licitación no fue ganada, use el botón "Marcar como Perdido".'
-                )
-
+                raise ValidationError('Debe marcar la casilla "Ganado" para avanzar a la siguiente etapa. '
+                    'Si la licitación no fue ganada, use el botón "Marcar como Perdido".')
             if not self.fallo_notif_directores_manual_sent and not self.fallo_notif_directores_auto_sent:
-                raise ValidationError(
-                    'Debe enviar la notificación a los directores antes de avanzar a etapa Ganado.'
-                )
+                raise ValidationError('Debe enviar la notificación a los directores antes de avanzar a etapa Ganado.')
 
         sequence = self.stage_id.sequence
         reason = self.env['crm.revert.reason'].search([('name','=','Avance')])
-        new_stage = self.env['crm.stage'].search([('sequence','=', sequence + 1)])
+        if self.origen_id.name == 'Privado' and not self.with_project:
+            new_stage = self.env['crm.stage'].search([('name','=','Ganado')], limit=1, order='sequence')
+        else:
+            new_stage = self.env['crm.stage'].search([('sequence','>',sequence), ('origen_ids','in',[self.origen_id.id])], limit=1, order='sequence')
 
         if not new_stage:
             raise ValidationError('Existe un error en el flujo de las etapas, favor de revisar las configuraciones')
@@ -518,7 +517,7 @@ class CrmLead(models.Model):
 
     def _create_oc_async(self, oc_vals):
         oc_obj = self.env['purchase.order']
-        new_oc = oc_obj.create(oc_vals)        
+        new_oc = oc_obj.create(oc_vals)
         return new_oc
 
     def action_open_revert_logs(self):
