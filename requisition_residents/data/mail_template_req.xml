@@ -56,6 +56,27 @@
             </field>
         </record>
 
+        <record id="mail_tmpl_requisition_materials_solicitud" model="mail.template">
+            <field name="name">Empleados</field>
+            <field name="model_id" ref="model_requisition_materials"/>
+            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
+            <field name="email_to"></field>
+            <field name="subject">[Req. Materiales] {{object.name}}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+                    <p>Estimado/a:</p>
+                    <p>Se ha registrado una Solicitud de Materiales de la Obra <t t-out="object.project_id.name"/></p>
+                    <table align="center">
+                        <tr>
+                            <td>
+                                <a t-att-href="'%s/web#id=%s&amp;model=requisition.materials&amp;view_type=form' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#6c757d; color:#fff; border-radius:4px; text-decoration:none;font-size:12px;">Ver</a>
+                            </td>
+                        </tr>
+                    </table>
+                    <p>Enviado automáticamente por el Sistema.</p>
+                </div>
+            </field>
+        </record>
 
     </data>
 </odoo>

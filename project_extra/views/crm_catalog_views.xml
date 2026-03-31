@@ -155,9 +155,50 @@
         </field>
     </record>
 
+    <!-- project.bloque -->
+    <record id="view_project_bloque_form" model="ir.ui.view">
+        <field name="name">project.bloque.form</field>
+        <field name="model">project.bloque</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                    <group string="Obras asignadas">
+                        <field name="lead_ids" nolabel="1" colspan="4" readonly="1">
+                            <list>
+                                <field name="nombre_interno" string="Nombre de la obra (Identificación interna)"/>
+                                <field name="desc_licitacion" string="Nombre de la obra (del contrato)"/>
+                            </list>
+                        </field>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_project_bloque_list" model="ir.ui.view">
+        <field name="name">project.bloque.list</field>
+        <field name="model">project.bloque</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name" string="Bloque"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_project_bloque" model="ir.actions.act_window">
+        <field name="name">Bloques</field>
+        <field name="res_model">project.bloque</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
     <menuitem id="menu_catalog_crm" name="Catálogos" parent="crm.crm_menu_root" sequence="30" groups="sales_team.group_sale_manager,group_project_catalog">
         <menuitem id="menu_crm_lead_type" name="Origen" action="action_crm_lead_type" sequence="1"/>
         <menuitem id="menu_crm_revert_reason" name="Motivos cambio" action="action_crm_revert_reason" sequence="2"/>
         <menuitem id="menu_crm_analyst" name="Analistas" action="action_crm_analyst" sequence="3"/>
+        <menuitem id="menu_project_bloque" name="Bloques" action="action_project_bloque" sequence="4"/>
     </menuitem>
 </odoo>

@@ -7,8 +7,9 @@
         <field name="arch" type="xml">
             <form string="Revertir etapa">
                 <group>
+                    <field name="target_domain" invisible="1"/>
                     <field name="lead_id" readonly="1"/>
-                    <field name="target_stage_id" required="1" domain="[('sequence','&lt;',current_stage_sequence), '|', ('team_id','=',current_team_id), ('team_id','=', False)]"/>
+                    <field name="target_stage_id" required="1" domain="target_domain"/>
                     <field name="reason_id" domain="[('tipo','=','rt')]"/>
                     <field name="reason_text"/>
                 </group>

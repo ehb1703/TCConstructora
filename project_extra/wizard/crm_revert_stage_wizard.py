@@ -2,28 +2,38 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 from odoo.tools import html_escape
-from markupsafe import Markup  # Si prefieres, puedes prescindir y usar solo strings
+from markupsafe import Markup
+import json
+import logging
 
+_logger = logging.getLogger(__name__)
 
 class CrmRevertStageWizard(models.TransientModel):
     _name = 'crm.revert.stage.wizard'
     _description = 'Revertir etapa de CRM con motivo'
 
+    @api.depends('lead_id')
+    def _compute_domain_target(self):
+        lista = []
+        for record in self:
+            if record.lead_id.origen_id.name == 'Privado' and not record.lead_id.with_project:
+                dom = [('name','=','Nuevas Convocatorias')]
+            else:
+                dom = [('sequence','<',record.lead_id.stage_id.sequence), ('origen_ids','=',record.lead_id.origen_id.id)]
+
+            stage = self.env['crm.stage'].search(dom)
+            for x in stage:
+                lista.append(x.id)
+            record.target_domain = json.dumps([('id', 'in', lista)])
+
+
     lead_id = fields.Many2one('crm.lead', required=True, default=lambda self: self.env.context.get('default_lead_id') or self.env.context.get('active_id'))
     current_stage_sequence = fields.Integer(related='lead_id.stage_id.sequence', store=False, readonly=True)
     current_team_id = fields.Many2one('crm.team', related='lead_id.team_id', store=False, readonly=True)
     target_stage_id = fields.Many2one('crm.stage', string='Etapa destino', required=True)
+    target_domain = fields.Char(readonly=True, store=False, compute=_compute_domain_target)
     reason_id = fields.Many2one('crm.revert.reason', string='Motivo')
     reason_text = fields.Text(string='Observaciones')
-
-    @api.onchange('lead_id')
-    def _onchange_lead_id_set_domain(self):
-        if self.lead_id and self.lead_id.stage_id:
-            dom = [('sequence', '<', self.lead_id.stage_id.sequence)]
-            if self.lead_id.team_id:
-                dom = ['&', '|', ('team_id', '=', self.lead_id.team_id.id), ('team_id', '=', False)] + dom
-            return {'domain': {'target_stage_id': dom}}
-        return {'domain': {'target_stage_id': []}}
 
     def _check_target_stage(self):
         # Validación en servidor por si cambian el dominio desde el cliente.
