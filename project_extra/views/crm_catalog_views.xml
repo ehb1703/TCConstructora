@@ -106,6 +106,7 @@
                 <field name="agility_operativa"/>
                 <field name="availability"/>
                 <field name="compromiso_institucional"/>
+                <field name="lead_ids" widget="many2many_tags"/>
                 <field name="proyectos_asignados"/>
                 <field name="ultima_evaluacion"/>
             </list>

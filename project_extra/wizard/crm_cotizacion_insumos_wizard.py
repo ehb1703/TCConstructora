@@ -67,7 +67,7 @@ class CrmCotizacionInsumoseWizard(models.TransientModel):
 
     def _create_oc_async(self, oc_vals):
         oc_obj = self.env['purchase.order']
-        new_oc = oc_obj.create(oc_vals)        
+        new_oc = oc_obj.create(oc_vals)
         return new_oc
 
     def action_confirm(self):

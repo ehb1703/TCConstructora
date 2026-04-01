@@ -94,47 +94,49 @@ class requisitionMaterials(models.Model):
 
 
     def action_confirm(self):
-        oc_vals = self.get_orden_default_values(self.id)
-        oc_vals_2 = oc_vals[:]
-        oc_new = self._create_oc_async(oc_vals=oc_vals_2)
-        return oc_new
-
-    def get_orden_default_values(self, lead=False):
         for rec in self.line_ids:
             if not rec.supplier_id:
                 raise UserError('No se ha capturado información del proveedor')
 
-        self.ensure_one()
+        self.env.cr.execute('SELECT supplier_id FROM requisition_materials_line rml WHERE rml.REQ_ID = ' + str(self.id) + ' GROUP BY 1')
+        supplier = self.env.cr.dictfetchall()
+        for rec in supplier:
+            oc = self.action_generar_orden(rec['supplier_id'])
+
+
+    def action_generar_orden(self, supplier):
+        oc_vals = self.get_orden_default_values(supplier)
+        oc_vals_2 = oc_vals[:]
+        oc_new = self._create_oc_async(oc_vals=oc_vals_2)
+        return oc_new
+
+    def get_orden_default_values(self, supplier=False):
+        cantidad = min_id[0]['cantidad']
+        precio = 0
         sequence = self.env['ir.sequence'].next_by_code('purchase.order')
-        taxes = []
-        fpos = self.env['account.fiscal.position'].with_company(self.company_id)._get_fiscal_position(self.partner_id)
-        taxes = self.origen_id.product_id.supplier_taxes_id._filter_taxes_by_company(self.company_id)
-        
-        price = self.bases_cost
-        
         orders = []
         order_lines = []
-        
+        taxes = []
+        fpos = self.env['account.fiscal.position'].with_company(lead.company_id)._get_fiscal_position(supplier)
+        origin = 'Materiales - ' + self.name
 
-        name = self.origen_id.product_id.name
-        if self.no_licitacion:
-            name += ' ' + self.no_licitacion
-        origin = 'Base - ' + self.name
+        for rec in self.line_ids.filtered(lambda u: u.supplier_id.id == supplier):
+            taxes = rec.input_id.supplier_taxes_id._filter_taxes_by_company(self.company_id)
+            ###Voy aqui
+            lines = {'name': rec.product_id.name, 'product_uom': rec.product_id.uom_po_id.id, 'product_id': product_id.id, 'company_id': lead.company_id.id,
+                'partner_id': supplier.id, 'currency_id': product_id.currency_id.id, 'state': 'draft', 'product_qty': statement[0]['qty'], 
+                'price_unit': statement[0]['importe'], 'taxes_id': fpos.map_tax(taxes)}
+            order_lines.append((0, 0, lines))
 
-        order_lines.append((0, 0, {
-            'name': name, 'product_uom': self.origen_id.product_id.uom_po_id.id, 'product_id': self.origen_id.product_id.id, 'company_id': self.company_id.id,
-            'partner_id': self.partner_id.id, 'currency_id': self.origen_id.product_id.currency_id.id, 'state': 'purchase', 'product_qty': 1, 
-            'price_unit': price, 'taxes_id': fpos.map_tax(taxes) },))        
-        values = {'lead_id': self.id, 'name': sequence, 'partner_id': self.partner_id.id, 'company_id': self.company_id.id, 'origin': origin,
-            'currency_id': self.origen_id.product_id.currency_id.id, 'user_id': self.env.uid, 'state': 'purchase', 'invoice_status': 'no', 
-            'type_purchase': 'bases', 'order_line': order_lines}
+        values = {'lead_id': lead.id, 'name': sequence, 'partner_id': supplier.id, 'company_id': lead.company_id.id, 'currency_id': lead.company_id.currency_id.id,
+            'user_id': self.env.uid, 'state': 'draft', 'invoice_status': 'no', 'type_purchase': 'ins', 'origin': origin, 'order_line': order_lines}
         orders.append(values)
         return orders
 
 
     def _create_oc_async(self, oc_vals):
         oc_obj = self.env['purchase.order']
-        new_oc = oc_obj.create(oc_vals)        
+        new_oc = oc_obj.create(oc_vals)
         return new_oc
 
 

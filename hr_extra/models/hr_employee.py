@@ -191,16 +191,16 @@ class hrEmployeeInherit(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
-        if self.env.su:
+        if self.env.user.name == 'admin':
             return super()._search(domain, offset=offset, limit=limit, order=order)
         
-        display = self._context.get('special_display', False)
         if self._context.get('special_display', False):
             extra = []
         else:
             extra = _encargado_nomina_extra_domain(self.env, 'self')
             
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
+
 
     def _calc_antique_temporal(self, employee_id):
         """Calcula antigüedad en años para empleados con contratos temporales
