@@ -44,6 +44,7 @@ class CrmLead(models.Model):
     origen_id = fields.Many2one('crm.lead.type', string='Tipo de Venta')
     origen_name = fields.Char(string='Tipo nombre', compute='_compute_bases')
     with_project = fields.Boolean(string='Con proyecto')
+    is_center = fields.Boolean(string='Centro de negocio')
     req_bases = fields.Boolean(string='Requiere pago de bases', compute='_compute_bases')
     tipo_obra_ok = fields.Boolean('Tipo de obra cumple', tracking=True)
     dependencia_ok = fields.Boolean('Dependencia emisora cumple', tracking=True)
