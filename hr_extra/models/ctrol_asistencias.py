@@ -317,9 +317,16 @@ class CtrolAsistencias(models.Model):
                     'checkout_notes': f'Cierre automático - sin salida registrada en checador (entrada siguiente: {local_dt})',})
                 auto_closed += 1
 
+            self.env.cr.execute('SELECT min(project_id) project, min(hourly_wage) wage FROM hr_employee_obra WHERE employee_id = ' + str(employee.id) + 
+                    " AND ('" + str(self.check_date_local) + "'::date BETWEEN fecha_inicio AND '" + str(self.check_date_local) + 
+                    "'::date OR fecha_inicio is null)")
+            rows = self.env.cr.fetchall()
+            if rows[0][0] == None:
+                return (False, f'No existe registro de salario | Registration: {self.registration_number}')
+
             try:
-                attendance = AttendanceModel.create({'employee_id': employee.id, 'check_in': check_date_utc, 'in_latitude': self.latitude or 0.0,
-                    'in_longitude': self.longitude or 0.0,})
+                attendance = AttendanceModel.create({'employee_id':employee.id, 'check_in':check_date_utc, 'in_latitude':self.latitude or 0.0,
+                    'in_longitude':self.longitude or 0.0, 'project_id':rows[0][0], 'hourly_wage':rows[0][1],})
                 auto_msg = f' (se cerraron {auto_closed} entrada(s) previa(s) sin salida)' if auto_closed else ''
                 return (attendance, f'Entrada registrada | Attendance ID: {attendance.id} | Check-in local: {local_dt}{auto_msg}')
             except Exception as e:
@@ -395,7 +402,7 @@ class CtrolAsistencias(models.Model):
     def process_pending_logs(self):
         start_time = datetime.now()
         pending_records = self.search([('log_status', '=', 'pendiente')], order='check_date asc, id asc')
-        total_records = len(pending_records)        
+        total_records = len(pending_records)
         if total_records == 0:
             return {'total_procesados': 0, 'exitosos': 0, 'errores': 0, 'detalles_errores': [], 'tiempo_ejecucion': '0 segundos'}
         
