@@ -742,7 +742,11 @@ class CrmLead(models.Model):
 
             correos = ', '.join(lead._get_emails())
             template.send_mail(lead.id, force_send=True, email_values={'email_to': correos})
-            lead.write({'apertura_notif_manual_sent': manual, 'apertura_notif_auto_sent': not manual})
+            if manual:
+                lead.write({'apertura_notif_manual_sent': True})
+            else:
+                lead.write({'apertura_notif_auto_sent': True})
+
             lead.message_post(body=_("Se envió recordatorio de junta de apertura de propuestas a: %s") % correos)
 
 

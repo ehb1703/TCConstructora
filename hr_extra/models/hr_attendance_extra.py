@@ -18,6 +18,14 @@ class HrLeaveExtra(models.Model):
     _inherit = 'hr.leave'
 
     disease_ids = fields.One2many('hr.leave.disease', 'leave_id', string='Riesgo de trabajo')
+    
+    def _get_employee_domain(self):
+        domain = [('active','=',True), ('company_id','in',self.env.companies.ids), ('finiquito','=',False),]
+        if not self.env.user.has_group('hr_holidays.group_hr_holidays_user'):
+            domain += ['|', ('user_id', '=', self.env.uid), ('leave_manager_id', '=', self.env.uid),]
+
+        return domain
+
 
     @staticmethod
     def _calcular_dias_habiles(date_from, date_to):
@@ -112,7 +120,11 @@ class HrLeaveExtra(models.Model):
 class HrAttendanceEncargadoFilter(models.Model):
     _inherit = 'hr.attendance'
 
+    employee_id = fields.Many2one('hr.employee', string='Empleado', required=True, ondelete='cascade', index=True, group_expand='_read_group_employee_id', 
+        domain="[('finiquito', '=', False)]")
     checkout_notes = fields.Char(string='Notas de Salida')
+    project_id = fields.Many2one('project.project', string='Obra', required=True)
+    hourly_wage = fields.Float(string='Salario por hora')
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
@@ -150,3 +162,14 @@ class HrPayrollHeadcountLine(models.Model):
     
     department_id = fields.Many2one(related='employee_id.department_id', string='Departamento')
     job_id = fields.Many2one(related='employee_id.job_id', string='Puesto de trabajo')
+
+
+class HrLeaveAllocationFiniquitoFilter(models.Model):
+    _inherit = 'hr.leave.allocation'
+
+    def _domain_employee_id(self):
+        domain = [('company_id', 'in', self.env.companies.ids), ('finiquito','=',False),]
+        if not self.env.user.has_group('hr_holidays.group_hr_holidays_user'):
+            domain += [('leave_manager_id', '=', self.env.user.id)]
+
+        return domain

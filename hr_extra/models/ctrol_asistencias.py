@@ -259,15 +259,13 @@ class CtrolAsistencias(models.Model):
     def _map_to_attendance(self):
         """Mapea el registro a hr.attendance usando zona horaria local del checador.
 
-        check_date está en UTC. El día laboral se determina con check_date_local
-        (hora original del checador). El rango UTC del día local se usa para buscar
+        check_date está en UTC. El día laboral se determina con check_date_local (hora original del checador). El rango UTC del día local se usa para buscar
         duplicados en hr.attendance (que también guarda en UTC).
 
         REGLAS:
         1. Solo UNA entrada por día laboral por empleado
         2. Solo UNA salida por día laboral por empleado
-        3. Si no hay salida de un día anterior, no bloquea el siguiente día
-        """
+        3. Si no hay salida de un día anterior, no bloquea el siguiente día """
         self.ensure_one()
         employee = self._get_employee_from_registration()
         if not employee:
@@ -301,7 +299,6 @@ class CtrolAsistencias(models.Model):
             day_end_utc = datetime.combine(current_date, datetime.max.time().replace(microsecond=0))
 
         check_date_utc = self.check_date
-
         AttendanceModel = self.env['hr.attendance'].sudo()
         if self.check_type == 'entrada':
             entrada_del_dia = AttendanceModel.search([('employee_id', '=', employee.id), ('check_in', '>=', day_start_utc), ('check_in', '<=', day_end_utc)], 
@@ -316,14 +313,9 @@ class CtrolAsistencias(models.Model):
             auto_closed = 0
             for prev in open_prev:
                 auto_checkout = check_date_utc - timedelta(seconds=1)
-                prev.write({
-                    'check_out': auto_checkout,
+                prev.write({'check_out': auto_checkout,
                     'checkout_notes': f'Cierre automático - sin salida registrada en checador (entrada siguiente: {local_dt})',})
                 auto_closed += 1
-                _logger.info(
-                    f'Auto-cierre | Attendance ID: {prev.id} | Check-in: {prev.check_in} '
-                    f'| Auto check-out: {auto_checkout} | Empleado: {employee.name}'
-                )
 
             try:
                 attendance = AttendanceModel.create({'employee_id': employee.id, 'check_in': check_date_utc, 'in_latitude': self.latitude or 0.0,
@@ -401,13 +393,9 @@ class CtrolAsistencias(models.Model):
     
     @api.model
     def process_pending_logs(self):
-        # Procesa registros pendientes de importación a Odoo.
         start_time = datetime.now()
-        
-        # 1. EXTRACCIÓN: Obtener registros pendientes
         pending_records = self.search([('log_status', '=', 'pendiente')], order='check_date asc, id asc')
-        total_records = len(pending_records)
-        
+        total_records = len(pending_records)        
         if total_records == 0:
             return {'total_procesados': 0, 'exitosos': 0, 'errores': 0, 'detalles_errores': [], 'tiempo_ejecucion': '0 segundos'}
         
@@ -422,13 +410,11 @@ class CtrolAsistencias(models.Model):
                     record.write({'log_status': 'error', 'log_message': validation_message})
                     errores += 1
                     detalles_errores.append({'id': record.id, 'employee': record.registration_number, 'error': validation_message})
-                    _logger.warning(f"Validación fallida: {validation_message}")
                     continue
                 
                 # 2.2 MAPEO A hr.attendance
                 attendance, attendance_message = record._map_to_attendance()
                 if not attendance:
-                    # Error al crear/actualizar attendance
                     record.write({'log_status': 'error', 'log_message': attendance_message })
                     errores += 1
                     detalles_errores.append({'id': record.id, 'employee': record.registration_number, 'error': attendance_message})

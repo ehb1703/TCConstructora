@@ -20,6 +20,21 @@
                 <field name="lead_id"/>
                 <field name="empresa_solicitante" invisible="type_purchase != 'bases'" readonly="1"/>
             </xpath>
+
+            <xpath expr="//notebook" position="inside">
+                <page string="Bitácora" name="bitacora">
+                    <field name="bitacora_ids" nolabel="1" readonly="1">
+                        <list>
+                            <field name="fecha" string="Fecha"/>
+                            <field name="usuario" string="Usuario"/>
+                            <field name="etapa_anterior" string="Etapa anterior"/>
+                            <field name="etapa_nueva" string="Etapa nueva"/>
+                            <field name="motivo_id" string="Motivo" readonly="0"/>
+                            <field name="observaciones" string="Observaciones" readonly="0"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
         </field>
     </record>
 
@@ -65,29 +80,6 @@
                 <field name="fecha_limite"/>
                 <field name="observaciones"/>
             </list>
-        </field>
-    </record>
-
-    <!-- Pestaña Bitácora en form de purchase.order -->
-    <record id="view_purchase_order_bitacora_tab" model="ir.ui.view">
-        <field name="name">view.purchase.order.bitacora.tab</field>
-        <field name="model">purchase.order</field>
-        <field name="inherit_id" ref="purchase.purchase_order_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//notebook" position="inside">
-                <page string="Bitácora" name="bitacora">
-                    <field name="bitacora_ids" nolabel="1" readonly="1">
-                        <list>
-                            <field name="fecha" string="Fecha"/>
-                            <field name="usuario" string="Usuario"/>
-                            <field name="etapa_anterior" string="Etapa anterior"/>
-                            <field name="etapa_nueva" string="Etapa nueva"/>
-                            <field name="motivo_id" string="Motivo" readonly="0"/>
-                            <field name="observaciones" string="Observaciones" readonly="0"/>
-                        </list>
-                    </field>
-                </page>
-            </xpath>
         </field>
     </record>
 
