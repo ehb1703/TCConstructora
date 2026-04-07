@@ -50,7 +50,7 @@ def _get_employee_ids_by_schedule(env, enc):
 
     env.cr.execute(f'''SELECT DISTINCT(he.id) FROM hr_employee he WHERE he.active = true
           AND (
-              EXISTS (SELECT 1 FROM hr_contract hc WHERE hc.employee_id = he.id AND hc.state IN ('open', 'pending') AND hc.schedule_pay IN ({placeholders}))
+              EXISTS (SELECT 1 FROM hr_contract hc WHERE hc.employee_id = he.id AND hc.state IN ('open', 'draft') AND hc.schedule_pay IN ({placeholders}))
               OR NOT EXISTS (SELECT 1 FROM hr_contract hc WHERE hc.employee_id = he.id AND hc.state != 'cancel'))''', schedule_values)
     return [row[0] for row in env.cr.fetchall()]
 
@@ -225,9 +225,7 @@ class hrEmployeeInherit(models.Model):
 
         self.env.cr.execute('''SELECT hc.date_start, hc.date_end, hc.state
             FROM hr_contract hc JOIN hr_contract_type hct ON hct.id = hc.contract_type_id
-            WHERE hc.employee_id = %s
-              AND hc.state IN ('open', 'close')
-              AND hct.code NOT IN ('Permanent')
+            WHERE hc.employee_id = %s AND hc.state IN ('open', 'close') AND hct.code NOT IN ('Permanent')
             ORDER BY hc.date_start ASC ''', (employee_id,))
         rows = self.env.cr.fetchall()
         if not rows:
@@ -504,7 +502,7 @@ class hrContractInherit(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
-        if self.env.su:
+        if self.env.user.name == 'admin':
             return super()._search(domain, offset=offset, limit=limit, order=order)
         extra = _encargado_nomina_extra_domain(self.env)
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
