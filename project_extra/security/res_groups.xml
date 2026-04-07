@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Grupo: Catálogos de proyecto -->
     <record id="group_project_catalog" model="res.groups">
         <field name="name">Catálogos</field>
         <field name="implied_ids" eval="[(4, ref('base.group_user')), (4, ref('project.group_project_stages'))]"/>
         <field name="category_id" ref="base.module_category_services_project"/>
     </record>
 
-    <!-- Grupo: Puede autorizar convocatorias -->
     <record id="group_conv_authorizer" model="res.groups">
         <field name="name">Puede autorizar convocatorias</field>
         <field name="category_id" ref="base.module_category_services_project"/>
@@ -21,7 +19,7 @@
         <field name="comment">Permite autorizar presupuestos en la etapa de Propuesta Económica del CRM.</field>
     </record>
 
-    <record id="group_erp_reading" model="res.groups" >
+    <record id="group_erp_reading" model="res.groups">
         <field name="name">Empresas - Lectura</field>
         <field name="category_id" ref="base.module_category_administration_administration"/>
         <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
@@ -31,10 +29,125 @@
         <field name="name">company rule erp reading</field>
         <field name="model_id" ref="base.model_res_company"/>
         <field name="domain_force">[(1,'=',1)]</field>
-        <field name="groups" eval="[(4, ref('project_extra.group_erp_reading'))]"/>        
+        <field name="groups" eval="[(4, ref('project_extra.group_erp_reading'))]"/>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>
         <field name="perm_create" eval="False"/>
         <field name="perm_unlink" eval="False"/>
     </record>
+
+    <!-- Lectura de empleados para usuarios CRM (tarea 81) -->
+    <record id="hr_employee_read_all_rule" model="ir.rule">
+        <field name="name">Empleados: lectura para usuarios CRM</field>
+        <field name="model_id" ref="hr.model_hr_employee"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- Grupos de solo lectura por módulo (tarea 75) -->
+    <record id="group_crm_readonly" model="res.groups">
+        <field name="name">CRM - Solo lectura</field>
+        <field name="category_id" ref="base.module_category_sales_crm"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_sale_readonly" model="res.groups">
+        <field name="name">Ventas - Solo lectura</field>
+        <field name="category_id" ref="base.module_category_sales_sales"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_purchase_readonly" model="res.groups">
+        <field name="name">Compras - Solo lectura</field>
+        <field name="category_id" ref="base.module_category_inventory_purchase"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_account_readonly" model="res.groups">
+        <field name="name">Contabilidad - Solo lectura</field>
+        <field name="category_id" ref="base.module_category_accounting_accounting"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_hr_readonly" model="res.groups">
+        <field name="name">Empleados - Solo lectura</field>
+        <field name="category_id" ref="base.module_category_human_resources_employees"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_hr_leaves_readonly" model="res.groups">
+        <field name="name">Permisos - Solo lectura</field>
+        <field name="category_id" ref="base.module_category_human_resources_time_off"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_payroll_readonly" model="res.groups">
+        <field name="name">Nómina - Solo lectura</field>
+        <field name="category_id" ref="base.module_category_human_resources_payroll"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_attendance_readonly" model="res.groups">
+        <field name="name">Asistencia - Solo lectura</field>
+        <field name="category_id" ref="base.module_category_human_resources_attendances"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_requisicion_readonly" model="res.groups">
+        <field name="name">Requisiciones - Solo lectura</field>
+        <field name="category_id" ref="base.module_category_inventory_purchase"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Reglas de solo lectura por modelo -->
+    <record id="rule_purchase_readonly_write" model="ir.rule">
+        <field name="name">Compras: bloquear escritura solo lectura</field>
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="domain_force">[(0, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('project_extra.group_purchase_readonly'))]"/>
+        <field name="perm_read" eval="False"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <record id="rule_hr_leave_readonly_write" model="ir.rule">
+        <field name="name">Permisos: bloquear escritura solo lectura</field>
+        <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+        <field name="domain_force">[(0, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('project_extra.group_hr_leaves_readonly'))]"/>
+        <field name="perm_read" eval="False"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <!-- Reglas multi-company de CRM y Ventas asignadas a grupos con escritura
+         para que usuarios de solo lectura no hereden permiso de escritura -->
+    <record id="rule_crm_multicompany_group" model="ir.rule">
+        <field name="name">CRM Lead Multi-Company</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
+        <field name="groups" eval="[(4, ref('sales_team.group_sale_salesman')), (4, ref('sales_team.group_sale_salesman_all_leads')), (4, ref('sales_team.group_sale_manager'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <record id="rule_sale_multicompany_group" model="ir.rule">
+        <field name="name">Sales Order multi-company</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('sales_team.group_sale_salesman')), (4, ref('sales_team.group_sale_salesman_all_leads')), (4, ref('sales_team.group_sale_manager'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
 </odoo>

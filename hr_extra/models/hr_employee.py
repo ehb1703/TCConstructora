@@ -137,6 +137,7 @@ class hrEmployeeInherit(models.Model):
         domain="['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids), ('state', '!=', 'baja')]")
     state = fields.Selection(selection=[('activo','Activo'), ('baja','Baja'), ('pensionado','Pensionado'), ('incapacidad','Incapacidad'), ('permiso','Permiso')],
         string='Estado Actual', default='activo', tracking=True)
+    finiquito = fields.Boolean(string='Finiquito', default=False, tracking=True)
     empresa_empleadora = fields.Many2one('res.company', string='Empresa empleadora')
     antique = fields.Integer(string='Antigüedad', default=0)
     encargado_nomina = fields.Selection(selection=[('quincenal', 'Quincenal'), ('semanal', 'Semanal'), ('ambas', 'Ambas')],
@@ -187,18 +188,28 @@ class hrEmployeeInherit(models.Model):
         return resource_vals
 
     def action_activar_empleado(self):
-        self.update({'state': 'activo'})
+        self.update({'state': 'activo', 'finiquito': False})
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
         if self.env.user.name == 'admin':
             return super()._search(domain, offset=offset, limit=limit, order=order)
-        
+
+        crm_bypass_models = ('crm.lead', 'crm.junta.line', 'crm.propuesta.tecnica.revision', 'crm.propuesta.economica.revision')
+        if self._context.get('active_model') in crm_bypass_models or self._context.get('default_model') in crm_bypass_models:
+            return super()._search(domain, offset=offset, limit=limit, order=order)
+
+        # Lectura directa por ID (Odoo cargando Many2one): no restringir
+        if domain and len(domain) == 1 and isinstance(domain[0], (list, tuple)):
+            field, op = domain[0][0], domain[0][1]
+            if field == 'id' and op in ('=', 'in'):
+                return super()._search(domain, offset=offset, limit=limit, order=order)
+
         if self._context.get('special_display', False):
             extra = []
         else:
             extra = _encargado_nomina_extra_domain(self.env, 'self')
-            
+
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
 
@@ -627,6 +638,8 @@ class HrWorkEntryTypeInherit(models.Model):
 class HrPayslipInherit(models.Model):
     _inherit = 'hr.payslip'
 
+    employee_id = fields.Many2one('hr.employee', string='Employee', required=True,
+        domain="[('finiquito', '=', False), '|', ('company_id', '=', False), ('company_id', '=', company_id), '|', ('active', '=', True), ('active', '=', False)]")
     amount = fields.Float(string='Total a pagar', compute='_compute_amount', store=True)
 
     @api.depends('worked_days_line_ids.amount')

@@ -53,28 +53,39 @@
                                     <field name="product_uom_id" readonly="1"/>
                                     <field name="product_qty"/>
                                     <field name="supplier_id" groups="requisition_residents.group_materials_authorize"/>
-                                    <!--field name="price_unit" column_invisible="1"/>
-                                    <field name="taxes_id" string="Impuesto" widget="many2many_tags" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
-                                    <field name="price_amount" column_invisible="1"/>
-                                    <field name="price_tax" column_invisible="1"/>
-                                    <field name="price_total" column_invisible="1"/-->
                                 </list>
                                 <form><p>Información no disponible a través de esta vista</p></form>
                             </field>
                         </page>
-                        <!--group>
-                            <group/>
-                            <group class="oe_subtotal_footer">
-                                <field name="amount_untaxed" widget="monetary" readonly="1"/>
-                                <field name="amount_tax" widget="monetary" readonly="1"/>
-                                <field name="amount_total" widget="monetary" readonly="1"/>
-                            </group>
-                        </group>
-                        <div class="clearfix"/-->
+                        <page string="Órdenes de compra" groups="requisition_residents.group_materials_authorize">
+                            <field name="oc_ids" widget="one2many_list">
+                                <list string="Ordenes de compra" delete="0" create="0" edit="0" context="{'default_materials_id': id}">
+                                    <field name="name"/>
+                                    <field name="partner_id"/>
+                                    <field name="type_purchase"/>
+                                    <field name="amount_untaxed"/>
+                                    <field name="amount_total"/>
+                                    <field name="state"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
+                            </field>
+                        </page>
                     </notebook>
                 </sheet>
                 <chatter/>
             </form>
+        </field>
+    </record>
+
+    <record id="view_purchase_order_materials_from" model="ir.ui.view">
+        <field name="name">view.purchase.order.materials.from</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="project_extra.view_purchase_order_lead_from"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='lead_id']" position="replace">
+                <field name="lead_id" invisible="type_purchase == 'mat'"/>
+                <field name="materials_id" invisible="type_purchase != 'mat'"/>
+            </xpath>
         </field>
     </record>
 

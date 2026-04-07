@@ -29,7 +29,7 @@
                     </group>
                     <group string="Filtros (dejar vacío para incluir todos)">
                         <group>
-                            <field name="employee_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="employee_ids" widget="many2many_tags" context="{'special_display':True}" options="{'no_create': True, 'no_open': True}"/>
                             <field name="department_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
                         </group>
                         <group>
