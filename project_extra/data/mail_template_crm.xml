@@ -292,5 +292,32 @@
             </field>
         </record>
 
+        <record id="mail_tmpl_refrendo_alerta" model="mail.template">
+            <field name="name">Alerta de Vencimiento de Refrendo</field>
+            <field name="model_id" ref="project_extra.model_crm_refrendo"/>
+            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
+            <field name="subject">[Refrendo] Alerta de vencimiento - {{object.dependencia_id.name}}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+                    <p>Estimado/a <t t-out="object.responsable_id.name or ''"/>,</p>
+                    <p>Le informamos que el refrendo del padrón de proveedores tiene una vigencia próxima a vencer:</p>
+                    <ul>
+                        <li><b>Dependencia: </b><t t-out="object.dependencia_id.name or ''"/></li>
+                        <li><b>Razón Social: </b><t t-out="object.razon_social_id.name or ''"/></li>
+                        <li><b>Fecha de Vigencia: </b><t t-out="object.fecha_vigencia or ''"/></li>
+                        <li><b>Días restantes: </b><t t-out="object.dias_vencimiento or 0"/></li>
+                        <li><b>Estatus: </b><t t-out="object.estatus or ''"/></li>
+                    </ul>
+                    <p>
+                        <a t-att-href="'%s/web#id=%s&amp;model=crm.refrendo&amp;view_type=form' % (object.get_base_url(), object.id)"
+                           style="display:inline-block; padding:8px 14px; background:#1A73E8; color:#fff; border-radius:4px; text-decoration:none; font-size:12px;">
+                            Ver Refrendo
+                        </a>
+                    </p>
+                    <p>Enviado automáticamente por el Sistema.</p>
+                </div>
+            </field>
+        </record>
+
     </data>
 </odoo>

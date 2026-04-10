@@ -264,7 +264,22 @@ class requisitionResidents(models.Model):
 
      
     def action_nomina(self):
-        raise ValidationError('Todavía esta pendiente........')
+        self.env.cr.execute('SELECT COUNT(*) FROM requisition_residents rr JOIN hr_employee_obra heo ON rr.project_id = heo.project_id WHERE rr.id = ' + 
+            str(self.id) + ''' AND (rr.finicio BETWEEN heo.fecha_inicio AND rr.ffinal OR heo.fecha_inicio IS NULL)
+            AND NOT EXISTS (SELECT * FROM hr_payslip hp WHERE hp.employee_id = heo.employee_id AND rr.finicio = hp.date_from)''')
+        count = self.env.cr.dictfetchall()
+        if count[0][0] != 0:
+            raise ValidationError('Existen empleados a los que les falta generar nómina')
+
+        self.env.cr.execute('''SELECT hp.employee_id, he.job_id, hpp.importe 
+            FROM requisition_residents rr JOIN hr_payslip_project hpp ON rr.project_id = hpp.project_id 
+                                        JOIN hr_payslip hp ON hpp.payslip_id = hp.id AND rr.finicio = hp.date_from
+                                        JOIN hr_employee he ON hp.employee_id = he.id
+            WHERE rr.id = ''' + str(self.id))
+        rows = self.env.cr.dictfetchall()
+        for x in rows:
+            self.env['requisition.nomina'].create({'req_id':self.id, 'employee_id':x['employee_id'], 'job_id':x['job_id'], 'salary':x['importe']})
+
 
     def action_confirm(self):
         c = 0

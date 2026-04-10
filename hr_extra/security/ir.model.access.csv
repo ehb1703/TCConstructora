@@ -33,6 +33,7 @@ access_hr_attendance_overtime_extra_manager,hr.attendance.overtime.extra.manager
 access_hr_contract_empresa_user,hr.contract.empresa.user,model_hr_contract_empresa,hr.group_hr_user,1,0,0,0
 access_hr_contract_empresa_manager,hr.contract.empresa.manager,model_hr_contract_empresa,hr.group_hr_manager,1,1,1,1
 access_hr_leave_vacation_days,hr.leave.vacation.days,model_hr_leave_vacation_days,hr.group_hr_manager,1,1,1,1
+access_hr_payslip_project,hr.payslip.project,model_hr_payslip_project,hr.group_hr_manager,1,1,1,1
 
 access_hr_salario_minimo_user,hr.salario.minimo.user,model_hr_salario_minimo,hr.group_hr_user,1,0,0,0
 access_hr_salario_minimo_manager,hr.salario.minimo.manager,model_hr_salario_minimo,hr.group_hr_manager,1,1,1,1

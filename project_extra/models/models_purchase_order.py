@@ -140,6 +140,43 @@ class PurchaseAsignacion(models.Model):
     fecha_limite = fields.Datetime(string='Fecha límite', related='referencia_id.date_order', readonly=True)
     observaciones = fields.Char(string='Observaciones')
 
+    def _registrar_bitacora(self, order, etapa_anterior, etapa_nueva):
+        if order:
+            self.env['purchase.order.bitacora'].create({
+                'order_id': order.id,
+                'fecha': fields.Datetime.now(),
+                'usuario': self.env.user.name,
+                'etapa_anterior': etapa_anterior,
+                'etapa_nueva': etapa_nueva,
+            })
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            if rec.referencia_id and rec.nombre_id:
+                self._registrar_bitacora(
+                    rec.referencia_id,
+                    etapa_anterior=rec.referencia_id.STATES_LABELS.get(rec.referencia_id.state, rec.referencia_id.state),
+                    etapa_nueva='Asignada a: ' + rec.nombre_id.name,
+                )
+        return records
+
+    def write(self, vals):
+        old_nombres = {rec.id: rec.nombre_id.name for rec in self} if 'nombre_id' in vals else {}
+        res = super().write(vals)
+        if 'nombre_id' in vals:
+            for rec in self:
+                old_nombre = old_nombres.get(rec.id, '')
+                new_nombre = rec.nombre_id.name if rec.nombre_id else ''
+                if old_nombre != new_nombre and rec.referencia_id:
+                    self._registrar_bitacora(
+                        rec.referencia_id,
+                        etapa_anterior='Asignada a: ' + old_nombre if old_nombre else 'Sin asignar',
+                        etapa_nueva='Reasignada a: ' + new_nombre if new_nombre else 'Sin asignar',
+                    )
+        return res
+
 
 class PurchaseOrderBitacora(models.Model):
     _name = 'purchase.order.bitacora'

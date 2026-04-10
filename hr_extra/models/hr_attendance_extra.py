@@ -111,7 +111,7 @@ class HrLeaveExtra(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
-        if self.env.su:
+        if self.env.user.name == 'admin':
             return super()._search(domain, offset=offset, limit=limit, order=order)
         extra = _encargado_nomina_extra_domain(self.env)
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)

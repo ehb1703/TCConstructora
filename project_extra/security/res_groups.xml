@@ -150,4 +150,13 @@
         <field name="perm_unlink" eval="True"/>
     </record>
 
+
+    <!-- Grupo administrador de Refrendos (Tarea 0082) -->
+    <record id="group_refrendo_admin" model="res.groups">
+        <field name="name">Administrador de Refrendos</field>
+        <field name="category_id" ref="base.module_category_sales_crm"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="comment">Permite acceder y administrar los refrendos de padrón de proveedores.</field>
+    </record>
+
 </odoo>
