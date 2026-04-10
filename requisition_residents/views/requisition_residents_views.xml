@@ -428,10 +428,10 @@
 
     <menuitem id="reports_menu_root" name="Requisiciones" sequence="10">
         <menuitem id="menu_requisiciones" name="Requisiciones" groups="group_requisition_admin,group_requisition_capture" sequence="10">
-            <menuitem id="menu_requisition_residents" name="Residentes" action="action_requisition_residents" sequence="10"/>
+            <menuitem id="menu_requisition_residents" name="Gastos de obra" action="action_requisition_residents" sequence="10"/>
             <menuitem id="menu_requisiciones_semanal" name="Semanal" sequence="30">
-                <menuitem id="menu_generate_requisition" name="Generar requisición" action="action_generate_requisition" groups="group_requisition_admin" sequence="10"/>
-                <menuitem id="menu_requisition_weekly" name="Semanal" action="action_requisition_weekly" groups="group_requisition_admin" sequence="20"/>
+                <menuitem id="menu_generate_requisition" name="Generar Resumen" action="action_generate_requisition" groups="group_requisition_admin" sequence="10"/>
+                <menuitem id="menu_requisition_weekly" name="Resumen" action="action_requisition_weekly" groups="group_requisition_admin" sequence="20"/>
             </menuitem>
         </menuitem>
     </menuitem>

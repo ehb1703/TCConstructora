@@ -6,6 +6,7 @@ from datetime import date, datetime, time
 from odoo.osv import expression
 import logging
 from odoo.tools import (date_utils,)
+
 _logger = logging.getLogger(__name__)
 
 
@@ -723,8 +724,8 @@ class HrPayslipInherit(models.Model):
     def calculate_project(self):
         attendance = self._get_attendance_by_payslip()[self]
         salary = sum(x.amount for x in self.worked_days_line_ids)
-        self.env.cr.execute("""SELECT project_id, hourly_wage, SUM(worked_hours - overtime_hours) horas, SUM(overtime_hours) extra, MIN(check_in::DATE) fecha
-            FROM hr_attendance ha WHERE id in (""" + str(attendance.ids).replace('[', '').replace(']', '') + ") GROUP BY 1, 2 ORDER BY 5, 1")
+        self.env.cr.execute('''SELECT project_id, hourly_wage, SUM(worked_hours - overtime_hours) horas, SUM(overtime_hours) extra, MIN(check_in::DATE) fecha
+            FROM hr_attendance ha WHERE id in (''' + str(attendance.ids).replace('[', '').replace(']', '') + ") GROUP BY 1, 2 ORDER BY 3 DESC, 5 DESC")
         project = self.env.cr.dictfetchall()
         num = len(project)
         if num == 1:
