@@ -71,7 +71,7 @@
             <xpath expr="//notebook" position="before">
                 <group>
                     <field name="empresa_concursante_id" string="Empresa concursante" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
-                    <field name="origen_id" string="Tipo de Venta" options="{'no_open':True, 'no_create':True, 'no_edit':True}" readonly="stage_name != 'Nuevas Convocatorias'"/>
+                    <field name="origen_id" string="Tipo de Venta" options="{'no_open':True, 'no_create':True, 'no_edit':True}" readonly="stage_name not in ['Nuevas Convocatorias', False]"/>
                 </group>
                 <group string="Información Convocatoria" invisible="origen_name != 'Público'">
                     <group>

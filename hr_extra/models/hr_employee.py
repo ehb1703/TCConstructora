@@ -627,6 +627,14 @@ class hrContractInherit(models.Model):
                         obra.write({'hourly_wage':self.daily_wage/8})
         return res
 
+
+    def _get_more_vals_attendance_interval(self, interval):
+        result = super()._get_more_vals_attendance_interval(interval)
+        result.append(('project_id', interval[2].project_id.id))
+        result.append(('hourly_wage', interval[2].hourly_wage))
+        return result
+
+
 class HrWorkEntryTypeInherit(models.Model):
     _inherit = 'hr.work.entry.type'
 
@@ -707,7 +715,48 @@ class HrPayslipInherit(models.Model):
         for payslip in payslips:
             if payslip.warning_message:
                 raise ValidationError('Existen inconsistencias en el recibo, favor de resolver antes de continuar con el proceso')
+        
+        self.calculate_project()
         return super().compute_sheet()
+
+
+    def calculate_project(self):
+        attendance = self._get_attendance_by_payslip()[self]
+        salary = sum(x.amount for x in self.worked_days_line_ids)
+        self.env.cr.execute("""SELECT project_id, hourly_wage, SUM(worked_hours - overtime_hours) horas, SUM(overtime_hours) extra, MIN(check_in::DATE) fecha
+            FROM hr_attendance ha WHERE id in (""" + str(attendance.ids).replace('[', '').replace(']', '') + ") GROUP BY 1, 2 ORDER BY 5, 1")
+        project = self.env.cr.dictfetchall()
+        num = len(project)
+        if num == 1:
+            existe = self.env['hr.payslip.project'].search([('payslip_id', '=', self.id), ('project_id', '=', project[0]['project_id'])])
+            if existe:
+                if salary != existe.importe:
+                    existe.write({'importe': salary})
+            else:
+                self.env['hr.payslip.project'].create({'payslip_id':self.id, 'project_id':project[0]['project_id'], 'importe':salary})
+        else:
+            c = 1
+            total = 0
+            for x in project:
+                if c == num:
+                    sal = salary - total
+                else:
+                    sal = 0.0
+                    dias = int(x['horas'] / 10)
+                    if x['extra'] != 0.0:
+                        sal += x['extra'] * x['hourly_wage']
+                    if dias > 0:
+                        sal += dias * x['hourly_wage'] * 8
+                    total += sal
+                
+                c += 1
+                existe = self.env['hr.payslip.project'].search([('payslip_id', '=', self.id), ('project_id', '=', x['project_id'])])
+                if existe:
+                    if sal != existe.importe:
+                        existe.write({'importe': sal})
+                else:
+                    self.env['hr.payslip.project'].create({'payslip_id':self.id, 'project_id':x['project_id'], 'importe':sal})
+
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
@@ -719,6 +768,9 @@ class HrPayslipInherit(models.Model):
 
 class HrWorkEntryEncargadoFilter(models.Model):
     _inherit = 'hr.work.entry'
+
+    project_id = fields.Many2one('project.project', string='Obra', required=True)
+    hourly_wage = fields.Float(string='Salario por hora')
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Acción principal -->
+    <record id="action_crm_refrendo" model="ir.actions.act_window">
+        <field name="name">Refrendos</field>
+        <field name="res_model">crm.refrendo</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Vista lista -->
+    <record id="view_crm_refrendo_list" model="ir.ui.view">
+        <field name="name">view.crm.refrendo.list</field>
+        <field name="model">crm.refrendo</field>
+        <field name="arch" type="xml">
+            <list string="Refrendos" decoration-success="estatus == 'VIGENTE'" decoration-warning="estatus == 'POR VENCER'" decoration-danger="estatus == 'VENCIDO'">
+                <field name="dependencia_id"/>
+                <field name="razon_social_id"/>
+                <field name="disponible"/>
+                <field name="fecha_refrendo"/>
+                <field name="fecha_vigencia"/>
+                <field name="dias_vencimiento"/>
+                <field name="responsable_id"/>
+                <field name="estatus" widget="badge"/>
+                <field name="observaciones"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Vista form -->
+    <record id="view_crm_refrendo_form" model="ir.ui.view">
+        <field name="name">view.crm.refrendo.form</field>
+        <field name="model">crm.refrendo</field>
+        <field name="arch" type="xml">
+            <form string="Refrendo">
+                <sheet>
+                    <group>
+                        <group string="Información general">
+                            <field name="dependencia_id" options="{'no_create': True}"/>
+                            <field name="razon_social_id" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Último refrendo">
+                            <field name="disponible" readonly="1"/>
+                            <field name="fecha_refrendo" readonly="1"/>
+                            <field name="fecha_vigencia" readonly="1"/>
+                            <field name="dias_vencimiento" readonly="1"/>
+                            <field name="estatus" readonly="1" widget="badge"/>
+                            <field name="responsable_id" readonly="1"/>
+                            <field name="observaciones" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Historial de refrendos">
+                            <field name="linea_ids">
+                                <list editable="bottom">
+                                    <field name="disponible"/>
+                                    <field name="fecha_refrendo"/>
+                                    <field name="fecha_vigencia"/>
+                                    <field name="responsable_id" options="{'no_create': True}"/>
+                                    <field name="observaciones"/>
+                                    <field name="docto_vigencia" widget="binary" string="Dto. Vigencia" filename="docto_vigencia_name"/>
+                                    <field name="docto_vigencia_name" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista búsqueda -->
+    <record id="view_crm_refrendo_search" model="ir.ui.view">
+        <field name="name">view.crm.refrendo.search</field>
+        <field name="model">crm.refrendo</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Refrendos">
+                <field name="dependencia_id"/>
+                <field name="razon_social_id"/>
+                <field name="responsable_id"/>
+                <separator/>
+                <filter string="Vigentes" name="vigentes" domain="[('estatus', '=', 'VIGENTE')]"/>
+                <filter string="Por Vencer" name="por_vencer" domain="[('estatus', '=', 'POR VENCER')]"/>
+                <filter string="Vencidos" name="vencidos" domain="[('estatus', '=', 'VENCIDO')]"/>
+                <separator/>
+                <filter string="Disponibles" name="disponibles" domain="[('disponible', '=', True)]"/>
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Dependencia" name="group_dependencia" context="{'group_by': 'dependencia_id'}"/>
+                    <filter string="Razón Social" name="group_razon_social" context="{'group_by': 'razon_social_id'}"/>
+                    <filter string="Estatus" name="group_estatus" context="{'group_by': 'estatus'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Ajustes CRM - Sección Refrendos -->
+    <record id="view_res_config_settings_refrendo" model="ir.ui.view">
+        <field name="name">res.config.settings.refrendo</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="crm.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='crm']" position="inside">
+                <block title="Refrendos">
+                    <setting string="Mínimo de días de vigencia para envío de alertas" help="Días restantes de vigencia a partir de los cuales se emite alerta de vencimiento">
+                        <field name="refrendo_min_dias"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+
+    <menuitem id="menu_crm_refrendo" name="Refrendos" parent="crm.crm_menu_root" action="action_crm_refrendo" sequence="50" groups="project_extra.group_refrendo_admin"/>
+
+</odoo>

@@ -9,5 +9,14 @@
             <field name="state">code</field>
             <field name="code">action = model.action_update_account_bank()</field>
         </record>
+
+        <!--record id="update_general_payments" model="ir.actions.server">
+            <field name="name">Realizar pago</field>
+            <field name="model_id" ref="requisition_residents.model_requisition_general_payments"/>
+            <field name="groups_id" eval="[(4, ref('group_requisition_admin'))]"/>
+            <field name="binding_model_id" ref="requisition_residents.model_requisition_bank_account"/>
+            <field name="state">code</field>
+            <field name="code">action = model.action_update_account_bank()</field>
+        </record-->
     </data>
 </odoo>

@@ -42,7 +42,7 @@
                 <attribute name="duplicate">0</attribute>
             </xpath>
             <xpath expr="//header/button" position="after">
-                <button name="action_activar_empleado" type="object" string="Activar" class="btn-primary" invisible="state != 'baja'"/>
+                <button name="action_activar_empleado" type="object" string="Activar" class="btn-primary" invisible="state not in ['baja', 'pensionado']"/>
                 <field name="state" widget="statusbar"/>
             </xpath>
             <xpath expr="//sheet/div[2]/div[1]/h1[1]" position="replace">
@@ -247,7 +247,7 @@
                 <button name="action_time_off_dashboard" type="object" class="oe_stat_button" icon="fa-calendar" invisible="not show_leaves" context="{'search_default_employee_ids': id}" groups="base.group_user">
                     <div class="o_field_widget o_stat_info" invisible="allocation_display == '0'">
                         <span class="o_stat_value">
-                            <field name="allocation_remaining_display"/>/<field name="allocation_display"/> D&#237;as
+                            <field name="allocation_remaining_display"/>/<field name="allocation_display"/> Días
                         </span>
                         <span class="o_stat_text">Permisos</span>
                     </div>
@@ -271,7 +271,7 @@
         </field>
     </record>
 
-    <!-- Filtro finiquito=False en Asignaciones (Tarea 77) -->
+    <!-- Filtro de empleados con finiquito en asignaciones de ausencias -->
     <record id="hr_leave_allocation_form_finiquito_filter" model="ir.ui.view">
         <field name="name">hr.leave.allocation.form.finiquito.filter</field>
         <field name="model">hr.leave.allocation</field>
@@ -283,7 +283,7 @@
         </field>
     </record>
 
-    <!-- Filtro finiquito=False en Asistencias (Tarea 77) -->
+    <!-- Filtro de empleados con finiquito en asistencias -->
     <record id="hr_attendance_form_finiquito_filter" model="ir.ui.view">
         <field name="name">hr.attendance.form.finiquito.filter</field>
         <field name="model">hr.attendance</field>
@@ -291,6 +291,10 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='employee_id']" position="attributes">
                 <attribute name="domain">[('finiquito', '=', False)]</attribute>
+            </xpath>
+            <xpath expr="//field[@name='check_out']" position="after">
+                <field name="project_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                <field name="hourly_wage" invisible="1"/>
             </xpath>
         </field>
     </record>

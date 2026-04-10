@@ -214,6 +214,7 @@ class CrmLead(models.Model):
         for record in self:
             record.req_bases = bool(getattr(record.origen_id, 'bases', False))
             record.origen_name = record.origen_id.name if record.origen_id else False
+            record.nombre_interno = record.name
 
     @api.depends('revert_log_ids')
     def _compute_revert_log_count(self):
@@ -425,7 +426,7 @@ class CrmLead(models.Model):
                                     'Capture el Subtotal, marque como Revisado y luego Autorice.')
 
         if self.stage_name == 'Junta de Apertura de Propuestas':
-            if not self.apertura_acta:
+            if self.apertura_obligatoria and not self.apertura_acta:
                 raise ValidationError('Falta cargar el Acta de la Junta de Apertura de Propuestas.')
 
         if self.stage_name == 'Junta de Fallo':
@@ -1416,8 +1417,7 @@ class CrmLead(models.Model):
             record.budget_ids.unlink()
 
     def _get_or_create_documents_folder(self, tipo):
-        """ Crea/obtiene la estructura de carpetas en Documents
-            CRM / <no_licitacion> / Tecnico o Economico """
+        # Crea/obtiene la estructura de carpetas en Documents CRM / <no_licitacion> / Tecnico o Economico
         self.ensure_one()
         Document = self.env['documents.document']
         # Verificar si el módulo documents está disponible
@@ -1430,7 +1430,11 @@ class CrmLead(models.Model):
             root_folder = Document.create({'name': 'CRM', 'type': 'folder', 'folder_id': False,})
         
         # 2) Carpeta de la licitación
-        lic_name = self.no_licitacion or self.name or 'Sin nombre'
+        if self.origen_name == 'Público':
+            lic_name = self.no_licitacion or self.name or 'Sin nombre'
+        else:
+            lic_name = self.nombre_interno or self.name
+
         lic_folder = Document.search([('name', '=', lic_name), ('type', '=', 'folder'), ('folder_id', '=', root_folder.id)], limit=1)
         if not lic_folder:
             lic_folder = Document.create({'name': lic_name, 'type': 'folder', 'folder_id': root_folder.id})
@@ -1565,11 +1569,18 @@ class CrmLead(models.Model):
         if self.importe_anticipo != 0.00:
             tiene_anticipo = True
 
+        if self.nombre_interno:
+            order_ref = self.nombre_interno
+        elif self.no_licitacion:
+            order_ref = self.no_licitacion
+        else:
+            order_ref = self.name
+
         values = {'company_id': self.company_id.id, 'partner_id': self.partner_id.id, 'partner_invoice_id': self.partner_id.id, 
             'partner_shipping_id': self.partner_id.id, 'currency_id': self.company_id.currency_id.id, 'user_id': self.env.uid, 'name': sequence, 
             'state': 'sent', 'origin': self.no_licitacion or self.name, 'invoice_status': 'to invoice', 'opportunity_id': self.id, 
             'tiene_anticipo': tiene_anticipo, 'anticipo_porcentaje': self.bases_anticipo_porcentaje, 'anticipo_importe': self.importe_anticipo, 
-            'client_order_ref': self.no_licitacion or self.name, 'order_line': order_lines}
+            'client_order_ref': order_ref, 'order_line': order_lines}
         orders.append(values)
         return orders
 

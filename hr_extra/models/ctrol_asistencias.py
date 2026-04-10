@@ -347,6 +347,7 @@ class CtrolAsistencias(models.Model):
                 return (False, f'Salida sin entrada previa | Employee: {employee.name} | Fecha local: {local_dt}')
             if check_date_utc <= open_attendance.check_in:
                 return (False, f'Salida debe ser posterior a entrada | Check-in: {open_attendance.check_in} | Check-out intentado: {check_date_utc}')
+            
             try:
                 open_attendance.write({'check_out': check_date_utc, 'out_latitude': self.latitude or 0.0, 'out_longitude': self.longitude or 0.0,})
                 worked_hours = open_attendance.worked_hours
