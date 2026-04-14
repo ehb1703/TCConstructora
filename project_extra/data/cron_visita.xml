@@ -35,31 +35,11 @@
         </record>
   
 
-        <record id="cron_refrendo_alerta_minimo" model="ir.cron">
-            <field name="name">Alerta Refrendo - Días mínimos configurados</field>
+        <record id="cron_refrendo_alertas" model="ir.cron">
+            <field name="name">Alertas de Vencimiento de Refrendos</field>
             <field name="model_id" ref="project_extra.model_crm_refrendo"/>
             <field name="state">code</field>
-            <field name="code">model.cron_send_refrendo_alerta_minimo()</field>
-            <field name="interval_number">1</field>
-            <field name="interval_type">days</field>
-            <field name="active">True</field>
-        </record>
-
-        <record id="cron_refrendo_alerta_10dias" model="ir.cron">
-            <field name="name">Alerta Refrendo - 10 días</field>
-            <field name="model_id" ref="project_extra.model_crm_refrendo"/>
-            <field name="state">code</field>
-            <field name="code">model.cron_send_refrendo_alerta_10dias()</field>
-            <field name="interval_number">1</field>
-            <field name="interval_type">days</field>
-            <field name="active">True</field>
-        </record>
-
-        <record id="cron_refrendo_alerta_vencimiento" model="ir.cron">
-            <field name="name">Alerta Refrendo - Día de vencimiento</field>
-            <field name="model_id" ref="project_extra.model_crm_refrendo"/>
-            <field name="state">code</field>
-            <field name="code">model.cron_send_refrendo_alerta_vencimiento()</field>
+            <field name="code">model.cron_send_refrendo_alertas()</field>
             <field name="interval_number">1</field>
             <field name="interval_type">days</field>
             <field name="active">True</field>

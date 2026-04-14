@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
 from datetime import date
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class CrmRefrendo(models.Model):
     _name = 'crm.refrendo'
@@ -48,7 +51,7 @@ class CrmRefrendo(models.Model):
             else:
                 rec.dias_vencimiento = 0
 
-    @api.depends('dias_vencimiento')
+    @api.depends('fecha_vigencia')
     def _compute_estatus(self):
         min_dias = int(self.env['ir.config_parameter'].sudo().get_param(
             'project_extra.refrendo_min_dias', default=90))
@@ -74,20 +77,20 @@ class CrmRefrendo(models.Model):
 
 
     @api.model
-    def cron_send_refrendo_alerta_minimo(self):
+    def cron_send_refrendo_alertas(self):
         min_dias = int(self.env['ir.config_parameter'].sudo().get_param('project_extra.refrendo_min_dias', default=90))
-        registros = self.search([('dias_vencimiento', '=', min_dias)])
-        self._send_alerta(registros)
-
-    @api.model
-    def cron_send_refrendo_alerta_10dias(self):
-        registros = self.search([('dias_vencimiento', '=', 10)])
-        self._send_alerta(registros)
-
-    @api.model
-    def cron_send_refrendo_alerta_vencimiento(self):
-        registros = self.search([('dias_vencimiento', '=', 0)])
-        self._send_alerta(registros)
+        hoy = date.today()
+        todos = self.search([('fecha_vigencia', '!=', False)])
+        for rec in todos:
+            dias = (rec.fecha_vigencia - hoy).days
+            if dias == min_dias - 1:
+                self._send_alerta(rec)
+            elif 0 < dias < min_dias - 1:
+                dias_desde_inicio = min_dias - 1 - dias
+                if dias_desde_inicio % 15 == 0:
+                    self._send_alerta(rec)
+            elif dias == 0:
+                self._send_alerta(rec)
 
 
 class CrmRefrendoLinea(models.Model):

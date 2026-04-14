@@ -60,6 +60,14 @@ class HrJob(models.Model):
 
     descripcion_puesto = fields.Text(string='Descripción del puesto')
 
+    @api.constrains('name')
+    def _check_name(self):
+        for record in self:
+            if record.name:
+                res = self.search([('name','=',record.name),('id','!=',record.id)])
+                if res:
+                    raise ValidationError(_('El puesto de trabajo debe de ser unico'))
+
 
 class HrSalarioMinimo(models.Model):
     _name = 'hr.salario.minimo'

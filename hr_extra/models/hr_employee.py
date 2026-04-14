@@ -767,6 +767,25 @@ class HrPayslipInherit(models.Model):
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
 
 
+class HrPayslipEmployeesFiniquitoFilter(models.TransientModel):
+    _inherit = 'hr.payslip.employees'
+
+    def _get_available_contracts_domain(self):
+        employee = self.env['hr.employee'].search([('user_id','=',self.env.user.id)])
+        if employee:
+            if employee.encargado_nomina == 'quincenal':
+                return [('contract_ids.state', 'in', ('open', 'close')), ('company_id', '=', self.env.company.id), ('finiquito', '=', False), 
+                    ('contract_ids.schedule_pay', '=', 'bi-weekly')]
+            elif employee.encargado_nomina == 'semanal':
+                return [('contract_ids.state', 'in', ('open', 'close')), ('company_id', '=', self.env.company.id), ('finiquito', '=', False), 
+                    ('contract_ids.schedule_pay', '=', 'weekly')]
+            elif employee.encargado_nomina == 'ambas':
+                return [('contract_ids.state', 'in', ('open', 'close')), ('company_id', '=', self.env.company.id), ('finiquito', '=', False), 
+                    ('contract_ids.schedule_pay', 'in', ['weekly', 'bi-weekly'])]
+        
+        return [('contract_ids.state', 'in', ('open', 'close')), ('company_id', '=', self.env.company.id), ('finiquito', '=', False)]
+
+
 class HrWorkEntryEncargadoFilter(models.Model):
     _inherit = 'hr.work.entry'
 
@@ -859,3 +878,13 @@ class HrPayslipWorkedDaysInherit(models.Model):
                     worked_days.amount = daily_rate * worked_days.number_of_days if worked_days.is_paid else 0
             else:
                 worked_days.amount = worked_days.payslip_id.contract_id.contract_wage * worked_days.number_of_hours / (worked_days.payslip_id._get_regular_worked_hours() or 1) if worked_days.is_paid else 0
+
+
+class HrPayslipProject(models.Model):
+    _name = 'hr.payslip.project'
+    _description = 'Salario por obra'
+    
+    payslip_id = fields.Many2one('hr.payslip', string='Payslip', required=True)
+    project_id = fields.Many2one('project.project', string='Nombre de la obra', required=True)
+    importe = fields.Float(string='Salario')
+

@@ -43,17 +43,17 @@
                     <group>
                         <field name="employee_domain" invisible="1"/>
                         <group>
-                            <field name="tipo_tramite"/>
+                            <field name="tipo_tramite" readonly="state == 'aprobado'"/>
                         </group>
                         <group>
-                            <field name="fecha_aplicacion" required="tipo_tramite in ['alta', 'baja']"/>
-                            <field name="departure_reason_id" invisible="tipo_tramite != 'baja'"/>
+                            <field name="fecha_aplicacion" required="tipo_tramite in ['alta', 'baja']" readonly="state == 'aprobado'"/>
+                            <field name="departure_reason_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}" invisible="tipo_tramite != 'baja'" readonly="state == 'aprobado'"/>
                         </group>
                         <group>    
-                            <field name="employee_id" invisible="tipo_tramite == 'alta'" required="tipo_tramite != 'alta'" options="{'no_open':True, 'no_create':True, 'no_edit':True}" context="{'special_display':True}" domain="employee_domain"/>
-                            <field name="nombre" readonly="tipo_tramite != 'alta'" force_save="1"/>
-                            <field name="apellido_paterno" readonly="tipo_tramite != 'alta'" force_save="1"/>
-                            <field name="apellido_materno" readonly="tipo_tramite != 'alta'" force_save="1"/>
+                            <field name="employee_id" invisible="tipo_tramite == 'alta'" required="tipo_tramite != 'alta'" options="{'no_open':True, 'no_create':True, 'no_edit':True}" context="{'special_display':True}" domain="employee_domain" readonly="state == 'aprobado'"/>
+                            <field name="nombre" readonly="tipo_tramite != 'alta' or state == 'aprobado'" force_save="1"/>
+                            <field name="apellido_paterno" readonly="tipo_tramite != 'alta' or state == 'aprobado'" force_save="1"/>
+                            <field name="apellido_materno" readonly="tipo_tramite != 'alta' or state == 'aprobado'" force_save="1"/>
                             <field name="genero" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
                         </group>
                         <group>
@@ -61,36 +61,36 @@
                             <field name="ciudad_nacimiento" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
                             <field name="nss" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
                             <field name="rfc" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
-                            <field name="curp" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1" required="tipo_tramite == 'alta'"/>
+                            <field name="curp" required="tipo_tramite in ['alta', 'actualizacion']" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
                         </group>
                         <group string="Dirección" invisible="tipo_tramite in ['baja', 'rehabilitacion']">
                             <field name="calle" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
                             <field name="colonia" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
                             <field name="codigo_postal" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
                             <field name="estado_id" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
-                            <field name="municipio_id" domain="[('state_id','=',estado_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}" force_save="1"/>
+                            <field name="municipio_id" domain="[('state_id','=',estado_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}" force_save="1" readonly="state == 'aprobado'"/>
                         </group>
                         <group string="Método de pago" invisible="tipo_tramite in ['baja', 'rehabilitacion', 'actualizacion']">
-                            <field name="res_bank" readonly="tipo_tramite != 'alta'" options="{'no_open':True, 'no_create':True, 'no_edit':True}" force_save="1"/>
-                            <field name="notarjeta" readonly="tipo_tramite != 'alta'" force_save="1"/>
-                            <field name="clabe" readonly="tipo_tramite != 'alta'" force_save="1"/>
-                            <field name="nocuenta" readonly="tipo_tramite != 'alta'" force_save="1"/>
+                            <field name="res_bank" readonly="tipo_tramite != 'alta' or state == 'aprobado'" options="{'no_open':True, 'no_create':True, 'no_edit':True}" force_save="1"/>
+                            <field name="notarjeta" readonly="tipo_tramite != 'alta' or state == 'aprobado'" force_save="1"/>
+                            <field name="clabe" readonly="tipo_tramite != 'alta' or state == 'aprobado'" force_save="1"/>
+                            <field name="nocuenta" readonly="tipo_tramite != 'alta' or state == 'aprobado'" force_save="1"/>
                             <field name="type_pay" invisible="state == 'draft'" groups="requisition_residents.group_requisition_admin"/>
                         </group>
                         <group string="Contrato" colspan="2" invisible="tipo_tramite in ['baja', 'rehabilitacion', 'actualizacion']">
                             <group>
-                                <field name="company_id" invisible="state == 'draft'" groups="requisition_residents.group_requisition_admin" required="tipo_tramite in ['alta', 'rehabilitacion']" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
-                                <field name="project_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}" required="tipo_tramite in ['alta', 'rehabilitacion']"/>
-                                <field name="job_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}" required="tipo_tramite in ['alta', 'rehabilitacion']"/>
+                                <field name="company_id" invisible="state == 'draft'" groups="requisition_residents.group_requisition_admin" required="tipo_tramite in ['alta', 'rehabilitacion']" options="{'no_open':True, 'no_create':True, 'no_edit':True}" readonly="state == 'aprobado'"/>
+                                <field name="project_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}" required="tipo_tramite in ['alta', 'rehabilitacion']" readonly="state == 'aprobado'"/>
+                                <field name="job_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}" required="tipo_tramite in ['alta', 'rehabilitacion']" readonly="state == 'aprobado'"/>
                             </group>
                             <group>
-                                <field name="resource_calendar_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}" required="tipo_tramite in ['alta', 'rehabilitacion']"/>
-                                <field name="salary" invisible="state == 'draft'" required="tipo_tramite in ['alta', 'rehabilitacion']"/>
+                                <field name="resource_calendar_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}" required="tipo_tramite in ['alta', 'rehabilitacion']" readonly="state == 'aprobado'"/>
+                                <field name="salary" invisible="state == 'draft'" required="tipo_tramite in ['alta', 'rehabilitacion']" readonly="state == 'aprobado'"/>
                             </group>
                         </group>
                     </group>
                     <group>
-                        <field name="observaciones" string="Observaciones"/>
+                        <field name="observaciones" string="Observaciones" readonly="state == 'aprobado'"/>
                     </group>
                 </sheet>
                 <chatter/>

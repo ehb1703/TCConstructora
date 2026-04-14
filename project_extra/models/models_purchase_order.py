@@ -13,6 +13,7 @@ class purchaseOrderInherit(models.Model):
             string='Tipo de movimiento')
     empresa_solicitante = fields.Many2one('res.partner', string='Empresa solicitante', compute='_compute_empresa_solicitante', store=False)
     bitacora_ids = fields.One2many('purchase.order.bitacora', 'order_id', string='Bitácora')
+    folder_id = fields.Many2one('documents.document', string='Carpeta de documentos', readonly=True)
 
     STATES_LABELS = {'draft': 'Solicitud de cotización', 'sent': 'Solicitud de cotización enviada', 'purchase': 'Orden de compra', 'done': 'Bloqueado',
         'cancel': 'Cancelado'}
@@ -83,6 +84,41 @@ class purchaseOrderInherit(models.Model):
                     all_paid = all(inv.payment_state == 'paid' for inv in invoices)
                     if all_paid and not order.lead_id.bases_pagado:
                         order.lead_id.sudo().write({'bases_pagado': True})
+
+    def _get_or_create_folder(self, parent_id, name):
+        folder = self.env['documents.document'].sudo().search([('type', '=', 'folder'), ('name', '=', name), ('folder_id', '=', parent_id),], limit=1)
+        if not folder:
+            folder = self.env['documents.document'].sudo().create({'name':name, 'type':'folder', 'folder_id':parent_id,})
+        return folder
+
+    def _crear_carpeta_documentos(self):
+        for order in self:
+            compras_folder = self.env['documents.document'].sudo().search([('type', '=', 'folder'), ('name', '=', 'COMPRAS'), ('folder_id', '=', False),], 
+                limit=1)
+            if not compras_folder:
+                compras_folder = self.env['documents.document'].sudo().create({'name': 'COMPRAS', 'type': 'folder', 'folder_id': False})
+
+            order_folder = self._get_or_create_folder(compras_folder.id, order.name)
+            self._get_or_create_folder(order_folder.id, 'FACTURAS')
+            order.sudo().write({'folder_id': order_folder.id})
+
+
+    def button_confirm(self):
+        res = super().button_confirm()
+        self._crear_carpeta_documentos()
+        return res
+
+    def action_ver_documentos(self):
+        self.ensure_one()
+        if not self.folder_id:
+            self._crear_carpeta_documentos()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Documentos',
+            'res_model': 'documents.document',
+            'view_mode': 'list,form',
+            'domain': [('folder_id', 'child_of', self.folder_id.id)],
+            'context': {'default_folder_id': self.folder_id.id},}
 
     def write(self, vals):
         old_states = {order.id: order.state for order in self} if 'state' in vals else {}

@@ -79,16 +79,10 @@
                 <field name="dependencia_id"/>
                 <field name="razon_social_id"/>
                 <field name="responsable_id"/>
-                <separator/>
-                <filter string="Vigentes" name="vigentes" domain="[('estatus', '=', 'VIGENTE')]"/>
-                <filter string="Por Vencer" name="por_vencer" domain="[('estatus', '=', 'POR VENCER')]"/>
-                <filter string="Vencidos" name="vencidos" domain="[('estatus', '=', 'VENCIDO')]"/>
-                <separator/>
                 <filter string="Disponibles" name="disponibles" domain="[('disponible', '=', True)]"/>
                 <group expand="0" string="Agrupar Por">
                     <filter string="Dependencia" name="group_dependencia" context="{'group_by': 'dependencia_id'}"/>
                     <filter string="Razón Social" name="group_razon_social" context="{'group_by': 'razon_social_id'}"/>
-                    <filter string="Estatus" name="group_estatus" context="{'group_by': 'estatus'}"/>
                 </group>
             </search>
         </field>
