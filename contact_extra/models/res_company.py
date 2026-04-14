@@ -25,6 +25,23 @@ class respartnerCurp(models.Model):
     nombre = fields.Char(string='Nombre(s)', tracking=True)
     country_id = fields.Many2one('res.country', string='País', default=lambda self: self.env.company.country_id)
 
+    @api.constrains('vat')
+    def valida_rfc(self):       
+        for x in self:
+            generico = 'XAXX010101000'
+            if x.nacionalidad:
+                if x.nacionalidad.upper() != 'MEXICANA':
+                    generico = 'XEXX010101000'
+
+            if x.vat:
+                res = self.search([('vat','=',x.vat),('id','!=',x.id),('vat','!=',generico)])
+                if res:
+                    raise ValidationError("El RFC ya esta registrado, favor de revisar")
+            else:
+                if x.is_company:
+                    raise ValidationError("El campo de RFC es requerido para el tipo de persona capturado")
+
+
     @api.model
     def default_get(self, fields_list):
         """ Override para forzar las cuentas contables correctas al crear un nuevo contacto. 

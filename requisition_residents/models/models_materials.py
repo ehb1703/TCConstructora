@@ -81,10 +81,11 @@ class requisitionMaterials(models.Model):
 
     def action_confirm(self):
         for rec in self.line_ids:
-            if not rec.supplier_id:
+            if not rec.supplier_ids:
                 raise UserError('No se ha capturado información del proveedor')
 
-        self.env.cr.execute('SELECT supplier_id FROM requisition_materials_line rml WHERE rml.REQ_ID = ' + str(self.id) + ' GROUP BY 1')
+        self.env.cr.execute('''SELECT rel.supplier_id FROM requisition_materials_line rml JOIN materials_supplier_rel rel ON rml.ID = rel.MATERIALS_ID 
+            WHERE rml.REQ_ID = ''' + str(self.id) + ' GROUP BY 1')
         supplier = self.env.cr.dictfetchall()
         for rec in supplier:
             supplier_id = self.env['res.partner'].search([('id','=',rec['supplier_id'])])
@@ -107,12 +108,13 @@ class requisitionMaterials(models.Model):
         sequence = self.env['ir.sequence'].next_by_code('purchase.order')
         origin = 'Materiales - ' + self.name
 
-        for rec in self.line_ids.filtered(lambda u: u.supplier_id.id == supplier.id):
-            taxes = rec.product_id.supplier_taxes_id._filter_taxes_by_company(self.company_id)
-            lines = {'name': rec.product_id.name, 'product_uom': rec.product_uom_id.id, 'product_id': rec.product_id.id, 'partner_id': rec.supplier_id.id, 
-                'company_id': self.env.user.company_id.id, 'currency_id': rec.product_id.currency_id.id, 'state': 'draft', 'product_qty': rec.product_qty, 
-                'price_unit': 0, 'taxes_id': fpos.map_tax(taxes)}
-            order_lines.append((0, 0, lines))
+        for rec in self.line_ids:
+            if supplier.id in rec.supplier_ids.ids:
+                taxes = rec.product_id.supplier_taxes_id._filter_taxes_by_company(self.company_id)
+                lines = {'name': rec.product_id.name, 'product_uom': rec.product_uom_id.id, 'product_id': rec.product_id.id, 'partner_id': supplier.id, 
+                    'company_id': self.env.user.company_id.id, 'currency_id': rec.product_id.currency_id.id, 'state': 'draft', 'product_qty': rec.product_qty, 
+                    'price_unit': 0, 'taxes_id': fpos.map_tax(taxes)}
+                order_lines.append((0, 0, lines))
 
         values = {'materials_id': self.id, 'name': sequence, 'partner_id': supplier.id, 'company_id': self.env.user.company_id.id, 'origin': origin, 
             'currency_id': self.env.user.company_id.currency_id.id, 'user_id': self.env.uid, 'state': 'draft', 'invoice_status': 'no', 'type_purchase': 'mat', 
@@ -138,7 +140,7 @@ class requisitionMaterialsLine(models.Model):
     product_id = fields.Many2one(comodel_name='product.product', string='Material', change_default=True, ondelete='restrict', 
         domain="[('purchase_ok', '=', True)]")
     product_uom_id = fields.Many2one(related='product_id.uom_id', string='UdM')
-    supplier_id = fields.Many2one('res.partner', string='Proveedor',  domain="[('is_supplier','=',True)]",)
+    supplier_ids = fields.Many2many('res.partner', 'materials_supplier_rel', 'materials_id', 'supplier_id', string='Proveedor',  domain="[('is_supplier','=',True)]",)
 
 
 class purchaseOrderInherit(models.Model):

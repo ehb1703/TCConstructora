@@ -11,6 +11,14 @@
         <field name="model">purchase.order</field>
         <field name="inherit_id" ref="purchase.purchase_order_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_ver_documentos" type="object" class="oe_stat_button" icon="fa-file">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Documentos</span>
+                    </div>
+                </button>
+            </xpath>
+
             <xpath expr="//header/button[@name='button_draft']" position="after">
                 <button name="action_comparativo" type="object" string="Comparativo" class="btn-secondary" invisible="state != 'sent' or type_purchase != 'ins'"/>
             </xpath>

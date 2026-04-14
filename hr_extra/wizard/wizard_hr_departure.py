@@ -6,9 +6,9 @@ class HrDepartureWizard(models.TransientModel):
     _inherit = 'hr.departure.wizard'
     
     def action_register_departure(self):
-        employee = self.employee_id
+        employee = self.employee_id.sudo()
         if employee.state == 'activo':
-            current_contract = self.sudo().employee_id.contract_id
+            current_contract = employee.contract_id
             if current_contract and current_contract.date_start > self.departure_date:
                 raise UserError(_('La fecha de salida no puede ser anterior a la fecha de inicio del contrato actual.'))
 
@@ -17,7 +17,7 @@ class HrDepartureWizard(models.TransientModel):
             elif self.departure_reason_id.name.upper() in ['DESPEDIDO', 'RENUNCIA']:
                 description = 'baja'
             elif self.departure_reason_id.name.upper() in ['ENFERMEDAD']:
-                description = 'incapacidad' 
+                description = 'incapacidad'
             else:
                 description = 'permiso'
 
@@ -28,9 +28,9 @@ class HrDepartureWizard(models.TransientModel):
 
             if description in ('baja', 'pensionado'):
                 if self.set_date_end:
-                    self.sudo().employee_id.contract_ids.filtered(lambda c: c.state == 'draft').write({'state': 'cancel'})
+                    employee.contract_ids.filtered(lambda c: c.state == 'draft').write({'state': 'cancel'})
                     if current_contract and current_contract.state in ['open', 'draft']:
-                        self.sudo().employee_id.contract_id.write({'date_end': self.departure_date})
+                        current_contract.write({'date_end': self.departure_date})
                     if current_contract.state == 'open':
                         current_contract.state = 'close'
 
@@ -38,9 +38,9 @@ class HrDepartureWizard(models.TransientModel):
                     self._free_campany_car()
 
                 if self.unassign_equipment:
-                    self.employee_id.update({'equipment_ids': [Command.unlink(equipment.id) for equipment in self.employee_id.equipment_ids]})
+                    employee_id.update({'equipment_ids': [Command.unlink(equipment.id) for equipment in self.employee_id.equipment_ids]})
 
-                for rec in self.employee_id.obra_ids.filtered(lambda c: not c.fecha_fin):
+                for rec in employee.obra_ids.filtered(lambda c: not c.fecha_fin):
                     rec.update({'fecha_fin': self.departure_date})
                     if not rec.fecha_inicio:
                         rec.update({'fecha_inicio': self.departure_date})

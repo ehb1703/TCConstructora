@@ -259,6 +259,17 @@
         </field>
     </record>
 
+    <record id="hr_employee_curp_attributes" model="ir.ui.view">
+        <field name="name">hr.employee.curp.attributes</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="l10n_mx_hr.hr_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='l10n_mx_curp']" position="attributes">
+                <attribute name="required">True</attribute>
+            </xpath>
+        </field>
+    </record>
+
     <!-- Filtro finiquito=False en Permisos > Gestión > Permisos (campo employee_id) -->
     <record id="hr_leave_form_finiquito_filter" model="ir.ui.view">
         <field name="name">hr.leave.form.finiquito.filter</field>
