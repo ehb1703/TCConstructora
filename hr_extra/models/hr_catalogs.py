@@ -55,7 +55,7 @@ class HrContractEmpresa(models.Model):
     fecha_fin = fields.Date(string='Fecha Final')
 
 
-class HrJob(models.Model):
+class HrJobInherit(models.Model):
     _inherit = 'hr.job'
 
     descripcion_puesto = fields.Text(string='Descripción del puesto')

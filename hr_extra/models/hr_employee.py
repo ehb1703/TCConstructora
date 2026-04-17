@@ -133,9 +133,9 @@ class hrEmployeeInherit(models.Model):
     director_ids = fields.Many2many('hr.employee', 'hr_employee_director_rel', 'employee_id', 'director_id', string='Director/Gerente',
         domain="[('job_id.name', 'ilike', 'Director'), ('state', '!=', 'baja')]")
     parent_id = fields.Many2one('hr.employee', 'Manager', 
-        domain="['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids), ('state', '!=', 'baja')]")
+        domain="['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids), ('finiquito', '=', False)]")
     coach_id = fields.Many2one('hr.employee', 'Coach', 
-        domain="['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids), ('state', '!=', 'baja')]")
+        domain="['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids), ('finiquito', '=', False)]")
     state = fields.Selection(selection=[('activo','Activo'), ('baja','Baja'), ('pensionado','Pensionado'), ('incapacidad','Incapacidad'), ('permiso','Permiso')],
         string='Estado Actual', default='activo', tracking=True)
     finiquito = fields.Boolean(string='Finiquito', default=False, tracking=True)
@@ -151,6 +151,11 @@ class hrEmployeeInherit(models.Model):
         is_admin = self.env.user.has_group('base.group_system')
         for record in self:
             record.is_system_user = is_admin
+
+    def _get_subordinates(self, parents=None):
+        # T0087: Sobreescribir para que el organigrama solo muestre empleados activos.
+        result = super()._get_subordinates(parents=parents)
+        return result.filtered(lambda e: e.state == 'activo')
 
     def _compute_can_number(self):
         can_edit = self.env['ir.config_parameter'].sudo().get_param('hr.registration_active')
@@ -441,6 +446,8 @@ class hrEmployeeInherit(models.Model):
 class hrContractInherit(models.Model):
     _inherit = 'hr.contract'
 
+    employee_id = fields.Many2one('hr.employee', string='Employee', tracking=True, 
+        domain="[('finiquito', '=', False), '|', ('company_id', '=', False), ('company_id', '=', company_id)]", index=True)
     beneficiario_ids = fields.One2many('hr.contract.beneficiario', 'contract_id', string='Beneficiarios')
     total_porcentaje = fields.Integer(string='Total', compute='_compute_total_porcentaje', store=True)
     contract_type_name = fields.Char(string='Tipo de contrato nombre', related='contract_type_id.name', store=False)

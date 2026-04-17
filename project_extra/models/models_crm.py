@@ -214,7 +214,8 @@ class CrmLead(models.Model):
         for record in self:
             record.req_bases = bool(getattr(record.origen_id, 'bases', False))
             record.origen_name = record.origen_id.name if record.origen_id else False
-            record.nombre_interno = record.name
+            if not record.nombre_interno:
+                record.nombre_interno = record.name
 
     @api.depends('revert_log_ids')
     def _compute_revert_log_count(self):
@@ -1054,7 +1055,8 @@ class CrmLead(models.Model):
                 raise ValidationError('Falta agregar el tipo de archivo.')
 
             docto = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',record.id), 
-                ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', ('name','ilike','E02'), ('name','ilike','Economico 2')])
+                ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', '|', '|', ('name','ilike','E02'), ('name','ilike','Economico 2'), 
+                ('name','ilike','ECO 02'), ('name','ilike','PE 1.')])
             if not docto:
                 raise ValidationError('El documento E02 no se encuentra cargado, favor de revisar la documentación.')
 
@@ -1199,7 +1201,8 @@ class CrmLead(models.Model):
                 raise ValidationError('Cargar primero la información del archivo E09.')
 
             docto = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',record.id), 
-                ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', ('name','ilike','E10 B'), ('name','ilike','Economico 10 A')])
+                ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', '|', ('name','ilike','E10 B'), ('name','ilike','Economico 10 A'), 
+                ('name','ilike','ECO 10 B')])
             if not docto:
                 raise ValidationError('El documento E10 no se encuentra cargado, favor de revisar la documentación.')
 
@@ -1324,7 +1327,7 @@ class CrmLead(models.Model):
                 raise ValidationError('Falta agregar el tipo de archivo.')
 
             docto = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',record.id), 
-                ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', ('name','ilike','E09'), ('name','ilike','Economico 9')])
+                ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', '|', ('name','ilike','E09'), ('name','ilike','Economico 9'), ('name','ilike','ECO 09')])
             if not docto:
                 raise ValidationError('El documento E09 no se encuentra cargado, favor de revisar la documentación.')
 
@@ -1519,8 +1522,8 @@ class CrmLead(models.Model):
         if count != 0:
             raise ValidationError('Ya existe una orden de venta.')
 
-        if not self.budget_ids or not self.concept_ids or not self.combo_ids or not self.basico_ids:
-            raise ValidationError('Falta cargar información de los conceptos de trabajo y/o insumos')
+        """if not self.budget_ids or not self.concept_ids or not self.combo_ids or not self.basico_ids:
+            raise ValidationError('Falta cargar información de los conceptos de trabajo y/o insumos') """
 
         count = len(self.budget_ids.filtered(lambda u: not u.budget_id))
         if count != 0:
@@ -1532,13 +1535,13 @@ class CrmLead(models.Model):
         if count[0]['num'] > 0:
             raise ValidationError('Faltan cargar los conceptos de trabajo')
 
-        count = len(self.combo_ids.filtered(lambda u: not u.combo_ex))
+        """count = len(self.combo_ids.filtered(lambda u: not u.combo_ex))
         if count > 1:
             raise ValidationError('Faltan cargar la matriz de insumos de los conceptos')
 
         count = len(self.basico_ids.filtered(lambda u: not u.combo_ex))
         if count > 1:
-            raise ValidationError('Faltan cargar los básicos')
+            raise ValidationError('Faltan cargar los básicos') """
 
         oc_vals = self.get_work_default_values()
         oc_vals_2 = oc_vals[:]

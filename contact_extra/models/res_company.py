@@ -25,23 +25,6 @@ class respartnerCurp(models.Model):
     nombre = fields.Char(string='Nombre(s)', tracking=True)
     country_id = fields.Many2one('res.country', string='País', default=lambda self: self.env.company.country_id)
 
-    @api.constrains('vat')
-    def valida_rfc(self):       
-        for x in self:
-            generico = 'XAXX010101000'
-            if x.nacionalidad:
-                if x.nacionalidad.upper() != 'MEXICANA':
-                    generico = 'XEXX010101000'
-
-            if x.vat:
-                res = self.search([('vat','=',x.vat),('id','!=',x.id),('vat','!=',generico)])
-                if res:
-                    raise ValidationError("El RFC ya esta registrado, favor de revisar")
-            else:
-                if x.is_company:
-                    raise ValidationError("El campo de RFC es requerido para el tipo de persona capturado")
-
-
     @api.model
     def default_get(self, fields_list):
         """ Override para forzar las cuentas contables correctas al crear un nuevo contacto. 
@@ -84,7 +67,30 @@ class respartnerCurp(models.Model):
         else:
             self.name = self.nombre
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        is_company = self.env.context.get('is_company')
+        vat = self.env.context.get('vat')
+        if not vat and is_company:
+            raise ValidationError('El campo de RFC es requerido para el tipo de persona capturado')
+
+        return super().create(vals_list)
+
+
     def write(self, values):
+        if 'is_company' in values:
+            is_company = values.get('is_company')
+        else:
+            is_company = self.is_company
+
+        if 'vat' in values:
+            vat = values.get('vat')
+        else:
+            vat = self.vat
+
+        if is_company and not vat:
+            raise ValidationError('El campo de RFC es requerido para el tipo de persona capturado')
+
         if any(field in values for field in ['name', 'vat', 'curp']):
             empleado = self.env['hr.employee'].search([('work_contact_id', '=', self.id)])
             if empleado:
@@ -99,6 +105,25 @@ class respartnerCurp(models.Model):
                     if values.get('vat') != self.vat:
                         empleado.with_context(syncing_info=True).update({'l10n_mx_rfc': values.get('vat')})
         return super().write(values)
+
+
+    @api.depends('vat', 'company_id', 'company_registry')
+    def _compute_same_vat_partner_id(self):
+        for partner in self:
+            partner_id = partner._origin.id
+            Partner = self.with_context(active_test=False).sudo()
+            domain = [('vat', '=', partner.vat), ('vat', 'not in', ['XAXX010101000', 'XEXX010101000'])]
+            if partner.company_id:
+                domain += [('company_id', 'in', [False, partner.company_id.id])]
+            if partner_id:
+                domain += [('id', '!=', partner_id), '!', ('id', 'child_of', partner_id)]
+
+            should_check_vat = partner.vat and len(partner.vat) != 1
+            partner.same_vat_partner_id = should_check_vat and not partner.parent_id and Partner.search(domain, limit=1)
+            domain = [('company_registry', '=', partner.company_registry), ('company_id', 'in', [False, partner.company_id.id]),]
+            if partner_id:
+                domain += [('id', '!=', partner_id), '!', ('id', 'child_of', partner_id)]
+            partner.same_company_registry_partner_id = bool(partner.company_registry) and not partner.parent_id and Partner.search(domain, limit=1)
 
 
 class rescompanyContacts(models.Model):

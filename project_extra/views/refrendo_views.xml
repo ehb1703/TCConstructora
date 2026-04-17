@@ -36,8 +36,8 @@
                 <sheet>
                     <group>
                         <group string="Información general">
-                            <field name="dependencia_id" options="{'no_create': True}"/>
-                            <field name="razon_social_id" options="{'no_create': True}"/>
+                            <field name="dependencia_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                            <field name="razon_social_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                         </group>
                         <group string="Último refrendo">
                             <field name="disponible" readonly="1"/>
