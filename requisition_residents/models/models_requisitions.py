@@ -371,10 +371,22 @@ class requisitionDestajoLine(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Líneas de Destajo'
 
+    @api.depends('destajo_id')
+    def _compute_domain_product(self):
+        for record in self:
+            params = record._context.get('params')
+            req = params.get('resId')
+            req_id = record.env['requisition.residents'].search([('id','=',req)])
+            sale = req_id.project_id.sudo().reinvoiced_sale_order_id
+            if sale:
+                record.product_domain = json.dumps([('id', 'in', sale.order_line.product_id.product_tmpl_id.ids)])
+            else:
+                record.product_domain = json.dumps([('sale_ok', '=', True)])
+
     destajo_id = fields.Many2one('requisition.destajo', readonly=True)
     fecha = fields.Date(string='Fecha')
-    product_id = fields.Many2one(comodel_name='product.product', string='Concepto', change_default=True, ondelete='restrict', 
-        domain="[('sale_ok', '=', True)]")
+    product_id = fields.Many2one(comodel_name='product.product', string='Concepto', change_default=True, ondelete='restrict')
+    product_domain = fields.Char(readonly=True, store=False, compute=_compute_domain_product)
     product_template_id = fields.Many2one(comodel_name='product.template', string='Product Template', compute='_compute_product_template_id',
         search='_search_product_template_id', domain=[('sale_ok', '=', True)])
     product_uom_id = fields.Many2one(related='product_id.uom_id', depends=['product_id'], string='UdM')
@@ -399,7 +411,7 @@ class requisitionDestajoLine(models.Model):
             if self.fecha > self.destajo_id.req_id.ffinal or self.fecha < self.destajo_id.req_id.finicio:
                 raise ValidationError('La fecha capturada no esta dentro del periodo capturado')
 
-    @api.onchange('largo', 'ancho', 'alto')
+    @api.onchange('price_unit', 'largo', 'ancho', 'alto')
     def onchange_volumenes(self):
         if self.largo > 0 and self.ancho > 0:
             self.area = self.largo * self.ancho

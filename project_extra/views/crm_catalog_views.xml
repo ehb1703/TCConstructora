@@ -123,7 +123,7 @@
                         <group>
                             <field name="code" readonly="1"/>
                             <field name="origen" required="1"/>
-                            <field name="employee_id" invisible="origen == 'externo'" context="{'special_display':True}"/>
+                            <field name="employee_id" invisible="origen == 'externo'" context="{'special_display':True}" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                             <field name="partner_id" invisible="origen == 'interno'"/>
                             <field name="name" readonly="1"/>
                             <field name="especialidad_id" widget="many2many_tags"/>

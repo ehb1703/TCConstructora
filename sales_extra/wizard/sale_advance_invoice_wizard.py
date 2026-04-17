@@ -49,7 +49,6 @@ class SaleAdvanceInvoiceWizard(models.TransientModel):
             res['anticipo_importe_con_iva'] = 0
             res['anticipo_importe_sin_iva'] = 0
             res['anticipo_iva'] = 0
-            
             if sale_order.opportunity_id:
                 opp = sale_order.opportunity_id
                 contrato_ref = opp.contrato_documento_name or opp.name
@@ -65,7 +64,9 @@ class SaleAdvanceInvoiceWizard(models.TransientModel):
                 res['anticipo_iva'] = round(iva, 2)
                 if contrato_ref and '.' in contrato_ref:
                     contrato_ref = contrato_ref.rsplit('.', 1)[0]
+
                 res['contrato_referencia'] = contrato_ref
+
         return res
 
 
@@ -75,27 +76,18 @@ class SaleAdvanceInvoiceWizard(models.TransientModel):
         if self.sale_order_id.factura_anticipo_generada:
             raise UserError(_('Ya se generó una factura de anticipo para esta orden.\n Puede verla en el botón "Facturas" de la orden de venta.'))
         
-        skip_confirmation = self._context.get('skip_confirmation', False)
-        # Si no se debe saltar la confirmación, confirmar la orden
-        """if not skip_confirmation and self.sale_order_id.state == 'draft':
-            self.sale_order_id.with_context(skip_advance_wizard=True).action_confirm() """
-        
-        # Generar la factura de anticipo
+        skip_confirmation = self._context.get('skip_confirmation', False)        
         if self.tiene_anticipo and self.anticipo_importe_sin_iva > 0:
             invoice = self._create_invoices()
             self.sale_order_id.with_context(skip_advance_wizard=True).action_confirm()
-            # return self.sale_order_id.action_view_invoice(invoices=invoice)
 
 
     def action_confirm_without_invoice(self):
         # Solo confirmar la orden de venta sin generar factura
         self.ensure_one()
         skip_confirmation = self._context.get('skip_confirmation', False)
-        
-        if not skip_confirmation and self.sale_order_id.state == 'draft':
+        if not skip_confirmation and self.sale_order_id.state == 'sent':
             self.sale_order_id.with_context(skip_advance_wizard=True).action_confirm()
-        return {'type': 'ir.actions.act_window_close'}
-
 
     def _prepare_down_payment_section_values(self, order):
         return {'product_uom_qty': 0.0, 'order_id': order.id, 'display_type': 'line_section', 'is_downpayment': True, 
@@ -154,11 +146,15 @@ class SaleAdvanceInvoiceWizard(models.TransientModel):
                     for account, distribution in account_distribution.items():
                         line_analytic_distribution.setdefault(account, 0.0)
                         line_analytic_distribution[account] += price_subtotal / line_vals['price_unit'] * distribution
+                
                 line_vals['analytic_distribution'] = line_analytic_distribution
+            
             line_vals['price_unit'] = order.currency_id.round(line_vals['price_unit'] * ratio)
             lines_values.append(line_vals)
             accounts.append(key['account_id'])
+        
         return lines_values, accounts
+
 
     def _get_down_payment_description(self, order):
         self.ensure_one()

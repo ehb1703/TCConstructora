@@ -29,7 +29,7 @@ class requisitionDebt(models.Model):
     def _compute_display_name(self):
         if self._context.get('special_display_name', False):
             for rec in self:
-                rec.display_name = f'Abrir'
+                rec.display_name = f'{rec.amount_total}'
         else:
             for rec in self:
                 rec.display_name = f'{rec.partner_id.name}'

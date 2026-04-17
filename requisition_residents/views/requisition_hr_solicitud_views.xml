@@ -57,17 +57,17 @@
                             <field name="genero" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
                         </group>
                         <group>
-                            <field name="fecha_nacimiento" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
-                            <field name="ciudad_nacimiento" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
-                            <field name="nss" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
-                            <field name="rfc" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
-                            <field name="curp" required="tipo_tramite in ['alta', 'actualizacion']" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
+                            <field name="fecha_nacimiento" readonly="tipo_tramite not in ['alta', 'actualizacion'] or state == 'aprobado'" force_save="1"/>
+                            <field name="ciudad_nacimiento" readonly="tipo_tramite not in ['alta', 'actualizacion'] or state == 'aprobado'" force_save="1"/>
+                            <field name="nss" readonly="tipo_tramite not in ['alta', 'actualizacion'] or state == 'aprobado'" force_save="1"/>
+                            <field name="rfc" readonly="tipo_tramite not in ['alta', 'actualizacion'] or state == 'aprobado'" force_save="1"/>
+                            <field name="curp" required="tipo_tramite in ['alta', 'actualizacion']" readonly="tipo_tramite not in ['alta', 'actualizacion'] or state == 'aprobado'" force_save="1"/>
                         </group>
                         <group string="Dirección" invisible="tipo_tramite in ['baja', 'rehabilitacion']">
-                            <field name="calle" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
-                            <field name="colonia" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
-                            <field name="codigo_postal" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
-                            <field name="estado_id" readonly="tipo_tramite not in ['alta', 'actualizacion']" force_save="1"/>
+                            <field name="calle" readonly="tipo_tramite not in ['alta', 'actualizacion'] or state == 'aprobado'" force_save="1"/>
+                            <field name="colonia" readonly="tipo_tramite not in ['alta', 'actualizacion'] or state == 'aprobado'" force_save="1"/>
+                            <field name="codigo_postal" readonly="tipo_tramite not in ['alta', 'actualizacion'] or state == 'aprobado'" force_save="1"/>
+                            <field name="estado_id" readonly="tipo_tramite not in ['alta', 'actualizacion'] or state == 'aprobado'" force_save="1"/>
                             <field name="municipio_id" domain="[('state_id','=',estado_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}" force_save="1" readonly="state == 'aprobado'"/>
                         </group>
                         <group string="Método de pago" invisible="tipo_tramite in ['baja', 'rehabilitacion', 'actualizacion']">

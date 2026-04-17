@@ -50,3 +50,9 @@ class projectObraInherit(models.Model):
                 self.env.cr.execute("UPDATE hr_employee SET current_project_name = '{}' WHERE current_project_name = '{}' ".format(vals.get('name'), self.name))
 
         super(projectObraInherit, self).write(vals)
+
+
+class crmStageTypeBills(models.Model):
+    _inherit = 'crm.stage'
+    
+    email_ids = fields.Many2many('hr.employee', string='Distribución de correo', domain="[('state', '!=', 'baja'), ('finiquito', '=', False)]")        
