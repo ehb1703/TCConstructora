@@ -71,9 +71,9 @@ class requisitionResidents(models.Model):
             if len(semana) >= 1:
                 self.finicio = None
                 raise ValidationError('La Requisición semanal ya fue generada para la fecha seleccionada.')
-            if self.finicio.weekday() != 2:
+            if self.finicio.weekday() != 0:
                 self.finicio = None
-                raise ValidationError('La requisición debe iniciar en miércoles')
+                raise ValidationError('La requisición debe iniciar en lunes')
 
             self.ffinal = self.finicio + timedelta(days=6)
 
@@ -237,9 +237,9 @@ class requisitionResidents(models.Model):
         if len(semana) >= 1:
             self.finicio = None
             raise ValidationError('La Requisición semanal ya fue generada para la fecha seleccionada.')
-        if self.finicio.weekday() != 2:
+        if self.finicio.weekday() != 0:
             self.finicio = None
-            raise ValidationError('La requisición debe iniciar en miércoles')
+            raise ValidationError('La requisición debe iniciar en lunes')
 
         self.action_resumen()
         # Generar archivo y adjuntarlo
@@ -374,8 +374,15 @@ class requisitionDestajoLine(models.Model):
     @api.depends('destajo_id')
     def _compute_domain_product(self):
         for record in self:
-            params = record._context.get('params')
-            req = params.get('resId')
+            if record.destajo_id.req_id.id:
+                req = record.destajo_id.req_id.id
+            else:
+                params = record._context.get('params')
+                if params != None:
+                    req = params.get('resId')
+                else:
+                    req = None
+                
             req_id = record.env['requisition.residents'].search([('id','=',req)])
             sale = req_id.project_id.sudo().reinvoiced_sale_order_id
             if sale:
