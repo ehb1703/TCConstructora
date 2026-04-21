@@ -18,6 +18,13 @@ class accountInherit(models.Model):
 class partnerBankInherit(models.Model):
     _inherit = 'res.partner.bank'
 
+    bank_name = fields.Char(related='bank_id.name', string='Nombre del Banco', store=False)
     no_tarjeta = fields.Char(string='No. de Tarjeta')
-    type_pay = fields.Selection(selection=[('estrategia','Estrategia'), ('fiscal','Fiscal')],
+    type_pay = fields.Selection(selection=[('estrategia','Estrategia'), ('transferencia','Transferencia'), ('fiscal','Fiscal')],
         string='Tipo', default='estrategia')
+
+    @api.onchange('bank_name')
+    def onchange_bank(self):
+        if self.bank_name:
+            generico = self.env['res.partner'].search([('name', '=', 'ADMINISTRADOR')])
+            self.partner_id = generico.id

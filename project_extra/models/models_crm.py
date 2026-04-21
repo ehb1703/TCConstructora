@@ -99,18 +99,6 @@ class CrmLead(models.Model):
     analista_id = fields.Many2one('crm.analyst', 'Analista', tracking=True)
     economico_operativo_id = fields.Many2one('hr.employee', 'Económico/operativo', tracking=True)
     junta_dudas_notif_auto_sent = fields.Boolean(string='Notif. Automática fecha límite dudas enviada', default=False)
-    # Conceptos de obra
-    doctoconcept_id = fields.Many2one('report.tipodocumento', string='Tipo de documento Catálogo de Conceptos', 
-        domain="[('module_id', '=', 'crm.lead'), ('no_docto', '=', '2')]")
-    doctomatriz_id = fields.Many2one('report.tipodocumento', string='Tipo de documento Matriz', 
-        domain="[('module_id', '=', 'crm.lead'), ('no_docto', '=', '9')]")
-    doctobasicos_id = fields.Many2one('report.tipodocumento', string='Tipo de documento Básicos', 
-        domain="[('module_id', '=', 'crm.lead'), ('no_docto', '=', '10')]")
-    concept_ids = fields.One2many('crm.concept.line', 'lead_id', string='Conceptos de trabajo')
-    budget_ids = fields.One2many('crm.budget.line', 'lead_id', string='Partidas presupestales')
-    combo_ids = fields.One2many('crm.combo.line', 'lead_id', string='Combos')
-    basico_ids = fields.One2many('crm.basico.line', 'lead_id', string='Básicos')
-    relacion_ids = fields.One2many('crm.basico.relacion', 'lead_id', string='Relación básicos')
     # Insumos
     input_ids = fields.One2many('crm.input.line', 'lead_id', string='Insumos')
     input_file = fields.Binary(string='Archivo', attachment=True)
@@ -139,6 +127,20 @@ class CrmLead(models.Model):
     fallo_notif_directores_manual_sent = fields.Boolean(string='Notif. Manual dirección enviada', default=False)
     fallo_acta = fields.Binary(string='Acta de fallo', attachment=True)
     fallo_acta_name = fields.Char(string='Nombre acta de fallo')
+    # Conceptos de obra
+    doctoconcept_id = fields.Many2one('report.tipodocumento', string='Tipo de documento Catálogo de Conceptos', 
+        domain="[('module_id', '=', 'crm.lead'), ('no_docto', '=', '2')]")
+    doctoconcept_nombre = fields.Many2one('documents.document', string='Nombre del archivo', 
+        domain="[('res_model','=','crm.lead'), ('res_id','=',id), ('file_extension','not in',['pdf', 'doc', 'docx'])]")
+    doctomatriz_id = fields.Many2one('report.tipodocumento', string='Tipo de documento Matriz', 
+        domain="[('module_id', '=', 'crm.lead'), ('no_docto', '=', '9')]")
+    doctobasicos_id = fields.Many2one('report.tipodocumento', string='Tipo de documento Básicos', 
+        domain="[('module_id', '=', 'crm.lead'), ('no_docto', '=', '10')]")
+    concept_ids = fields.One2many('crm.concept.line', 'lead_id', string='Conceptos de trabajo')
+    budget_ids = fields.One2many('crm.budget.line', 'lead_id', string='Partidas presupestales')
+    combo_ids = fields.One2many('crm.combo.line', 'lead_id', string='Combos')
+    basico_ids = fields.One2many('crm.basico.line', 'lead_id', string='Básicos')
+    relacion_ids = fields.One2many('crm.basico.relacion', 'lead_id', string='Relación básicos')
     # Ganado
     fecha_limite_firma = fields.Date('Fecha límite de firma')
     fecha_firma = fields.Date('Fecha de firma')
@@ -166,7 +168,8 @@ class CrmLead(models.Model):
     director_estimaciones_pagos = fields.Char(string='Director(a) de estimaciones y pagos', size=100, 
         help='Nombre del director responsable de estimaciones y pagos')
     #Propuesta Técnica y Económica
-    documents_folder_id = fields.Many2one('documents.document', string="Folder", copy=False,domain="[('type', '=', 'folder'), ('shortcut_document_id', '=', False), '|', ('company_id', '=', False), ('company_id', '=', company_id)]",)
+    documents_folder_id = fields.Many2one('documents.document', string="Folder", copy=False,
+        domain="[('type', '=', 'folder'), ('shortcut_document_id', '=', False), '|', ('company_id', '=', False), ('company_id', '=', company_id)]",)
     documents_count = fields.Integer('Documentos', compute='_compute_documents_count', readonly=True)
     documents_count_tecnica = fields.Integer('Docs Técnica', compute='_compute_documents_count', readonly=True)
     documents_count_economica = fields.Integer('Docs Económica', compute='_compute_documents_count', readonly=True)
@@ -1054,11 +1057,9 @@ class CrmLead(models.Model):
             if not record.doctoconcept_id:
                 raise ValidationError('Falta agregar el tipo de archivo.')
 
-            docto = self.env['documents.document'].search([('res_model','=','crm.lead'), ('res_id','=',record.id), 
-                ('file_extension','in',['xlsx', 'xls', 'xlsm']), '|', '|', '|', ('name','ilike','E02'), ('name','ilike','Economico 2'), 
-                ('name','ilike','ECO 02'), ('name','ilike','PE 1.')])
+            docto = self.env['documents.document'].search([('id','=',self.doctoconcept_nombre.id)])
             if not docto:
-                raise ValidationError('El documento E02 no se encuentra cargado, favor de revisar la documentación.')
+                raise ValidationError('El documento no se encuentra cargado, favor de revisar la documentación.')
 
             if record.concept_ids:
                 raise ValidationError('Ya hay información cargada. En caso de ser necesario volver a cargar debe eliminarlos.')
@@ -1534,6 +1535,10 @@ class CrmLead(models.Model):
         count = self.env.cr.dictfetchall()
         if count[0]['num'] > 0:
             raise ValidationError('Faltan cargar los conceptos de trabajo')
+
+        count = len(self.combo_ids.filtered(lambda u: u.combo_ex))
+        if count == 0:
+            raise ValidationError('No hay conceptos cargados')
 
         """count = len(self.combo_ids.filtered(lambda u: not u.combo_ex))
         if count > 1:
