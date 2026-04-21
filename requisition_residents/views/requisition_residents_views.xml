@@ -142,8 +142,8 @@
                             </field>
                         </page>
                         <page string="Nómina">
-                            <field name="nom_ids" widget="one2many_list">
-                                <list create="false" delete="false" editable="bottom" context="{'default_req_id': id}">
+                            <field name="nom_ids" widget="one2many_list" context="{'default_req_id': id}">
+                                <list create="false" delete="false" editable="bottom">
                                     <field name="employee_id" readonly="1" context="{'special_display':True}" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="job_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="salary" sum="salary" readonly="1"/>
@@ -156,7 +156,7 @@
                             <field name="destajo_ids" widget="one2many_list" context="{'default_req_id': id}">
                                 <list create="true" delete="true" edit="true">
                                     <field name="req_id" column_invisible="1"/>
-                                    <field name="destajo_id"/>
+                                    <field name="destajo_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="partner_id"/>
                                     <field name="fuerza"/>
                                     <field name="account_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
@@ -213,8 +213,8 @@
                             </field>
                         </page>
                         <page string="Acarreos">
-                            <field name="acarreo_ids" widget="one2many_list">
-                                <list create="true" delete="true" editable="bottom" context="{'default_req_id': id}">
+                            <field name="acarreo_ids" widget="one2many_list" context="{'default_req_id': id}">
+                                <list create="true" delete="true" edit="bottom">
                                     <!--field name="req_id" column_invisible="1"/-->
                                     <field name="product_template_id" column_invisible="1"/>
                                     <field name="fecha"/>
@@ -233,10 +233,9 @@
                             </field>
                         </page>
                         <page string="Renta de Campamentos">
-                            <field name="campamento_ids" widget="one2many_list">
-                                <list create="true" delete="true" editable="bottom" context="{'default_req_id': id}">
+                            <field name="campamento_ids" widget="one2many_list" context="{'default_req_id': id}">
+                                <list create="true" delete="true" edit="true">
                                     <field name="req_id" column_invisible="1"/>
-                                    <field name="product_template_id" column_invisible="1"/>
                                     <field name="partner_id"/>
                                     <field name="product_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="finicio"/>
@@ -245,9 +244,27 @@
                                     <field name="price"/>
                                     <field name="periodo"/>
                                     <field name="deposito"/>
-                                    <field name="account_id" domain="[('partner_id', '=', partner_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="account_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                 </list>
-                                <form><p>Información no disponible a través de esta vista</p></form>
+                                <form context="{'default_req_id': id}">
+                                    <field name="req_id" invisible="1"/>
+                                    <field name="product_template_id" invisible="1"/>
+                                    <field name="type_pay" invisible="1"/>
+                                    <group>
+                                        <group>
+                                            <field name="finicio"/>
+                                            <field name="ffinal"/>
+                                            <field name="partner_id"/>
+                                            <field name="ocupacion"/>
+                                        </group>
+                                        <group>
+                                            <field name="deposito"/>
+                                            <field name="periodo"/>
+                                            <field name="price"/>
+                                            <field name="account_id" domain="[('partner_id', '=', partner_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                        </group>        
+                                    </group>
+                                </form>
                             </field>
                         </page>
                         <page string="Maquinaria">
@@ -272,38 +289,50 @@
                                         <group>
                                             <field name="sequence"/>
                                             <field name="partner_id"/>
-                                            <field name="maquinaria"/>
-                                            <field name="no_serie"/>
-                                            <field name="finicio"/>
-                                            <field name="ffinal"/>
-                                            <field name="days"/>
-                                            <field name="time_out"/>
+                                            <field name="account_id" domain="[('partner_id', '=', partner_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                         </group>
                                         <group>
-                                            <field name="total_days"/>
-                                            <field name="rmountly"/>
-                                            <field name="amount"/>
-                                            <field name="justification"/>
-                                            <field name="autoriza_id"/>
-                                            <field name="horometro"/>
-                                            <field name="account_id" domain="[('partner_id', '=', partner_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                             <field name="type_pay" invisible="not account_id"/>
+                                            <field name="maquinaria"/>
+                                            <field name="no_serie"/>
                                         </group>        
                                     </group>
-                                    <group>
-                                        <field name="line_ids" widget="one2many_list" nolabel="1">
-                                            <list editable="bottom" create="true" delete="true" context="{'default_maquinaria_id': id}">
-                                                <field name="maquinaria_id" column_invisible="1"/>
-                                                <field name="fecha"/>
-                                                <field name="horometro"/>
-                                                <field name="hrs"/>
-                                                <field name="price"/>
-                                                <field name="amount"/>
-                                                <field name="rendimiento"/>
-                                                <field name="vale"/>
-                                            </list>
-                                        </field>
-                                    </group>
+                                    <notebook>
+                                        <page string="Renta">
+                                            <group>
+                                                <group>
+                                                    <field name="finicio"/>
+                                                    <field name="ffinal"/>
+                                                    <field name="days"/>
+                                                    <field name="time_out"/>
+                                                    <field name="total_days"/>
+                                                </group>
+                                                <group>
+                                                    <field name="rmountly"/>
+                                                    <field name="amount"/>
+                                                    <field name="justification"/>
+                                                    <field name="autoriza_id"/>
+                                                    <field name="horometro"/>
+                                                </group>
+                                            </group>
+                                        </page>
+                                        <page string="Desglose de uso">
+                                            <group>
+                                                <field name="line_ids" widget="one2many_list" context="{'default_maquinaria_id': id}">
+                                                    <list editable="bottom" create="true" delete="true">
+                                                        <field name="maquinaria_id" column_invisible="1"/>
+                                                        <field name="fecha"/>
+                                                        <field name="horometro"/>
+                                                        <field name="hrs"/>
+                                                        <field name="price"/>
+                                                        <field name="amount"/>
+                                                        <field name="rendimiento"/>
+                                                        <field name="vale"/>
+                                                    </list>
+                                                </field>
+                                            </group>
+                                        </page>
+                                    </notebook>
                                 </form>
                             </field>
                         </page>

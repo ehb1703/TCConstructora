@@ -102,18 +102,30 @@ class GenerateRequisitionWizard(models.TransientModel):
         cash = self.env['requisition.residents.line'].search([('req_id','in',self.requisition_ids.ids), ('category','in',['Caja Chica', 'Nómina'])])
         for rec in cash:
             if rec.category == 'Caja Chica':
-                concepto = 'Reposición de Caja Chica'
+                if rec.req_id.employee_id.facil_tarjeta:
+                    destino = rec.req_id.employee_id.facil_tarjeta
+                else:
+                    destino = self.env['res.partner.bank'].search([('bank_name','=','TARJETA FACIL')], limit=1)
+
+                if destino.type_pay == 'estrategia':
+                    tipo = 'EFECTIVO'
+                else:
+                    tipo = destino.type_pay.upper()
+
+                total = rec.amount_untaxed + rec.amount_total
+                lines = {'company_id':rec.req_id.company_id.id, 'project_id':rec.req_id.project_id.id, 'concepto':'Reposición de Caja Chica', 'type_pay':tipo, 
+                    'partner_id':rec.req_id.employee_id.work_contact_id.id, 'fuerza':0, 'adeudo':total, 'account_dest':destino.id}
+                req_lines.append((0, 0, lines))
             else:
                 concepto = rec.category
-
-            if rec.amount_untaxed != 0:
-                lines = {'company_id': rec.req_id.company_id.id, 'project_id': rec.req_id.project_id.id, 'concepto': concepto, 'type_pay': 'EFECTIVO',
-                    'partner_id': rec.req_id.employee_id.work_contact_id.id, 'fuerza': 0, 'adeudo': rec.amount_untaxed}
-                req_lines.append((0, 0, lines))
-            if rec.amount_total != 0:
-                lines = {'company_id': rec.req_id.company_id.id, 'project_id': rec.req_id.project_id.id, 'concepto': concepto, 'type_pay': 'FISCAL',
-                    'partner_id': rec.req_id.employee_id.work_contact_id.id, 'fuerza': 0, 'adeudo': rec.amount_total}
-                req_lines.append((0, 0, lines))
+                if rec.amount_untaxed != 0:
+                    lines = {'company_id':rec.req_id.company_id.id, 'project_id':rec.req_id.project_id.id, 'concepto':concepto, 'type_pay':'EFECTIVO',
+                        'partner_id':rec.req_id.employee_id.work_contact_id.id, 'fuerza':0, 'adeudo':rec.amount_untaxed}
+                    req_lines.append((0, 0, lines))
+                if rec.amount_total != 0:
+                    lines = {'company_id':rec.req_id.company_id.id, 'project_id':rec.req_id.project_id.id, 'concepto':concepto, 'type_pay':'FISCAL',
+                        'partner_id':rec.req_id.employee_id.work_contact_id.id, 'fuerza':0, 'adeudo':rec.amount_total}
+                    req_lines.append((0, 0, lines))
 
         #Adeudo anterior
         consulta = ('''SELECT t1.project_id, rr.company_id, t1.concepto, rd.partner_id, rd.id supplier_id, t1.id, t1.type_pay, rw.name, 
