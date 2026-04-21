@@ -82,3 +82,10 @@ class HrSalarioMinimo(models.Model):
     def get_salario_vigente(self):
         # Retorna el salario mínimo vigente: activo con fecha_alta más reciente.
         return self.search([('active', '=', True)], order='fecha_alta desc, id desc', limit=1)
+
+
+class HrJob(models.Model):
+    _inherit = 'hr.department'
+
+    manager_id = fields.Many2one('hr.employee', string='Manager', tracking=True, 
+        domain="[('finiquito', '=', False), '|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids)]")

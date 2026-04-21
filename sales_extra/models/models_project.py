@@ -70,7 +70,9 @@ class saleOrderLineInherit(models.Model):
             project_only_sol_count = self.env['sale.order.line'].search_count([('order_id', '=', self.order_id.id), 
                 ('product_id.service_tracking', 'in', ['project_only', 'task_in_project']),])
             if project_only_sol_count == 1:
-                values['name'] = '%s - [%s] %s' % (values['name'], self.product_id.default_code, self.product_id.name) if self.product_id.default_code else '%s - %s' % (values['name'], self.product_id.name)
+                values['name'] = '%s - [%s] %s' % (values['name'], self.product_id.default_code, 
+                    self.product_id.name) if self.product_id.default_code else '%s - %s' % (values['name'], self.product_id.name)
+            
             values.update(self._timesheet_create_project_account_vals(self.order_id.project_id))
             if self.order_id.opportunity_id:
                 opp = self.order_id.opportunity_id
@@ -104,7 +106,7 @@ class saleOrderLineInherit(models.Model):
                     'proj_ret_2_millar': opp.bases_ret_2_millar,
                 }
                 values.update(vals_crm)
-            
+
             project = self.env['project.project'].create(values)
             project.cargar_docs()
 

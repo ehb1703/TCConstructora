@@ -111,15 +111,17 @@ class requisitionResidents(models.Model):
                 lines = {'category': 'Nómina', 'relacion': relacion[:-1], 'description': 'Nómina', 'partner_id': self.employee_id.work_contact_id.id, 
                     'fuerza_untaxed': fe, 'amount_untaxed': total, 'fuerza_total': ff, 'amount_total': total_fiscal}
                 req_lines.append((0, 0, lines))
+        
         if self.fuel_ids:
             self.env.cr.execute('''SELECT partner_id, SUM(CASE WHEN ra.type_pay = 'FISCAL' THEN amount ELSE 0 END) fiscal, 
-                    SUM(CASE WHEN ra.type_pay = 'EFECTIVO' THEN amount ELSE 0 END) efectivo
+                    SUM(CASE WHEN ra.type_pay IN ('EFECTIVO', '') OR ra.type_pay IS NULL THEN amount ELSE 0 END) efectivo
                 FROM requisition_fuel ra WHERE req_id = ''' + str(self.id) + ' GROUP BY 1')
             combustible = self.env.cr.dictfetchall()
             for rec in combustible:
                 lines = {'category': 'Combustible', 'description': 'Combustible', 'partner_id': rec['partner_id'], 'amount_untaxed': rec['efectivo'], 
                     'amount_total': rec['fiscal']}
                 req_lines.append((0, 0, lines))
+        
         if self.cash_ids:
             total = 0
             total_fiscal = 0
@@ -152,33 +154,37 @@ class requisitionResidents(models.Model):
                     lines = {'category': 'Caja Chica', 'relacion': relacion[:-1], 'description': 'Reposición de Caja Chica', 
                         'partner_id': self.employee_id.work_contact_id.id, 'amount_untaxed': total, 'amount_total': total_fiscal}
                     req_lines.append((0, 0, lines))
+        
         if self.campamento_ids:
             self.env.cr.execute('''SELECT partner_id, SUM(CASE WHEN ra.type_pay = 'FISCAL' THEN price ELSE 0 END) fiscal, 
-                    SUM(CASE WHEN ra.type_pay = 'EFECTIVO' THEN price ELSE 0 END) efectivo
+                    SUM(CASE WHEN ra.type_pay IN ('EFECTIVO', '') OR ra.type_pay IS NULL THEN price ELSE 0 END) efectivo
                 FROM requisition_campamentos ra WHERE req_id = ''' + str(self.id) + ' GROUP BY 1')
             campamento = self.env.cr.dictfetchall()
             for rec in campamento:
                 lines = {'category': 'Renta', 'description': 'Renta', 'partner_id': rec['partner_id'], 'amount_untaxed': rec['efectivo'], 
                     'amount_total': rec['fiscal']}
                 req_lines.append((0, 0, lines))
+        
         if self.maquinaria_ids:
             self.env.cr.execute('''SELECT partner_id, SUM(CASE WHEN ra.type_pay = 'FISCAL' THEN amount ELSE 0 END) fiscal, 
-                    SUM(CASE WHEN ra.type_pay = 'EFECTIVO' THEN amount ELSE 0 END) efectivo
+                    SUM(CASE WHEN ra.type_pay IN ('EFECTIVO', '') OR ra.type_pay IS NULL THEN amount ELSE 0 END) efectivo
                 FROM requisition_maquinaria ra WHERE req_id = ''' + str(self.id) + ' GROUP BY 1')
             maquinaria = self.env.cr.dictfetchall()
             for rec in maquinaria:
                 lines = {'category': 'Renta', 'description': 'Maquinaria', 'partner_id': rec['partner_id'], 'amount_untaxed': rec['efectivo'], 
                     'amount_total': rec['fiscal']}
                 req_lines.append((0, 0, lines))
+        
         if self.acarreo_ids:
             self.env.cr.execute('''SELECT partner_id, SUM(CASE WHEN ra.type_pay = 'FISCAL' THEN amount ELSE 0 END) fiscal, 
-                    SUM(CASE WHEN ra.type_pay = 'EFECTIVO' THEN amount ELSE 0 END) efectivo 
+                    SUM(CASE WHEN ra.type_pay IN ('EFECTIVO', '') OR ra.type_pay IS NULL THEN amount ELSE 0 END) efectivo 
                 FROM requisition_acarreos ra WHERE req_id = ''' + str(self.id) + ' GROUP BY 1')
             acarreo = self.env.cr.dictfetchall()
             for rec in acarreo:
                 lines = {'category': 'Acarreos', 'description': 'Acarreos', 'partner_id': rec['partner_id'], 'amount_untaxed': rec['efectivo'], 
                     'amount_total': rec['fiscal']}
                 req_lines.append((0, 0, lines))
+        
         if self.destajo_ids:
             self.env.cr.execute('''SELECT pp.nombre, partner_id, SUM(CASE WHEN ra.type_pay = 'FISCAL' THEN amount_total ELSE 0 END) fiscal, 
                     SUM(CASE WHEN ra.type_pay = 'EFECTIVO' THEN amount_total ELSE 0 END) efectivo
@@ -282,7 +288,8 @@ class requisitionResidents(models.Model):
 
 
     def action_confirm(self):
-        c = 0
+        # Se comenta para realizar pruebas
+        """c = 0
         ccamp = len(self.campamento_ids.filtered(lambda u: not u.account_id))
         cmaq = len(self.maquinaria_ids.filtered(lambda u: not u.account_id))
         ccar = len(self.acarreo_ids.filtered(lambda u: not u.account_id))
@@ -290,7 +297,7 @@ class requisitionResidents(models.Model):
         cfuel = len(self.fuel_ids.filtered(lambda u: not u.account_id))
         c = ccamp + cmaq + ccar + cdest
         if c != 0:
-            raise ValidationError('Hay información sin la cuenta bancaria a depositar, favor de revisar.')
+            raise ValidationError('Hay información sin la cuenta bancaria a depositar, favor de revisar.')"""
 
         self.action_resumen()
         self.state = 'aprobado'
@@ -364,6 +371,8 @@ class requisitionDestajo(models.Model):
                     req.type_pay = 'FISCAL'
                 else:
                     req.type_pay = 'EFECTIVO'
+            else:
+                req.type_pay = 'EFECTIVO'
     
 
 class requisitionDestajoLine(models.Model):
@@ -443,12 +452,13 @@ class requisitionAcarreos(models.Model):
     req_id = fields.Many2one('requisition.residents', readonly=True)
     fecha = fields.Date(string='Fecha')
     partner_id = fields.Many2one('res.partner', string='Nombre', tracking=True, 
+        domain="[('is_supplier', '=', True), ('classupplier_id.name', 'ilike', 'ACARREOS')]", 
         default=lambda self: self.env['res.partner'].search([('name','=','ICD transportes, S.A. DE C.V.')]))
     product_id = fields.Many2one(comodel_name='product.product', string='Material', change_default=True, ondelete='restrict', 
         domain="[('purchase_ok', '=', True)]")
     product_template_id = fields.Many2one(comodel_name='product.template', string='Product Template', compute='_compute_product_template_id',
         search='_search_product_template_id', domain=[('purchase_ok', '=', True)])
-    capacidad = fields.Char(string='Capacidad')
+    capacidad = fields.Selection(selection=[('7', '7 m3'), ('14', '14 m3'), ('24', '24 m3')], string='Capacidad')
     origen = fields.Char(string='Origen')
     destino = fields.Char(string='Destino')
     km = fields.Float(string='Km recorrido')
@@ -475,6 +485,8 @@ class requisitionAcarreos(models.Model):
                     req.type_pay = 'FISCAL'
                 else:
                     req.type_pay = 'EFECTIVO'
+            else:
+                req.type_pay = 'EFECTIVO'
 
     @api.onchange('fecha')
     def onchange_fecha(self):
@@ -525,6 +537,8 @@ class requisitionCampamentos(models.Model):
                     req.type_pay = 'FISCAL'
                 else:
                     req.type_pay = 'EFECTIVO'
+            else:
+                req.type_pay = 'EFECTIVO'
 
 
 class requisitionMaquinaria(models.Model):
@@ -546,7 +560,7 @@ class requisitionMaquinaria(models.Model):
     amount = fields.Float(string='Importe')
     justification = fields.Char(string='Justificación del tiempo muerto')
     autoriza_id = fields.Many2one('hr.employee', string='Persona que autoriza renta y precio')
-    line_ids = fields.One2many('requisition.maquinaria.line', 'maquinaria_id')
+    line_ids = fields.One2many('requisition.maquinaria.line', 'maquinaria_id', string='Desglose')
     horometro = fields.Float(string='Horometro Inicial')
     account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
     type_pay = fields.Char(string='Tipo de pago', compute='_compute_type_pay', store=True, readonly=True)
@@ -570,6 +584,8 @@ class requisitionMaquinaria(models.Model):
                     req.type_pay = 'FISCAL'
                 else:
                     req.type_pay = 'EFECTIVO'
+            else:
+                req.type_pay = 'EFECTIVO'
 
 
 class requisitionMaquinariaLine(models.Model):
@@ -603,6 +619,8 @@ class requisitionMaquinariaLine(models.Model):
                     req.type_pay = 'FISCAL'
                 else:
                     req.type_pay = 'EFECTIVO'
+            else:
+                req.type_pay = 'EFECTIVO'
 
     @api.onchange('qty', 'price')
     def onchange_amount(self):
@@ -712,6 +730,8 @@ class requisitionFuel(models.Model):
                     req.type_pay = 'FISCAL'
                 else:
                     req.type_pay = 'EFECTIVO'
+            else:
+                req.type_pay = 'EFECTIVO'
 
     @api.depends('line_ids.amount')
     def _compute_amount(self):
@@ -847,6 +867,7 @@ class requisitionWeeklyLine(models.Model):
     aprobado = fields.Boolean(string='Adeudo aprobado', default=False)
     importe = fields.Float(string='Abono', default='0.0')
     comentarios = fields.Char(string='Comentarios')
+    account_dest = fields.Many2one('res.partner.bank', string='Cuenta a depositar', tracking=True, ondelete='restrict', copy=False)
     accountbank_id = fields.Many2one('requisition.bank.account', string='Cuenta bancaria', domain="[('obsolete', '=', False)]")
     debt_id = fields.Many2one('requisition.debt.line', string='Linea de adeudo')
     state = fields.Selection(related='weekly_id.state', string='Estatus')

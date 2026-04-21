@@ -146,6 +146,8 @@ class hrEmployeeInherit(models.Model):
     can_number = fields.Boolean(compute='_compute_can_number')
     hourly_cost = fields.Monetary(string='Salario por hora', currency_field='currency_id', store=True, readonly=True, compute='_compute_salary')
     is_system_user = fields.Boolean(compute='_compute_is_system_user')
+    facil_tarjeta = fields.Many2one('res.partner.bank', string='Tarjeta facil', tracking=True, ondelete='restrict', copy=False, 
+        domain="[('bank_id.name', '=', 'TARJETA FACIL')]")
 
     def _compute_is_system_user(self):
         is_admin = self.env.user.has_group('base.group_system')
@@ -453,7 +455,8 @@ class hrContractInherit(models.Model):
     contract_type_name = fields.Char(string='Tipo de contrato nombre', related='contract_type_id.name', store=False)
     project_id = fields.Many2one('project.project', string='Obra')
     empresa_contrato_id = fields.Many2one('hr.contract.empresa', string='Empresa para contrato', compute='_compute_empresa_contrato', store=False)
-    wage_type = fields.Selection([('monthly', 'Fixed Wage'), ('hourly', 'Hourly Wage')], compute='_compute_wage_type', store=True, readonly=True)
+    wage_type = fields.Selection(selection=[('monthly', 'Fixed Wage'), ('hourly', 'Hourly Wage')], 
+        compute='_compute_wage_type', store=True, readonly=True)
     daily_wage = fields.Monetary(string='Salario diario')
     work_entry_source = fields.Selection(selection=[('calendar', 'Horario de trabajo'), ('attendance', 'Asistencia'),],
         default='attendance')

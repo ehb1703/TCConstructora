@@ -30,9 +30,13 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='partner_id']" position="before">
                 <field name="no_tarjeta"/>
+                <field name="bank_name" invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='currency_id']" position="after">
                 <field name="type_pay"/>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="invisible">bank_name == 'TARJETA FACIL'</attribute>
             </xpath>
         </field>
     </record>

@@ -112,7 +112,7 @@ class respartnerCurp(models.Model):
         for partner in self:
             partner_id = partner._origin.id
             Partner = self.with_context(active_test=False).sudo()
-            domain = [('vat', '=', partner.vat), ('vat', 'not in', ['XAXX010101000', 'XEXX010101000'])]
+            domain = [('vat', '=', partner.vat), ('vat', 'not in', ['XAXX010101000', 'XEXX010101000']), ('active', '=', True)]
             if partner.company_id:
                 domain += [('company_id', 'in', [False, partner.company_id.id])]
             if partner_id:
