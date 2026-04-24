@@ -103,7 +103,7 @@
                                     <field name="product_template_id" column_invisible="1"/>
                                     <field name="type_pay" column_invisible="1"/>
                                     <field name="product_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
-                                    <field name="partner_id"/>
+                                    <field name="partner_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="amount" string="Importe" sum="amount"/>
                                     <field name="reference"/>
                                     <field name="observaciones"/>
@@ -117,7 +117,7 @@
                                     <group>
                                         <group>
                                             <field name="product_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
-                                            <field name="partner_id"/>
+                                            <field name="partner_id" required="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                             <field name="reference"/>
                                         </group>
                                         <group>
@@ -157,7 +157,7 @@
                                 <list create="true" delete="true" edit="true">
                                     <field name="req_id" column_invisible="1"/>
                                     <field name="destajo_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
-                                    <field name="partner_id"/>
+                                    <field name="partner_id" required="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="fuerza"/>
                                     <field name="account_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="type_pay" invisible="not account_id"/>
@@ -169,8 +169,8 @@
                                     <field name="type_pay" invisible="1"/>
                                     <group>
                                         <group>
-                                            <field name="destajo_id" domain="destajo_domain"/>
-                                            <field name="partner_id"/>
+                                            <field name="destajo_id" domain="destajo_domain" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                            <field name="partner_id" required="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                         </group>
                                         <group>
                                             <field name="account_id" domain="[('partner_id', '=', partner_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
@@ -214,12 +214,11 @@
                         </page>
                         <page string="Acarreos">
                             <field name="acarreo_ids" widget="one2many_list" context="{'default_req_id': id}">
-                                <list create="true" delete="true" edit="bottom">
+                                <list create="true" delete="true" editable="bottom">
                                     <!--field name="req_id" column_invisible="1"/-->
-                                    <field name="product_template_id" column_invisible="1"/>
                                     <field name="fecha"/>
-                                    <field name="partner_id"/>
-                                    <field name="product_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="partner_id" required="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="description"/>
                                     <field name="capacidad"/>
                                     <field name="origen"/>
                                     <field name="destino"/>
@@ -236,7 +235,7 @@
                             <field name="campamento_ids" widget="one2many_list" context="{'default_req_id': id}">
                                 <list create="true" delete="true" edit="true">
                                     <field name="req_id" column_invisible="1"/>
-                                    <field name="partner_id"/>
+                                    <field name="partner_id" required="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="product_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="finicio"/>
                                     <field name="ffinal"/>
@@ -281,6 +280,7 @@
                                     <field name="time_out"/>
                                     <field name="total_days"/>
                                     <field name="rmountly"/>
+                                    <field name="total"/>
                                 </list>
                                 <form>
                                     <field name="req_id" invisible="1"/>
@@ -288,8 +288,9 @@
                                     <group>
                                         <group>
                                             <field name="sequence"/>
-                                            <field name="partner_id"/>
+                                            <field name="partner_id" required="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                             <field name="account_id" domain="[('partner_id', '=', partner_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                            <field name="total"/>
                                         </group>
                                         <group>
                                             <field name="type_pay" invisible="not account_id"/>
@@ -316,6 +317,27 @@
                                                 </group>
                                             </group>
                                         </page>
+                                        <page string="Nómina">
+                                            <field name="nomina_ids" widget="one2many_list" context="{'default_maquinaria_id': id}">
+                                                <list create="true" delete="true" editable="bottom">
+                                                    <field name="partner_id" required="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                                    <field name="hourly_wage"/>
+                                                    <field name="days"/>
+                                                    <field name="salary"/>
+                                                </list>
+                                                <form><p>Información no disponible a través de esta vista</p></form>
+                                            </field>
+                                        </page>
+                                        <page string="Fletes">
+                                            <field name="flete_ids" widget="one2many_list" context="{'default_maquinaria_id': id}">
+                                                <list create="true" delete="true" editable="bottom">
+                                                    <field name="fecha"/>
+                                                    <field name="amount"/>
+                                                    <field name="origen"/>
+                                                    <field name="destino"/>
+                                                </list>
+                                            </field>
+                                        </page>
                                         <page string="Desglose de uso">
                                             <group>
                                                 <field name="line_ids" widget="one2many_list" context="{'default_maquinaria_id': id}">
@@ -329,11 +351,26 @@
                                                         <field name="rendimiento"/>
                                                         <field name="vale"/>
                                                     </list>
+                                                    <form><p>Información no disponible a través de esta vista</p></form>
                                                 </field>
                                             </group>
                                         </page>
                                     </notebook>
                                 </form>
+                            </field>
+                        </page>
+                        <page string="Otros gastos" groups="requisition_residents.group_requisition_authorize,requisition_residents.group_other_bills">
+                            <field name="other_ids" widget="one2many_list" context="{'default_req_id': id}">
+                                <list create="true" delete="true" editable="bottom">
+                                    <field name="product_domain" column_invisible="1"/>
+                                    <field name="type_pay" column_invisible="1"/>
+                                    <field name="product_template_id" column_invisible="1"/>
+                                    <field name="partner_id" required="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="product_id" domain="product_domain" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="amount"/>
+                                    <field name="account_id" domain="[('partner_id', '=', partner_id)]" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
                             </field>
                         </page>
                     </notebook>
@@ -347,7 +384,6 @@
         <field name="name">Generar requisiciones</field>
         <field name="res_model">generate.requisition.wizard</field>
         <field name="view_mode">form</field>
-        <!--field name="view_id" ref="wizard_generate_requisition_form"/-->
         <field name="target">new</field>
     </record>
 

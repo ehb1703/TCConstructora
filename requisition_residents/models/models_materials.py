@@ -32,22 +32,6 @@ class requisitionMaterials(models.Model):
                 vals['employee_id'] = employee.id
         return super().create(vals_list)
 
-    def action_send(self):
-        template = self.env.ref('requisition_residents.mail_tmpl_requisition_materials_solicitud', raise_if_not_found=False)
-        if not template:
-            raise UserError(_('No se encontró la plantilla de correo.'))
-
-        for lead in self:
-            correos = ', '.join(lead._get_emails())
-            template.send_mail(lead.id, force_send=True, email_values={'email_to': correos})
-            if manual:
-                lead.fallo_notif_manual_sent = True
-            else:
-                lead.fallo_notif_auto_sent = True
-
-            lead.message_post(body=_("Se envió notificación de solicitud."))
-
-
     def _post_html(self, title, old_stage=None, new_stage=None):
         parts = [f'<p>{html_escape(title)}</p>']
         if old_stage or new_stage:

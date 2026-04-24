@@ -475,7 +475,7 @@
                             <field name="doctobasicos_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/-->
                         </group>
                         <group>
-                            <field name="doctoconcept_nombre"/>
+                            <field name="doctoconcept_nombre" options="{'no_create':True, 'no_edit':True}"/>
                         </group>
                     </group>
                     <group invisible="stage_name != 'Ganado'">

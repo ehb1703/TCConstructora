@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import fields, models, _
 from odoo.exceptions import ValidationError, UserError
+from odoo.models import Command
 
 class HrDepartureWizard(models.TransientModel):
     _inherit = 'hr.departure.wizard'
@@ -44,3 +45,5 @@ class HrDepartureWizard(models.TransientModel):
                     rec.update({'fecha_fin': self.departure_date})
                     if not rec.fecha_inicio:
                         rec.update({'fecha_inicio': self.departure_date})
+
+                employee.work_contact_id.is_employee = False

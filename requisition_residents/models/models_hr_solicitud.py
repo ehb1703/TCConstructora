@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from odoo.models import Command
 from markupsafe import Markup
 from odoo.tools import html_escape
 import json
@@ -25,9 +26,10 @@ class RequisitionHrSolicitud(models.Model):
 
             for x in employee:
                 if x.name != 'ADMINISTRADOR':
-                    if x.contract_id.schedule_pay == 'weekly':
+                    contrato = x.sudo().contract_id
+                    if contrato.schedule_pay == 'weekly':
                         lista.append(x.id)
-                    elif not x.contract_id:
+                    elif not contrato:
                         lista.append(x.id)
             record.employee_domain = json.dumps([('id', 'in', lista)])
 
@@ -134,12 +136,12 @@ class RequisitionHrSolicitud(models.Model):
                 raise ValidationError('Se debe de capturar al menos un dato de la información bancaria.')
 
         if self.tipo_tramite == 'baja':
-            current_contract = self.employee_id.contract_id
+            current_contract = self.employee_id.sudo().contract_id
             if current_contract and current_contract.date_start > self.fecha_aplicacion:
                 raise ValidationError(_('La fecha de salida no puede ser anterior a la fecha de inicio del contrato actual.'))
 
         if self.tipo_tramite == 'rehabilitacion':
-            current_contract = self.employee_id.contract_id
+            current_contract = self.employee_id.sudo().contract_id
             if current_contract and current_contract.date_end > self.fecha_aplicacion:
                 raise ValidationError(_('La fecha de aplicación debe ser mayor a la fecha de salida del ultimo contrato.'))
 
@@ -185,7 +187,7 @@ class RequisitionHrSolicitud(models.Model):
             else:
                 contact = self.env['res.partner'].create({'apaterno':self.apellido_paterno, 'amaterno':self.apellido_materno, 'nombre':self.nombre, 
                     'street':self.calle, 'street2':self.colonia, 'zip':self.codigo_postal, 'city':self.municipio_id.municipio, 'state_id':self.estado_id.id, 
-                    'country_id':self.estado_id.country_id.id, 'vat':self.rfc, 'curp':self.curp, 'is_company':False, 'name':name})
+                    'country_id':self.estado_id.country_id.id, 'vat':self.rfc, 'curp':self.curp, 'is_company':False, 'name':name, 'is_employee':True})
 
             self.env.cr.execute('SELECT * FROM res_partner_bank rpb WHERE rpb.partner_id = ' + str(contact.id) + ' AND rpb.bank_id = ' + 
                 str(self.res_bank.id) + " AND (rpb.acc_number = '" + str(self.nocuenta) + "' OR rpb.l10n_mx_edi_clabe = '" + str(self.clabe) + 
@@ -221,18 +223,21 @@ class RequisitionHrSolicitud(models.Model):
         if self.tipo_tramite == 'baja':
             self.employee_id.write({'state':'baja', 'departure_reason_id':self.departure_reason_id, 'departure_description':self.observaciones, 
                 'departure_date':self.fecha_aplicacion})
-            current_contract = self.sudo().employee_id.contract_id
-            self.employee_id.contract_ids.filtered(lambda c: c.state == 'draft').write({'state': 'cancel'})
+
+            current_contract = self.employee_id.sudo().contract_id
+            self.employee_id.sudo().contract_ids.filtered(lambda c: c.state == 'draft').write({'state': 'cancel'})
             if current_contract and current_contract.state in ['open', 'draft']:
-                self.employee_id.contract_id.write({'date_end': self.fecha_aplicacion})
-            if current_contract.state == 'open':
-                current_contract.state = 'close'
+                current_contract.sudo().write({'date_end': self.fecha_aplicacion})
+            if current_contract and current_contract.state == 'open':
+                current_contract.sudo().write({'state': 'close'})
             
             self.employee_id.update({'equipment_ids': [Command.unlink(equipment.id) for equipment in self.employee_id.equipment_ids]})
             for rec in self.employee_id.obra_ids.filtered(lambda c: not c.fecha_fin):
                 rec.update({'fecha_fin': self.fecha_aplicacion})
                 if not rec.fecha_inicio:
                     rec.update({'fecha_inicio': self.fecha_aplicacion})
+
+            self.employee_id.work_contact_id.is_employee = False
 
         if self.tipo_tramite == 'rehabilitacion':
             self.employee_id.write({'state':'activo', 'empresa_empleadora':self.company_id, 'job_id':self.job_id.id, 'department_id':depto.id, 
@@ -243,6 +248,7 @@ class RequisitionHrSolicitud(models.Model):
                 'date_start':self.fecha_aplicacion, 'resource_calendar_id':self.resource_calendar_id.id, 'work_entry_source':'attendance', 
                 'structure_type_id':est.id, 'job_id':self.job_id.id, 'department_id':depto.id, 'contract_type_id':type.id, 'project_id':self.project_id.id,
                 'wage_type':'hourly', 'schedule_pay':'weekly', 'state':'open', 'wage':0})
+            self.employee_id.work_contact_id.is_employee = True
 
         if self.tipo_tramite == 'actualizacion':
             emp = {}
