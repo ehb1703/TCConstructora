@@ -3,8 +3,8 @@
     <data>
         <template id="report_hrcontract_obra_template">
             <t t-set="o" t-value="o.with_context(lang=o.employee_id.lang or 'es_MX')"/>
-            <t t-call="web.internal_layout">
-                <div class="page" style="font-family: Arial, sans-serif; font-size: 11pt; text-align: justify;">
+            <t t-call="web.html_container">
+                <div class="page" style="font-family: Arial, sans-serif; font-size: 11pt; text-align: justify; margin: 20mm;">
                     <!-- Representante legal y empresa configurada -->
                     <t t-set="representante" t-value="o.env['company.legal.representative'].search([('company_id','=',o.company_id.id)], limit=1)"/>
                     <t t-set="empresa_conf" t-value="o.env['hr.contract.empresa'].search([('tipo_contrato_id','=',o.contract_type_id.id)], limit=1)"/>
@@ -274,17 +274,6 @@
                             </td>
                         </tr>
                     </table>
-
-                    <div style="margin-top: 30px; text-align: center; font-size: 10pt;">
-                        <t t-esc="empresa_partner.city or ''"/>,
-                        Estado de <t t-esc="empresa_partner.state_id.name if empresa_partner.state_id else ''"/>
-                        a <t t-esc="o.date_start.strftime('%d') if o.date_start else ''"/> de
-                        <t t-esc="mes_espanol"/> de
-                        <t t-esc="o.date_start.strftime('%Y') if o.date_start else ''"/>.
-                        &#160;&#160;&#160;|&#160;&#160;&#160;
-                        Contrato: <t t-esc="o.name or ''"/>
-                    </div>
-
                 </div>
             </t>
         </template>

@@ -41,3 +41,8 @@ access_hr_salario_minimo_manager,hr.salario.minimo.manager,model_hr_salario_mini
 access_hr_employee,access_hr_employee,model_hr_employee,base.group_user,1,0,0,0
 access_wizard_reporte_asistencias_user,wizard.reporte.asistencias.user,model_wizard_reporte_asistencias,hr.group_hr_user,1,1,1,1
 access_wizard_reporte_asistencias_manager,wizard.reporte.asistencias.manager,model_wizard_reporte_asistencias,hr.group_hr_manager,1,1,1,1
+access_purchase_order_hr_manager,purchase.order.hr.manager,purchase.model_purchase_order,hr.group_hr_manager,1,0,0,0
+access_account_move_hr_manager,account.move.hr.manager,account.model_account_move,hr.group_hr_manager,1,0,0,0
+access_account_payment_hr_manager,account.payment.hr.manager,account.model_account_payment,hr.group_hr_manager,1,0,0,0
+access_hr_contract_hr_manager,hr.contract.hr.manager,hr_contract.model_hr_contract,hr.group_hr_manager,1,1,1,0
+access_hr_festivo_masivo_manager,hr.festivo.masivo.manager,model_hr_festivo_masivo,hr_holidays.group_hr_holidays_manager,1,1,1,1

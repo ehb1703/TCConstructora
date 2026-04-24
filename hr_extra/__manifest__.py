@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'HR Extra',
-    'version': '1.1',
+    'version': '1.2',
     'category': 'Human Resources/Payroll',
     'sequence': 290,
     'summary': 'Extensiones de Recursos Humanos para TC Constructora',

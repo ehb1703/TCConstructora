@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models, _
+from odoo import api, fields, models, http, _
 from .hr_employee import _encargado_nomina_extra_domain
 from odoo.exceptions import ValidationError, UserError
 from datetime import date, datetime, timedelta, time
@@ -111,7 +111,7 @@ class HrLeaveExtra(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
-        if self.env.user.name == 'admin':
+        if self.env.user.login == 'admin':
             return super()._search(domain, offset=offset, limit=limit, order=order)
         extra = _encargado_nomina_extra_domain(self.env)
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
@@ -120,7 +120,7 @@ class HrLeaveExtra(models.Model):
 class HrAttendanceEncargadoFilter(models.Model):
     _inherit = 'hr.attendance'
 
-    employee_id = fields.Many2one('hr.employee', string='Empleado', required=True, ondelete='cascade', index=True, group_expand='_read_group_employee_id', 
+    employee_id = fields.Many2one('hr.employee', string='Empleado', required=True, ondelete='cascade', index=True, group_expand='_read_group_employee_id',  
         domain="[('finiquito', '=', False)]")
     checkout_notes = fields.Char(string='Notas de Salida')
     project_id = fields.Many2one('project.project', string='Obra', required=True)
@@ -128,12 +128,18 @@ class HrAttendanceEncargadoFilter(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
-        finiquito_domain = [('employee_id.finiquito', '=', False)]
-        full_domain = list(domain) + finiquito_domain
-        if not self.env.user.name == 'admin':
-            extra = _encargado_nomina_extra_domain(self.env)
-            if extra:
-                full_domain += extra
+        if self.env.user.login == 'admin' or http.request.params.get('model') == 'hr.employee':
+            return super()._search(domain, offset=offset, limit=limit, order=order)
+
+        if self._context.get('special_display', False):
+            full_domain = list(domain)
+        else:
+            finiquito_domain = [('employee_id.finiquito', '=', False)]
+            full_domain = list(domain) + finiquito_domain
+        
+        extra = _encargado_nomina_extra_domain(self.env)
+        if extra:
+            full_domain += extra
         return super()._search(full_domain, offset=offset, limit=limit, order=order)
 
 

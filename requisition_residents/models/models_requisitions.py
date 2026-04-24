@@ -52,6 +52,7 @@ class requisitionResidents(models.Model):
     cash_ids = fields.One2many('requisition.cash', 'req_id', string='Caja Chica')
     fuel_ids = fields.One2many('requisition.fuel', 'req_id', string='Combustible')
     nom_ids = fields.One2many('requisition.nomina', 'req_id', string='Nomina')
+    other_ids = fields.One2many('requisition.other', 'req_id', string='Otros gastos')
     rweekly_id = fields.Many2one('requisition.weekly', readonly=True)
 
     @api.depends('line_ids.amount_untaxed', 'line_ids.amount_total')
@@ -166,8 +167,8 @@ class requisitionResidents(models.Model):
                 req_lines.append((0, 0, lines))
         
         if self.maquinaria_ids:
-            self.env.cr.execute('''SELECT partner_id, SUM(CASE WHEN ra.type_pay = 'FISCAL' THEN amount ELSE 0 END) fiscal, 
-                    SUM(CASE WHEN ra.type_pay IN ('EFECTIVO', '') OR ra.type_pay IS NULL THEN amount ELSE 0 END) efectivo
+            self.env.cr.execute('''SELECT partner_id, SUM(CASE WHEN ra.type_pay = 'FISCAL' THEN ra.total ELSE 0 END) fiscal, 
+                    SUM(CASE WHEN ra.type_pay IN ('EFECTIVO', '') OR ra.type_pay IS NULL THEN ra.total ELSE 0 END) efectivo
                 FROM requisition_maquinaria ra WHERE req_id = ''' + str(self.id) + ' GROUP BY 1')
             maquinaria = self.env.cr.dictfetchall()
             for rec in maquinaria:
@@ -193,6 +194,16 @@ class requisitionResidents(models.Model):
             destajo = self.env.cr.dictfetchall()
             for rec in destajo:
                 lines = {'category': 'Destajo', 'description': rec['nombre'], 'partner_id': rec['partner_id'], 'amount_untaxed': rec['efectivo'], 
+                    'amount_total': rec['fiscal']}
+                req_lines.append((0, 0, lines))
+
+        if self.other_ids:
+            self.env.cr.execute('''SELECT partner_id, SUM(CASE WHEN ro.type_pay = 'FISCAL' THEN amount ELSE 0 END) fiscal, 
+                    SUM(CASE WHEN ro.type_pay = 'EFECTIVO' THEN amount ELSE 0 END) efectivo
+                FROM requisition_other ro WHERE ro.amount != 0 AND req_id = ''' + str(self.id) + ' GROUP BY 1')
+            other = self.env.cr.dictfetchall()
+            for rec in other:
+                lines = {'category': 'Otros Gastos', 'description': 'Otros Gastos', 'partner_id': rec['partner_id'], 'amount_untaxed': rec['efectivo'], 
                     'amount_total': rec['fiscal']}
                 req_lines.append((0, 0, lines))
 
@@ -274,7 +285,7 @@ class requisitionResidents(models.Model):
             str(self.id) + ''' AND (rr.finicio BETWEEN heo.fecha_inicio AND rr.ffinal OR heo.fecha_inicio IS NULL)
             AND NOT EXISTS (SELECT * FROM hr_payslip hp WHERE hp.employee_id = heo.employee_id AND rr.finicio = hp.date_from)''')
         count = self.env.cr.dictfetchall()
-        if count[0][0] != 0:
+        if count[0]['count'] != 0:
             raise ValidationError('Existen empleados a los que les falta generar nómina')
 
         self.env.cr.execute('''SELECT hp.employee_id, he.job_id, hpp.importe 
@@ -454,10 +465,7 @@ class requisitionAcarreos(models.Model):
     partner_id = fields.Many2one('res.partner', string='Nombre', tracking=True, 
         domain="[('is_supplier', '=', True), ('classupplier_id.name', 'ilike', 'ACARREOS')]", 
         default=lambda self: self.env['res.partner'].search([('name','=','ICD transportes, S.A. DE C.V.')]))
-    product_id = fields.Many2one(comodel_name='product.product', string='Material', change_default=True, ondelete='restrict', 
-        domain="[('purchase_ok', '=', True)]")
-    product_template_id = fields.Many2one(comodel_name='product.template', string='Product Template', compute='_compute_product_template_id',
-        search='_search_product_template_id', domain=[('purchase_ok', '=', True)])
+    description = fields.Char(string='Concepto')
     capacidad = fields.Selection(selection=[('7', '7 m3'), ('14', '14 m3'), ('24', '24 m3')], string='Capacidad')
     origen = fields.Char(string='Origen')
     destino = fields.Char(string='Destino')
@@ -468,14 +476,6 @@ class requisitionAcarreos(models.Model):
     account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
     type_pay = fields.Char(string='Tipo de pago', compute='_compute_type_pay', store=True, readonly=True)
     state = fields.Selection(related='req_id.state', string='Estatus')
-
-    @api.depends('product_id')
-    def _compute_product_template_id(self):
-        for line in self:
-            line.product_template_id = line.product_id.product_tmpl_id
-
-    def _search_product_template_id(self, operator, value):
-        return [('product_id.product_tmpl_id', operator, value)]
 
     @api.depends('account_id')
     def _compute_type_pay(self):
@@ -561,10 +561,13 @@ class requisitionMaquinaria(models.Model):
     justification = fields.Char(string='Justificación del tiempo muerto')
     autoriza_id = fields.Many2one('hr.employee', string='Persona que autoriza renta y precio')
     line_ids = fields.One2many('requisition.maquinaria.line', 'maquinaria_id', string='Desglose')
+    nomina_ids = fields.One2many('requisition.maquinaria.nomina', 'maquinaria_id', string='Nómina')
+    flete_ids = fields.One2many('requisition.maquinaria.flete', 'maquinaria_id', string='Fletes')
     horometro = fields.Float(string='Horometro Inicial')
     account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
     type_pay = fields.Char(string='Tipo de pago', compute='_compute_type_pay', store=True, readonly=True)
     state = fields.Selection(related='req_id.state', string='Estatus')
+    total = fields.Float(string='Importe total', compute='_compute_total', store=True, readonly=True)
     
     @api.onchange('days', 'time_out')
     def onchange_days(self):
@@ -586,6 +589,18 @@ class requisitionMaquinaria(models.Model):
                     req.type_pay = 'EFECTIVO'
             else:
                 req.type_pay = 'EFECTIVO'
+
+    @api.depends('amount', 'flete_ids.amount', 'nomina_ids.salary')
+    def _compute_total(self):
+        for req in self:
+            total = req.amount
+            for x in req.nomina_ids:
+                total += x.salary
+
+            for x in req.flete_ids:
+                total += x.amount
+
+            req.total = total
 
 
 class requisitionMaquinariaLine(models.Model):
@@ -626,6 +641,29 @@ class requisitionMaquinariaLine(models.Model):
     def onchange_amount(self):
         if self.qty > 0 and self.price > 0:
             self.amount = self.qty * self.price
+
+class requisitionMaquinariaNomina(models.Model):
+    _name = 'requisition.maquinaria.nomina'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _description = 'Nómina'
+
+    maquinaria_id = fields.Many2one('requisition.maquinaria', readonly=True)
+    partner_id = fields.Many2one('res.partner', string='Empleado', domain=[('is_company', '=', False), ('is_employee', '=', False)])
+    hourly_wage = fields.Float(string='Salario por horas')
+    days = fields.Integer(string='Días trabajados')
+    salary = fields.Float(string='Salario')
+
+
+class requisitionMaquinariaFletes(models.Model):
+    _name = 'requisition.maquinaria.flete'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _description = 'Nómina'
+
+    maquinaria_id = fields.Many2one('requisition.maquinaria', readonly=True)
+    fecha = fields.Date(string='Fecha')
+    amount = fields.Float(string='Importe')
+    origen = fields.Char(string='Origen')
+    destino = fields.Char(string='Destino')
 
 
 class requisitionCash(models.Model):
@@ -705,7 +743,7 @@ class requisitionFuel(models.Model):
         domain="[('purchase_ok', '=', True), ('default_code', '=', 'C00001')]")
     product_template_id = fields.Many2one(comodel_name='product.template', string='Product Template', compute='_compute_product_template_id',
         search='_search_product_template_id', domain=[('purchase_ok', '=', True)])
-    partner_id = fields.Many2one('res.partner', string='Proveedor')
+    partner_id = fields.Many2one('res.partner', string='Proveedor', domain=[('is_supplier', '=', True)])
     reference = fields.Char(string='Referencia')
     observaciones = fields.Char(string='Observaciones')
     amount = fields.Float(string='Monto Gasto', compute='_compute_amount', store=True, readonly=True)
@@ -762,6 +800,32 @@ class requisitionNomina(models.Model):
     salary = fields.Float(string='Salario')
     observaciones = fields.Char(string='Observaciones')
 
+    @api.onchange('employee_id')
+    def onchange_employee(self):
+        if self.employee_id:
+            self.job_id = self.employee_id.job_id
+
+
+class requisitionOther(models.Model):
+    _name = 'requisition.other'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _description = 'Otros gastos'
+
+    @api.depends('req_id')
+    def _compute_domain_product(self):
+        for record in self:
+            record.product_domain = json.dumps([('sale_ok', '=', True)])
+
+    req_id = fields.Many2one('requisition.residents', readonly=True)
+    partner_id = fields.Many2one('res.partner', string='Contacto')
+    product_id = fields.Many2one(comodel_name='product.product', string='Concepto', change_default=True, ondelete='restrict')
+    product_domain = fields.Char(readonly=True, store=False, compute=_compute_domain_product)
+    product_template_id = fields.Many2one(comodel_name='product.template', string='Product Template', compute='_compute_product_template_id',
+        search='_search_product_template_id', domain=[('sale_ok', '=', True)])
+    account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
+    type_pay = fields.Char(string='Tipo de pago', compute='_compute_type_pay', store=True, readonly=True)
+    amount = fields.Float(string='Importe')
+
     @api.depends('product_id')
     def _compute_product_template_id(self):
         for line in self:
@@ -774,6 +838,17 @@ class requisitionNomina(models.Model):
     def onchange_employee(self):
         if self.employee_id:
             self.job_id = self.employee_id.job_id
+
+    @api.depends('account_id')
+    def _compute_type_pay(self):
+        for req in self:
+            if req.account_id:
+                if req.account_id.type_pay == 'fiscal':
+                    req.type_pay = 'FISCAL'
+                else:
+                    req.type_pay = 'EFECTIVO'
+            else:
+                req.type_pay = 'EFECTIVO'        
 
 
 class requisitionWeekly(models.Model):

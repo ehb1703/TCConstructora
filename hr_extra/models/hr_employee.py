@@ -38,21 +38,27 @@ def _get_user_schedule_pay(env):
 def _get_employee_ids_by_schedule(env, enc):
     """IDs de empleados visibles para el encargado de nómina según enc.
     Incluye:
-    - Empleados con contrato activo (open/pending) cuyo schedule_pay coincide con enc
-    - Empleados SIN ningún contrato (para que el encargado pueda crearles uno)
+    - Empleados con contrato activo (open/draft) cuyo schedule_pay coincide con enc
+    - Empleados SIN contrato activo pero del departamento correspondiente:
+        semanal   → PERSONAL DE OPERACIÓN (nómina semanal/obra)
+        quincenal → cualquier otro departamento
     - semanal   → schedule_pay = 'weekly'
     - quincenal → schedule_pay IN ('bi-weekly','monthly','bi_monthly','10_days','14_days','daily') """
     if enc == 'semanal':
         schedule_values = ('weekly',)
         placeholders = '%s'
+        # Sin contrato: solo personal de operación
+        dept_filter = "AND (hd.name->>'en_US' = 'PERSONAL DE OPERACIÓN' OR hd.name->>'es_MX' = 'PERSONAL DE OPERACIÓN')"
     else:
         schedule_values = ('bi-weekly', 'monthly', 'bi_monthly', '10_days', '14_days', 'daily')
         placeholders = ','.join(['%s'] * len(schedule_values))
+        # Sin contrato: cualquier departamento excepto operación
+        dept_filter = "AND (hd.name IS NULL OR (hd.name->>'en_US' != 'PERSONAL DE OPERACIÓN' AND hd.name->>'es_MX' != 'PERSONAL DE OPERACIÓN'))"
 
-    env.cr.execute(f'''SELECT DISTINCT(he.id) FROM hr_employee he WHERE he.active = true
+    env.cr.execute(f'''SELECT DISTINCT(he.id) FROM hr_employee he LEFT JOIN hr_department hd ON hd.id = he.department_id WHERE he.active = true
           AND (
-              EXISTS (SELECT 1 FROM hr_contract hc WHERE hc.employee_id = he.id AND hc.state IN ('open', 'draft') AND hc.schedule_pay IN ({placeholders}))
-              OR NOT EXISTS (SELECT 1 FROM hr_contract hc WHERE hc.employee_id = he.id AND hc.state != 'cancel'))''', schedule_values)
+              EXISTS (SELECT 1 FROM hr_contract hc WHERE hc.employee_id = he.id AND hc.state IN ('open', 'draft', 'close') AND hc.schedule_pay IN ({placeholders}))
+              OR NOT EXISTS (SELECT 1 FROM hr_contract hc WHERE hc.employee_id = he.id AND hc.state != 'cancel') {dept_filter})''', schedule_values)
     return [row[0] for row in env.cr.fetchall()]
 
 
@@ -130,8 +136,6 @@ class hrEmployeeInherit(models.Model):
     obra_ids = fields.One2many('hr.employee.obra', 'employee_id', string='Obras asignadas')
     current_project_name = fields.Char(string='Obra Actual', compute='_compute_current_project', store=True, 
         help='Obra vigente del empleado o "Oficina" si no tiene asignación')
-    director_ids = fields.Many2many('hr.employee', 'hr_employee_director_rel', 'employee_id', 'director_id', string='Director/Gerente',
-        domain="[('job_id.name', 'ilike', 'Director'), ('state', '!=', 'baja')]")
     parent_id = fields.Many2one('hr.employee', 'Manager', 
         domain="['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids), ('finiquito', '=', False)]")
     coach_id = fields.Many2one('hr.employee', 'Coach', 
@@ -153,11 +157,6 @@ class hrEmployeeInherit(models.Model):
         is_admin = self.env.user.has_group('base.group_system')
         for record in self:
             record.is_system_user = is_admin
-
-    def _get_subordinates(self, parents=None):
-        # T0087: Sobreescribir para que el organigrama solo muestre empleados activos.
-        result = super()._get_subordinates(parents=parents)
-        return result.filtered(lambda e: e.state == 'activo')
 
     def _compute_can_number(self):
         can_edit = self.env['ir.config_parameter'].sudo().get_param('hr.registration_active')
@@ -200,7 +199,7 @@ class hrEmployeeInherit(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
-        if self.env.user.name == 'admin':
+        if self.env.user.login == 'admin':
             return super()._search(domain, offset=offset, limit=limit, order=order)
 
         crm_bypass_models = ('crm.lead', 'crm.junta.line', 'crm.propuesta.tecnica.revision', 'crm.propuesta.economica.revision')
@@ -406,7 +405,7 @@ class hrEmployeeInherit(models.Model):
             raise ValidationError('Es necesario agregar el contacto')
 
         contact = self.env['res.partner'].search([('id', '=', work_contact)])
-        contact.update({'curp': curp, 'vat': rfc})
+        contact.update({'curp': curp, 'vat': rfc, 'is_employee': True})
         res = super(hrEmployeeInherit, self).create(vals_list)
         return res
 
@@ -437,7 +436,7 @@ class hrEmployeeInherit(models.Model):
 
             if not self.env.context.get('syncing_info'):
                 contact = self.env['res.partner'].search([('id', '=', work_contact)])
-                contact.with_context(syncing_info=True).update({'curp': curp, 'vat': rfc})
+                contact.with_context(syncing_info=True).update({'curp': curp, 'vat': rfc, 'is_employee': True})
 
         res = super(hrEmployeeInherit, self).write(vals)
         """if self.hourly_cost == 0.00:
@@ -513,7 +512,7 @@ class hrContractInherit(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
-        if self.env.user.name == 'admin':
+        if self.env.user.login == 'admin':
             return super()._search(domain, offset=offset, limit=limit, order=order)
         extra = _encargado_nomina_extra_domain(self.env)
         return super()._search(list(domain) + extra if extra else domain, offset=offset, limit=limit, order=order)
