@@ -1022,7 +1022,7 @@ class CrmLead(models.Model):
                 if info:                
                     insumo = self.env['product.template'].create({'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'], 'uom_po_id': info[0]['uom'], 
                         'type': info[0]['type'], 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': True, 'sale_ok': False, 
-                        'supplier_taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'active': True,})
+                        'supplier_taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'list_price': info[0]['importe'], 'active': True,})
                     rec.write({'input_ex': True, 'input_id': insumo.id})
 
 

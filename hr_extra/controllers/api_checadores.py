@@ -448,7 +448,6 @@ class ApiChecadoresController(http.Controller):
         
         Validaciones (v2.5.0):
         - Formato de fecha erróneo: HTTP 400, code=INVALID_DATE_FORMAT
-        - Fecha fuera de ±1 día: HTTP 400, code=INVALID_DATE_RANGE
         - Más de 6 checks por día: HTTP 400, code=MAX_CHECKS_EXCEEDED
         - Fecha válida: Guarda con status="success"
         
@@ -509,15 +508,6 @@ class ApiChecadoresController(http.Controller):
                     now_local = datetime.now()
             else:
                 now_local = datetime.now()
-
-            one_day_ago = now_local - timedelta(days=1)
-            one_day_ahead = now_local + timedelta(days=1)
-            if check_datetime < one_day_ago or check_datetime > one_day_ahead:
-                return self._error_response(
-                    f'La fecha de registro debe estar dentro de ±1 día de la fecha actual (TZ: {tz_name}). '
-                    f'Fecha enviada: {check_datetime.strftime("%Y-%m-%d %H:%M:%S")}, '
-                    f'Rango permitido: {one_day_ago.strftime("%Y-%m-%d %H:%M:%S")} a {one_day_ahead.strftime("%Y-%m-%d %H:%M:%S")}',
-                    status=400, error_code='INVALID_DATE_RANGE')
 
             # VALIDACIÓN 2: Máximo 6 checks por empleado por día LOCAL
             # Convertir el día local a rango UTC para consultar ctrol.asistencias (que guarda en UTC)
