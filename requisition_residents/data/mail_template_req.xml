@@ -78,5 +78,59 @@
             </field>
         </record>
 
+        <record id="mail_tmpl_requisition_concept_solicitud" model="mail.template">
+            <field name="name">Empleados</field>
+            <field name="model_id" ref="model_requisition_request_concept"/>
+            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
+            <field name="email_to"></field>
+            <field name="subject">[Solicitud de conceptos] {{object.description}}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+                    <p>Estimado/a:</p>
+                    <p>Se ha registrado una Solicitud de concepto extraordinador, con los siguientes datos:</p>
+                    <ul>
+                        <li><b>Obra: </b><t t-out="object.project_id.name"/></li>
+                        <li><b>Concepto: </b><t t-out="object.codigo"/></li>
+                        <li><b>Descripción: </b><t t-out="object.description"/></li>
+                    </ul>
+                    <table align="center">
+                        <tr>
+                            <td>
+                                <a t-att-href="'%s/web#id=%s&amp;model=requisition.request.concept&amp;view_type=form' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#6c757d; color:#fff; border-radius:4px; text-decoration:none;font-size:12px;">Ver</a>
+                            </td>
+                        </tr>
+                    </table>
+                    <p>Enviado automáticamente por el Sistema.</p>
+                </div>
+            </field>
+        </record>
+
+        <record id="mail_tmpl_requisition_concept_costos" model="mail.template">
+            <field name="name">Empleados</field>
+            <field name="model_id" ref="model_requisition_request_concept"/>
+            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
+            <field name="email_to"></field>
+            <field name="subject">[Solicitud de autorización de concepto] {{object.description}}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+                    <p>Estimado/a:</p>
+                    <p>Se ha registrado una Solicitud de autorización de concepto extraordinador, con los siguientes datos:</p>
+                    <ul>
+                        <li><b>Obra: </b><t t-out="object.project_id.name"/></li>
+                        <li><b>Concepto: </b><t t-out="object.codigo"/></li>
+                        <li><b>Descripción: </b><t t-out="object.description"/></li>
+                    </ul>
+                    <table align="center">
+                        <tr>
+                            <td>
+                                <a t-att-href="'%s/web#id=%s&amp;model=requisition.request.concept&amp;view_type=form' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#6c757d; color:#fff; border-radius:4px; text-decoration:none;font-size:12px;">Ver</a>
+                            </td>
+                        </tr>
+                    </table>
+                    <p>Enviado automáticamente por el Sistema.</p>
+                </div>
+            </field>
+        </record>
+
     </data>
 </odoo>

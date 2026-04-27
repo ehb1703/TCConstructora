@@ -1022,7 +1022,7 @@ class CrmLead(models.Model):
                 if info:                
                     insumo = self.env['product.template'].create({'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'], 'uom_po_id': info[0]['uom'], 
                         'type': info[0]['type'], 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': True, 'sale_ok': False, 
-                        'supplier_taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'active': True,})
+                        'supplier_taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'list_price': info[0]['importe'], 'active': True,})
                     rec.write({'input_ex': True, 'input_id': insumo.id})
 
 
@@ -1109,6 +1109,11 @@ class CrmLead(models.Model):
 
                 if row[desc] != None:
                     if row[desc].upper() == 'RESUMEN DE PARTIDAS':
+                        cargar = False
+                        partida = True
+
+                if row[cod] != None:
+                    if row[cod].upper() == 'RESUMEN DE PARTIDAS':
                         cargar = False
                         partida = True
 
@@ -1531,16 +1536,16 @@ class CrmLead(models.Model):
             raise ValidationError('Falta cargar las partidas')
             
         self.env.cr.execute('SELECT COUNT(*) num FROM crm_concept_line WHERE lead_id = ' + str(self.id) + 
-            " AND CONCEPT_EX IS FALSE AND COL4 NOT IN ('',  NULL)")
+            " AND CONCEPT_EX IS FALSE AND COL4 NOT IN ('', '0', NULL)")
         count = self.env.cr.dictfetchall()
         if count[0]['num'] > 0:
             raise ValidationError('Faltan cargar los conceptos de trabajo')
 
-        count = len(self.combo_ids.filtered(lambda u: u.combo_ex))
+        """count = len(self.combo_ids.filtered(lambda u: u.combo_ex))
         if count == 0:
             raise ValidationError('No hay conceptos cargados')
 
-        """count = len(self.combo_ids.filtered(lambda u: not u.combo_ex))
+        count = len(self.combo_ids.filtered(lambda u: not u.combo_ex))
         if count > 1:
             raise ValidationError('Faltan cargar la matriz de insumos de los conceptos')
 

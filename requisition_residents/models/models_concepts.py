@@ -41,7 +41,7 @@ class requisitionMaterials(models.Model):
     state = fields.Selection(selection=[('draft','Borrador'), ('revision','Revision'), ('costos','Costos'), ('aprobado','Aprobado')],
         string='Estatus', default='draft', tracking=True)
 
-    """def _post_html(self, title, old_stage=None, new_stage=None):
+    def _post_html(self, title, old_stage=None, new_stage=None):
         parts = [f'<p>{html_escape(title)}</p>']
         if old_stage or new_stage:
             parts.append(
@@ -52,37 +52,68 @@ class requisitionMaterials(models.Model):
         self.message_post(body=Markup(body), message_type='comment', subtype_xmlid='mail.mt_note')
 
 
-    def action_send(self):
-        # Agregar grupo
+    def action_review(self):
         emails = set()
-        group = self.env.ref('requisition_residents.group_materials_authorize', raise_if_not_found=False)
+        group = self.env.ref('requisition_residents.group_encargado', raise_if_not_found=False)
         if group:
             for user in group.users.filtered(lambda u: u.active and u.partner_id and u.partner_id.email):
                 emails.add(user.partner_id.email.strip())
+        else:
+            raise ValidationError('No hay usuarios asignados al grupo correspondiente. Favor de revisar con el administrador.')
 
         correos_list = sorted(e for e in emails if '@' in e)
-        template = self.env.ref('requisition_residents.mail_tmpl_requisition_materials_solicitud', raise_if_not_found=False)
+        template = self.env.ref('requisition_residents.mail_tmpl_requisition_concept_solicitud', raise_if_not_found=False)
         try:
             correos = ', '.join(correos_list)
-            email_values = {'model': 'requisition_materials', 'email_to': correos}
+            email_values = {'model': 'requisition_request_concept', 'email_to': correos}
             template.send_mail(self.id, force_send=True, email_values=email_values)
             self._post_html(_('Se envió correo a: ') + correos)
         except Exception:
             self._post_html(_('Error al enviar el correo'))
 
-        self.state = 'send'
+        self.state = 'revision'
+
+
+    def action_costos(self):
+        emails = set()
+        group = self.env.ref('requisition_residents.group_costos', raise_if_not_found=False)
+        if group:
+            for user in group.users.filtered(lambda u: u.active and u.partner_id and u.partner_id.email):
+                emails.add(user.partner_id.email.strip())
+        else:
+            raise ValidationError('No hay usuarios asignados al grupo correspondiente. Favor de revisar con el administrador.')
+
+        correos_list = sorted(e for e in emails if '@' in e)
+        template = self.env.ref('requisition_residents.mail_tmpl_requisition_concept_costos', raise_if_not_found=False)
+        try:
+            correos = ', '.join(correos_list)
+            email_values = {'model': 'requisition_request_concept', 'email_to': correos}
+            template.send_mail(self.id, force_send=True, email_values=email_values)
+            self._post_html(_('Se envió correo a: ') + correos)
+        except Exception:
+            self._post_html(_('Error al enviar el correo'))
+
+        self.state = 'costos'
 
 
     def action_confirm(self):
-        for rec in self.line_ids:
-            if not rec.supplier_ids:
-                raise UserError('No se ha capturado información del proveedor')
+        concepto = self.env['product.template'].search([('name','=',self.description)])
+        if not concepto:
+            cat = self.env['product.category'].search([('name','=','All')])
+            if self.tipo == 'concepto':
+                purchase = False
+                sale = True
+                iva = self.env['account.tax'].search([('name','=','16%'),('type_tax_use','=','sale')])
+                type = 'service'
+            else:
+                purchase = True
+                sale = False
+                iva = self.env['account.tax'].search([('name','=','16%'),('type_tax_use','=','purchase')])
+                type = 'consu'
 
-        self.env.cr.execute('''SELECT rel.supplier_id FROM requisition_materials_line rml JOIN materials_supplier_rel rel ON rml.ID = rel.MATERIALS_ID 
-            WHERE rml.REQ_ID = ''' + str(self.id) + ' GROUP BY 1')
-        supplier = self.env.cr.dictfetchall()
-        for rec in supplier:
-            supplier_id = self.env['res.partner'].search([('id','=',rec['supplier_id'])])
-            oc = self.action_generar_orden(supplier_id)
+            concepto = self.env['product.template'].create({'categ_id':cat.id, 'uom_id':self.uom_id.id, 'uom_po_id':self.uom_id.id, 
+                'type':type, 'default_code':self.codigo, 'name':self.description, 'purchase_ok':purchase, 'sale_ok':sale, 'list_price':self.price, 
+                'standard_price':self.price, 'supplier_taxes_id':[(6, 0, iva.ids)], 'active':True,})
 
-        self.state = 'aprobado' """
+        self.product_id = concepto.id
+        self.state = 'aprobado'
