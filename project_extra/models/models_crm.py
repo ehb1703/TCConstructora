@@ -1112,6 +1112,11 @@ class CrmLead(models.Model):
                         cargar = False
                         partida = True
 
+                if row[cod] != None:
+                    if row[cod].upper() == 'RESUMEN DE PARTIDAS':
+                        cargar = False
+                        partida = True
+
                 if cargar:
                     if row[cod] == row[desc] == row[uni] == row[prec] == row[qty] == row[imp] == None:
                         _logger.warning('No se guarda la información')
@@ -1531,16 +1536,16 @@ class CrmLead(models.Model):
             raise ValidationError('Falta cargar las partidas')
             
         self.env.cr.execute('SELECT COUNT(*) num FROM crm_concept_line WHERE lead_id = ' + str(self.id) + 
-            " AND CONCEPT_EX IS FALSE AND COL4 NOT IN ('',  NULL)")
+            " AND CONCEPT_EX IS FALSE AND COL4 NOT IN ('', '0', NULL)")
         count = self.env.cr.dictfetchall()
         if count[0]['num'] > 0:
             raise ValidationError('Faltan cargar los conceptos de trabajo')
 
-        count = len(self.combo_ids.filtered(lambda u: u.combo_ex))
+        """count = len(self.combo_ids.filtered(lambda u: u.combo_ex))
         if count == 0:
             raise ValidationError('No hay conceptos cargados')
 
-        """count = len(self.combo_ids.filtered(lambda u: not u.combo_ex))
+        count = len(self.combo_ids.filtered(lambda u: not u.combo_ex))
         if count > 1:
             raise ValidationError('Faltan cargar la matriz de insumos de los conceptos')
 

@@ -480,7 +480,7 @@
                     </group>
                     <group invisible="stage_name != 'Ganado'">
                         <div class="oe_button_box">
-                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_concept" string="Cargar" type="object" invisible="concept_ids" confirm="Se agregará el contenido del documento E02, ¿continuar?"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_concept" string="Cargar" type="object" invisible="concept_ids" confirm="Se agregará el contenido del documento de conceptos, ¿continuar?"/>
                             <button class="oe_stat_button" icon="fa-upload" name="action_genera_partidas" string="Partidas" type="object" invisible="not concept_ids"/>
                             <button class="oe_stat_button" icon="fa-upload" name="action_genera_concept" string="Conceptos" type="object" invisible="not concept_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
                             <!--button class="oe_stat_button" icon="fa-upload" name="action_cargar_combo" string="Cargar Matriz" type="object" invisible="combo_ids"/>
