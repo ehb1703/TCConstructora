@@ -468,15 +468,24 @@
                 </page>
 
                 <page string="Ganado">
-                    <group invisible="stage_name != 'Ganado'">
-                        <group>
-                            <field name="doctoconcept_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
-                            <!--field name="doctomatriz_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
-                            <field name="doctobasicos_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/-->
+                    <group invisible="stage_name != 'Ganado'">                        
+                        <group string="Conceptos">
+                            <field name="doctoconcept_id" string="Tipo" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                            <field name="doctoconcept_nombre" string="Nombre" options="{'no_create':True, 'no_edit':True}"/>
+                            <!--field name="doctoconcept_inicio" string="Fila de inicio"/-->
                         </group>
-                        <group>
-                            <field name="doctoconcept_nombre" options="{'no_create':True, 'no_edit':True}"/>
+                        <group string="Matriz">
+                            <field name="doctomatriz_id" string="Tipo" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                            <field name="doctomatriz_nombre" string="Nombre" options="{'no_create':True, 'no_edit':True}"/>
+                            <!--field name="doctomatriz_inicio" string="Fila de inicio"/-->
                         </group>
+                        <!--group string="Basicos">
+                            <group>
+                                <field name="doctobasicos_id" string="Tipo" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                <field name="doctobasicos_nombre" string="Nombre" options="{'no_create':True, 'no_edit':True}"/>
+                                <field name="doctobasicos_inicio" string="Fila de inicio"/>
+                            </group>
+                        </group-->
                     </group>
                     <group invisible="stage_name != 'Ganado'">
                         <div class="oe_button_box">

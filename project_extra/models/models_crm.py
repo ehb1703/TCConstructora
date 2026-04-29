@@ -130,12 +130,19 @@ class CrmLead(models.Model):
     # Conceptos de obra
     doctoconcept_id = fields.Many2one('report.tipodocumento', string='Tipo de documento Catálogo de Conceptos', 
         domain="[('module_id', '=', 'crm.lead'), ('no_docto', '=', '2')]")
-    doctoconcept_nombre = fields.Many2one('documents.document', string='Nombre del archivo', 
+    doctoconcept_nombre = fields.Many2one('documents.document', string='Nombre archivo conceptos', 
         domain="[('res_model','=','crm.lead'), ('res_id','=',id), ('file_extension','not in',['pdf', 'doc', 'docx'])]")
+    doctoconcept_inicio = fields.Integer(string = 'Fila inicio conceptos')
     doctomatriz_id = fields.Many2one('report.tipodocumento', string='Tipo de documento Matriz', 
         domain="[('module_id', '=', 'crm.lead'), ('no_docto', '=', '9')]")
+    doctomatriz_nombre = fields.Many2one('documents.document', string='Nombre archivo matriz', 
+        domain="[('res_model','=','crm.lead'), ('res_id','=',id), ('file_extension','not in',['pdf', 'doc', 'docx'])]")
+    doctomatriz_inicio = fields.Integer(string = 'Fila inicio conceptos')
     doctobasicos_id = fields.Many2one('report.tipodocumento', string='Tipo de documento Básicos', 
         domain="[('module_id', '=', 'crm.lead'), ('no_docto', '=', '10')]")
+    doctobasicos_nombre = fields.Many2one('documents.document', string='Nombre archivo básicos ', 
+        domain="[('res_model','=','crm.lead'), ('res_id','=',id), ('file_extension','not in',['pdf', 'doc', 'docx'])]")
+    doctobasicos_inicio = fields.Integer(string = 'Fila inicio conceptos')
     concept_ids = fields.One2many('crm.concept.line', 'lead_id', string='Conceptos de trabajo')
     budget_ids = fields.One2many('crm.budget.line', 'lead_id', string='Partidas presupestales')
     combo_ids = fields.One2many('crm.combo.line', 'lead_id', string='Combos')

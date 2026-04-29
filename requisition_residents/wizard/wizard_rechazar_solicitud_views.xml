@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wizard_rechazar_solicitud_form" model="ir.ui.view">
+        <field name="name">requisition.rechazar.solicitud.form</field>
+        <field name="model">requisition.rechazar.solicitud</field>
+        <field name="arch" type="xml">
+            <form string="Rechazar solicitud">
+                <sheet>
+                    <group>
+                        <field name="solicitud_id" invisible="1"/>
+                        <field name="motivo" placeholder="Indique el motivo de rechazo para notificar al residente..."/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_confirmar_rechazo" type="object" string="Rechazar solicitud" class="btn-danger"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

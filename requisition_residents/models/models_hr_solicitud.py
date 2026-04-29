@@ -68,6 +68,85 @@ class RequisitionHrSolicitud(models.Model):
     observaciones = fields.Char(string='Observaciones')
     state = fields.Selection(selection=[('draft','Borrador'), ('send','Enviado'), ('aprobado','Aprobado')],
         string='Estatus', default='draft', tracking=True)
+    doc_acta_nacimiento = fields.Binary(string='Acta de nacimiento', attachment=True)
+    doc_acta_nacimiento_name = fields.Char(string='Acta de nacimiento nombre')
+    doc_curp = fields.Binary(string='CURP', attachment=True)
+    doc_curp_name = fields.Char(string='CURP nombre')
+    doc_nss = fields.Binary(string='NSS', attachment=True)
+    doc_nss_name = fields.Char(string='NSS nombre')
+    doc_ine = fields.Binary(string='Identificación oficial (INE)', attachment=True)
+    doc_ine_name = fields.Char(string='INE nombre')
+    doc_comprobante_domicilio = fields.Binary(string='Comprobante de domicilio', attachment=True)
+    doc_comprobante_domicilio_name = fields.Char(string='Comprobante de domicilio nombre')
+    salary_semanal = fields.Float(string='Sueldo semanal', compute='_compute_baja_info', store=False)
+    antiguedad = fields.Char(string='Antigüedad', compute='_compute_baja_info', store=False)
+    dias_vacaciones = fields.Integer(string='Días de vacaciones disfrutadas', compute='_compute_baja_info', store=False)
+    mostrar_vacaciones = fields.Boolean(string='Mostrar vacaciones', compute='_compute_baja_info', store=False)
+    fecha_ingreso = fields.Date(string='Fecha de ingreso', compute='_compute_fecha_ingreso', store=False)
+    motivo_rechazo = fields.Text(string='Motivo de rechazo', tracking=True)
+
+    @api.depends('employee_id', 'tipo_tramite')
+    def _compute_baja_info(self):
+        for rec in self:
+            if rec.tipo_tramite == 'baja' and rec.employee_id:
+                contrato = rec.employee_id.sudo().contract_id
+                # Contratos por hora usan hourly_wage * horas semanales
+                if contrato:
+                    if contrato.wage_type == 'hourly':
+                        calendar = contrato.resource_calendar_id
+                        horas_dia = calendar.hours_per_day if calendar else 8
+                        rec.salary_semanal = contrato.hourly_wage * horas_dia * 6
+                    else:
+                        rec.salary_semanal = contrato.wage
+                else:
+                    rec.salary_semanal = 0.0
+
+                if contrato and contrato.date_start:
+                    from dateutil.relativedelta import relativedelta
+                    from datetime import date
+                    fecha_ref = rec.fecha_aplicacion or date.today()
+                    delta = relativedelta(fecha_ref, contrato.date_start)
+                    años = delta.years
+                    meses = delta.months
+                    rec.antiguedad = f'{años} año(s) {meses} mes(es)'
+                    rec.mostrar_vacaciones = años >= 1
+                    if rec.mostrar_vacaciones:
+                        vacaciones_tomadas = rec.env['hr.leave'].sudo().search([
+                            ('employee_id', '=', rec.employee_id.id),
+                            ('state', '=', 'validate'),
+                            ('holiday_status_id.work_time_rate', '!=', 100),
+                        ])
+                        rec.dias_vacaciones = int(sum(vacaciones_tomadas.mapped('number_of_days')))
+                    else:
+                        rec.dias_vacaciones = 0
+                else:
+                    rec.antiguedad = ''
+                    rec.mostrar_vacaciones = False
+                    rec.dias_vacaciones = 0
+            else:
+                rec.salary_semanal = 0.0
+                rec.antiguedad = ''
+                rec.mostrar_vacaciones = False
+                rec.dias_vacaciones = 0
+
+    @api.depends('employee_id', 'tipo_tramite')
+    def _compute_fecha_ingreso(self):
+        for rec in self:
+            if rec.employee_id and rec.tipo_tramite in ['baja', 'actualizacion']:
+                contrato = rec.employee_id.sudo().contract_id
+                rec.fecha_ingreso = contrato.date_start if contrato else False
+            else:
+                rec.fecha_ingreso = False
+
+    def action_rechazar(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Rechazar solicitud',
+            'res_model': 'requisition.rechazar.solicitud',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_solicitud_id': self.id},}
 
     @api.constrains('nss')
     def _check_nss(self):
@@ -115,6 +194,8 @@ class RequisitionHrSolicitud(models.Model):
             self.notarjeta = self.employee_id.bank_account_id.no_tarjeta
             self.clabe = self.employee_id.bank_account_id.l10n_mx_edi_clabe
             self.nocuenta = self.employee_id.bank_account_id.acc_number
+            if self.tipo_tramite == 'baja':
+                self.job_id = self.employee_id.job_id
 
     def _post_html(self, title, old_stage=None, new_stage=None):
         parts = [f'<p>{html_escape(title)}</p>']
@@ -125,6 +206,17 @@ class RequisitionHrSolicitud(models.Model):
         body = '<div>' + ''.join(parts) + '</div>'
         self.message_post(body=Markup(body), message_type='comment', subtype_xmlid='mail.mt_note')
 
+    def _check_documento(self, field_name):
+        self.ensure_one()
+        if self[field_name]:
+            return True
+        adjunto = self.env['ir.attachment'].search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('res_field', '=', field_name),
+        ], limit=1)
+        return bool(adjunto)
+
     def validation_inf(self):
         if self.tipo_tramite == 'alta':
             name = self.nombre + ' ' + self.apellido_paterno + ' ' + self.apellido_materno
@@ -134,6 +226,29 @@ class RequisitionHrSolicitud(models.Model):
 
             if not self.nocuenta and not self.clabe and not self.notarjeta:
                 raise ValidationError('Se debe de capturar al menos un dato de la información bancaria.')
+
+            if not self.calle or not self.colonia or not self.codigo_postal or not self.estado_id or not self.municipio_id:
+                raise ValidationError('Los campos de dirección son obligatorios para el trámite de Alta.')
+
+            if not self._check_documento('doc_acta_nacimiento'):
+                raise ValidationError('El documento Acta de nacimiento es requerido para el trámite de Alta.')
+            if not self._check_documento('doc_curp'):
+                raise ValidationError('El documento CURP es requerido para el trámite de Alta.')
+            if not self._check_documento('doc_nss'):
+                raise ValidationError('El documento NSS es requerido para el trámite de Alta.')
+            if not self._check_documento('doc_ine'):
+                raise ValidationError('La Identificación oficial (INE) es requerida para el trámite de Alta.')
+            if not self._check_documento('doc_comprobante_domicilio'):
+                raise ValidationError('El Comprobante de domicilio es requerido para el trámite de Alta.')
+
+        if self.tipo_tramite == 'rehabilitacion':
+            if not self.calle or not self.colonia or not self.codigo_postal or not self.estado_id or not self.municipio_id:
+                raise ValidationError('Los campos de dirección son obligatorios para el trámite de Rehabilitación.')
+
+            if not self._check_documento('doc_ine'):
+                raise ValidationError('La Identificación oficial (INE) es requerida para el trámite de Rehabilitación.')
+            if not self._check_documento('doc_comprobante_domicilio'):
+                raise ValidationError('El Comprobante de domicilio es requerido para el trámite de Rehabilitación.')
 
         if self.tipo_tramite == 'baja':
             current_contract = self.employee_id.sudo().contract_id

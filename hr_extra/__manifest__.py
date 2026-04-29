@@ -34,6 +34,7 @@
         'views/checador_sync_log_views.xml',
         'views/hr_leaves_views.xml',
         'views/reporte_asistencias_views.xml',
+        'wizard/wizard_festivo_masivo_views.xml',
         'report/hr_contract_report.xml',
         'report/report_hr_contract_prueba.xml',
         'report/report_hr_contract_obra.xml',

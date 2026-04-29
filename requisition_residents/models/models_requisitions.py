@@ -406,9 +406,16 @@ class requisitionDestajoLine(models.Model):
             req_id = record.env['requisition.residents'].search([('id','=',req)])
             sale = req_id.project_id.sudo().reinvoiced_sale_order_id
             if sale:
-                record.product_domain = json.dumps([('id', 'in', sale.order_line.product_id.product_tmpl_id.ids)])
+                ids = sale.order_line.product_id.ids
+                concepto = record.env['requisition.request.concept'].search([('tipo','=','concepto'), ('project_id','=',req_id.project_id.id), 
+                    ('state','=','aprobado')])
+                if concepto:
+                    producto = record.env['product.product'].search([('product_tmpl_id','in',concepto.product_id.ids)])
+                    ids += producto.ids
+                record.product_domain = json.dumps([('id', 'in', ids)])
             else:
                 record.product_domain = json.dumps([('sale_ok', '=', True)])
+
 
     destajo_id = fields.Many2one('requisition.destajo', readonly=True)
     fecha = fields.Date(string='Fecha')
