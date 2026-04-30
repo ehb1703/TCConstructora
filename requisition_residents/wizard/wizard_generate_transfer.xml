@@ -16,6 +16,8 @@
                         <group>
                             <field name="account_id" invisible="type_mov != 'trans'" options="{'no_open':True, 'no_create':True, 'no_edit':True}" domain="[('id','!=',raccount_id)]"/>
                             <field name="authorize"/>
+                            <field name="employee_id" invisible="type_mov != 'caja'" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                            <field name="tarjeta_facil" readonly="1" invisible="type_mov != 'caja'" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                             <field name="amount"/>
                         </group>
                     </group>

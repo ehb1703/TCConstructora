@@ -424,6 +424,7 @@ class requisitionDestajoLine(models.Model):
     product_template_id = fields.Many2one(comodel_name='product.template', string='Product Template', compute='_compute_product_template_id',
         search='_search_product_template_id', domain=[('sale_ok', '=', True)])
     product_uom_id = fields.Many2one(related='product_id.uom_id', depends=['product_id'], string='UdM')
+    uom_id = fields.Many2one('uom.uom', string='Un a pagar')
     name = fields.Text(string='Descripcion')
     localizacion = fields.Char(string='Localización')
     ubicacion = fields.Char(string='Ubicación')
@@ -445,13 +446,19 @@ class requisitionDestajoLine(models.Model):
             if self.fecha > self.destajo_id.req_id.ffinal or self.fecha < self.destajo_id.req_id.finicio:
                 raise ValidationError('La fecha capturada no esta dentro del periodo capturado')
 
+    """Para pruebas
     @api.onchange('price_unit', 'largo', 'ancho', 'alto')
     def onchange_volumenes(self):
         if self.largo > 0 and self.ancho > 0:
             self.area = self.largo * self.ancho
             if self.alto > 0:
                 self.volumen = self.area * self.alto
-                self.amount = self.price_unit * self.volumen
+                self.amount = self.price_unit * self.volumen """
+
+    @api.onchange('price_unit', 'volumen')
+    def onchange_volumenes(self):
+        if self.price_unit > 0 and self.volumen > 0:
+            self.amount = self.price_unit * self.volumen
 
     @api.depends('product_id')
     def _compute_product_template_id(self):
