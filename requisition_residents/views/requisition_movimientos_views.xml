@@ -2,7 +2,7 @@
 <odoo>
 
     <record id="action_requisition_debt" model="ir.actions.act_window">
-        <field name="name">Estado de Cuenta</field>
+        <field name="name">Proveedores</field>
         <field name="res_model">requisition.debt</field>
         <field name="view_mode">list,kanban,form</field>
     </record>
@@ -12,7 +12,7 @@
         <field name="model">requisition.debt</field>
         <field name="priority" eval="1"/>
         <field name="arch" type="xml">
-            <list string="Estado de Cuenta" create="0" delete="0" edit="1">
+            <list string="Proveedores" create="0" delete="0" edit="1">
                 <field name="partner_id"/>
                 <field name="amount_total"/>
             </list>
@@ -23,7 +23,7 @@
         <field name="name">view.requisition.debt.form</field>
         <field name="model">requisition.debt</field>
         <field name="arch" type="xml">
-            <form string="Estado de Cuenta" create="0" delete="0" edit="1">
+            <form string="Proveedores" create="0" delete="0" edit="1">
                 <sheet>
                     <group>
                         <field name="partner_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
@@ -147,9 +147,66 @@
         </field>
     </record>
 
+    <record id="action_requisition_petty_cash" model="ir.actions.act_window">
+        <field name="name">Residentes</field>
+        <field name="res_model">requisition.petty.cash</field>
+        <field name="view_mode">list,kanban,form</field>
+    </record>
+
+    <record id="view_requisition_petty_cash_list" model="ir.ui.view">
+        <field name="name">view.requisition.petty.cash.list</field>
+        <field name="model">requisition.petty.cash</field>
+        <field name="priority" eval="1"/>
+        <field name="arch" type="xml">
+            <list string="Residentes" create="0" delete="0" edit="1">
+                <field name="employee_id"/>
+                <field name="amount_total" widget="monetary"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_requisition_petty_cash_form" model="ir.ui.view">
+        <field name="name">view.requisition.petty.cash.form</field>
+        <field name="model">requisition.petty.cash</field>
+        <field name="arch" type="xml">
+            <form string="Residentes" create="0" delete="0" edit="1">
+                <sheet>
+                    <group>
+                        <field name="employee_id" readonly="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Movimientos">
+                            <field name="line_ids" widget="one2many_list">
+                                <list create="False" delete="False" editable="bottom" context="{'default_mov_id': id}">
+                                    <field name="fecha" readonly="1"/>
+                                    <field name="debit" readonly="1"/>
+                                    <field name="credit" readonly="1"/>
+                                    <field name="concepto" readonly="1"/>
+                                    <field name="observaciones" readonly="1"/>
+                                    <field name="origen" readonly="1"/>
+                                </list>
+                                <form><p>Información no disponible a través de esta vista</p></form>
+                            </field>
+                            <group>
+                                <group/>
+                                <group class="oe_subtotal_footer">
+                                    <field name="amount_total" widget="monetary" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
     <menuitem id="menu_movimientos" name="Movimientos" groups="group_requisition_move" parent="reports_menu_root" sequence="20">
         <menuitem id="menu_requisition_bank_account" name="Diario - Cuentas bancarias" action="action_requisition_bank_account" sequence="1"/>
         <menuitem id="menu_requisition_general" name="Pagos Generales" action="action_requisition_general" sequence="5"/>
-        <menuitem id="menu_requisition_debt" name="Estado de cuenta" action="action_requisition_debt" sequence="10"/>
+        <menuitem id="menu_requisition_edocta" name="Estado de cuenta" sequence="10">
+            <menuitem id="menu_requisition_debt" name="Proveedores" action="action_requisition_debt" sequence="10"/>
+            <menuitem id="menu_requisition_petty" name="Residentes" action="action_requisition_petty_cash" sequence="20"/>
+        </menuitem>
     </menuitem>
 </odoo>

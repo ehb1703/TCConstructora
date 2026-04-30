@@ -158,3 +158,44 @@ class requisitionGeneralPayments(models.Model):
 
     def _search_product_template_id(self, operator, value):
         return [('product_id.product_tmpl_id', operator, value)]
+
+
+class requisitionPettyCash(models.Model):
+    _name = 'requisition.petty.cash'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'employee_id'
+    _description = 'Caja Chica Residentes'
+
+    employee_id = fields.Many2one('hr.employee', string='Empleado', 
+        domain="[('state', '!=', 'baja'), ('finiquito', '=', False), ('job_id.name', 'ilike', 'RESIDENTE')]")
+    amount_total = fields.Float(string='Total', compute='_compute_amount', store=True, readonly=True)
+    line_ids = fields.One2many('requisition.petty.cash.line', 'petty_id', string='Movimientos')
+
+    @api.depends('line_ids.credit', 'line_ids.debit')
+    def _compute_amount(self):
+        for req in self:
+            credit, debit = 0.0, 0.0
+            for line in req.line_ids:
+                credit += line.credit
+                debit += line.debit
+            req.amount_total = debit - credit
+
+
+class requisitionPettyCashLine(models.Model):
+    _name = 'requisition.petty.cash.line'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _description = 'Movimientos'
+
+    petty_id = fields.Many2one('requisition.petty.cash', readonly=True)
+    project_id = fields.Many2one('project.project', string='Obra')
+    fecha = fields.Date(string='Fecha')
+    debit = fields.Float(string='Cargo')
+    credit = fields.Float(string='Abono')
+    concepto = fields.Char(string='Concepto')
+    origen = fields.Char(string='Origen')
+    type_pay = fields.Char(string='Tipo de pago', readonly=True)
+    account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
+    observaciones = fields.Char(string='Observaciones')
+    reqres_id = fields.Many2one('requisition.residents', string='Requisición Residente')
+    movcta_id = fields.Many2one('requisition.bank.movements', string='Movimiento bancario')
+    reqw_id = fields.Many2one('requisition.weekly', string='Requisición semanal')

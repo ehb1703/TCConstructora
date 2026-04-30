@@ -11,7 +11,7 @@
                         <field name="fecha" required="1"/>
                     </group>
                 </div>
-                <separator string="Requisiciones"/>
+                <separator string="Gastos de Obra"/>
                 <field name="requisition_ids" nolabel="1" widget="requisition_line_many2many" context="{'list_view_ref' : 'view_requisition_residents_list'}">
                     <list>
                         <field name="name"/>
@@ -23,7 +23,7 @@
                     </list>
                 </field>
                 <footer>
-                    <button name="generate_requisition" string="Generar requisición" type="object" class="oe_highlight" />
+                    <button name="generate_requisition" string="Generar resumen semanal" type="object" class="oe_highlight" />
                     <button string="Cancelar" special="cancel"/>
                 </footer>
             </form>

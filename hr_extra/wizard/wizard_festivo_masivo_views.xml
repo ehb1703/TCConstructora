@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_hr_festivo_masivo" model="ir.actions.act_window">
+        <field name="name">Permisos por Día Festivo</field>
+        <field name="res_model">hr.festivo.masivo</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_hr_festivo_masivo_form" model="ir.ui.view">
+        <field name="name">hr.festivo.masivo.form</field>
+        <field name="model">hr.festivo.masivo</field>
+        <field name="arch" type="xml">
+            <form string="Generar Permisos por Día Festivo">
+                <sheet>
+                    <group string="Tipo de permiso">
+                        <field name="holiday_status_id" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="fecha_inicio"/>
+                        <field name="fecha_fin"/>
+                    </group>
+                    <group string="Selección de empleados">
+                        <field name="department_id" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="job_id" options="{'no_create': True, 'no_open': True}"/>
+                    </group>
+                    <group string="Empleados">
+                        <field name="employee_ids" nolabel="1">
+                            <list>
+                                <field name="name"/>
+                                <field name="department_id"/>
+                                <field name="job_id"/>
+                            </list>
+                        </field>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_generar_permisos" type="object" string="Generar permisos" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!--menuitem id="menu_hr_festivo_masivo" name="Permisos por Día Festivo" parent="hr_holidays.menu_hr_holidays_management" action="action_hr_festivo_masivo" sequence="20" groups="hr_holidays.group_hr_holidays_manager"/-->
+</odoo>
