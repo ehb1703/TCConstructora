@@ -60,7 +60,7 @@
             <xpath expr="//page[@name='public']//field[@name='address_id']/.." position="before">
                 <group string="Empresa">
                     <field name="empresa_empleadora" options="{'no_create':True, 'no_open':True, 'no_edit':True}"/>
-                    <field name="facil_tarjeta" invisible="'RESIDENTE' not in job_title" required="'RESIDENTE' in job_title"/>
+                    <field name="facil_tarjeta" invisible="'RESIDENTE' not in job_title"/>
                     <field name="finiquito" invisible="1"/>
                 </group>
             </xpath>
@@ -86,10 +86,29 @@
             <xpath expr="//field[@name='leave_manager_id']" position="attributes">
                 <attribute name="string">Permisos</attribute>
             </xpath>
+            <xpath expr="//field[@name='private_street']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='private_street2']" position="attributes">
+                <attribute name="required">1</attribute>
+                <attribute name="placeholder">Colonia...</attribute>
+            </xpath>
+            <xpath expr="//field[@name='private_city']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='private_state_id']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='private_zip']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='private_country_id']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
             <xpath expr="//notebook/page[last()]" position="after">
                 <page string="Obras" name="obras_asignadas">
                     <field name="obra_ids">
-                        <list string="Obras asignadas" editable="bottom" delete="0">
+                        <list string="Obras asignadas" editable="bottom" delete="1">
                             <field name="project_id" options="{'no_create':True, 'no_open':True, 'no_edit':True}"/>
                             <field name="etapa_id" readonly="1"/>
                             <field name="hourly_wage"/>

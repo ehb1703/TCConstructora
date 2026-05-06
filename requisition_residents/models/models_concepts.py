@@ -41,6 +41,17 @@ class requisitionMaterials(models.Model):
     state = fields.Selection(selection=[('draft','Borrador'), ('revision','Revision'), ('costos','Costos'), ('aprobado','Aprobado')],
         string='Estatus', default='draft', tracking=True)
 
+    @api.model
+    def _search(self, domain, offset=0, limit=None, order=None):
+        """if self.env.user.login == 'admin':
+            return super()._search(domain, offset=offset, limit=limit, order=order)"""
+
+        if self.env.user.has_group('requisition_residents.group_requisition_capture'):
+            domain = [('create_uid', '=', self.env.user.id)]
+
+        return super()._search(domain, offset=offset, limit=limit, order=order)
+        
+
     def _post_html(self, title, old_stage=None, new_stage=None):
         parts = [f'<p>{html_escape(title)}</p>']
         if old_stage or new_stage:

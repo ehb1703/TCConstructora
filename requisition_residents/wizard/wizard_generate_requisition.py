@@ -34,10 +34,10 @@ class GenerateRequisitionWizard(models.TransientModel):
 
     def generate_adeudo(self):
         child = str(self.requisition_ids.ids).replace('[','(').replace(']',')')
-        self.env.cr.execute("""SELECT rrl.partner_id, COALESCE(rd.id, 0) prov
+        self.env.cr.execute('''SELECT rrl.partner_id, COALESCE(rd.id, 0) prov
             FROM requisition_residents rr JOIN requisition_residents_line rrl ON rr.id = rrl.req_id AND rrl.category not in ('Caja Chica', 'Nómina')
                                           LEFT JOIN requisition_debt rd on rrl.partner_id = rd.partner_id 
-            WHERE rr.id in """ + child + " GROUP BY 1, 2 ORDER BY 1")
+            WHERE rr.id in ''' + child + ' GROUP BY 1, 2 ORDER BY 1')
         proveedores = self.env.cr.dictfetchall()
         for rec in proveedores:
             req_lines = []
@@ -103,12 +103,51 @@ class GenerateRequisitionWizard(models.TransientModel):
             self.env.cr.execute(consulta)
             cargos = self.env.cr.dictfetchall()
             for ca in cargos:
+                if ca['category'] == 'DESTAJO':
+                    fuerza = ca['count']
+                else:
+                    fuerza = 0
+
                 lines = {'project_id': ca['project_id'], 'fecha': ca['finicio'], 'debit': ca['precio'], 'origen': ca['name'], 'reqres_id': ca['id'], 
                     'type_pay': ca['type_pay'], 'concepto': ca['category'] + ' ' + ca['concepto'] + ' ' + str(ca['count']) + ' ' + str(ca['cantidad']),
-                    'account_id': ca['account_id']}
+                    'account_id': ca['account_id'], 'fuerza': fuerza}
                 req_lines.append((0, 0, lines))
             
             proveedor.write({'line_ids': req_lines})
+
+
+    def generate_petty(self):
+        for rec in self.requisition_ids:
+            req_lines = []
+            for li in rec.line_ids.filtered(lambda c: c.category == 'Caja Chica'):
+                if 'RESIDENTE' in rec.employee_id.job_title:
+                    empleado = rec.employee_id
+                else:
+                    resproy = self.env['project.residents'].search([('project_id', '=', rec.project_id.id)], limit=1)
+                    empleado = resproy.resident_id
+
+                residente = self.env['requisition.petty.cash'].search([('employee_id', '=', empleado.id)])
+                if not residente:
+                    residente = self.env['requisition.petty.cash'].create({'employee_id': rec['employee_id']})
+
+                if empleado.facil_tarjeta:
+                    tarjeta = empleado.facil_tarjeta.id
+                else:
+                    tarjeta = empleado.bank_account_id.id
+
+                consulta = ('''SELECT rr.id, rr.name, rr.project_id, rr.finicio, 'CAJA CHICA ' category, 
+                        STRING_AGG(rc.reference||' $'||rc.amount::CHARACTER VARYING, ' || ') CONCEPTO, count(*) count, 0 cantidad, sum(rc.amount) precio
+                    FROM requisition_residents rr JOIN requisition_cash rc ON rr.id = rc.req_id AND rc.comp IS True
+                    WHERE rr.id = ''' + str(rec.id) + ' GROUP BY 1, 2, 3, 4, 5 ORDER BY 1 ')
+                self.env.cr.execute(consulta)
+                cargos = self.env.cr.dictfetchall()
+                for ca in cargos:
+
+                    lines = {'project_id': ca['project_id'], 'fecha': ca['finicio'], 'credit': ca['precio'], 'origen': ca['name'], 'reqres_id': ca['id'], 
+                        'type_pay': 'TRANSFERENCIA', 'concepto': ca['concepto'], 'account_id': tarjeta}
+                    req_lines.append((0, 0, lines))
+                
+                residente.write({'line_ids': req_lines})
 
 
     def generate_weekly(self):
@@ -117,39 +156,34 @@ class GenerateRequisitionWizard(models.TransientModel):
         name = self.env['ir.sequence'].next_by_code('requisition.weekly.name')
 
         #Caja chica
-        cash = self.env['requisition.residents.line'].search([('req_id','in',self.requisition_ids.ids), ('category','in',['Caja Chica', 'Nómina'])])
+        cash = self.env['requisition.petty.cash.line'].search([('reqres_id','in',self.requisition_ids.ids), ('credit','>',0)])
         for rec in cash:
-            if rec.category == 'Caja Chica':
-                if rec.req_id.employee_id.facil_tarjeta:
-                    destino = rec.req_id.employee_id.facil_tarjeta
-                else:
-                    destino = self.env['res.partner.bank'].search([('bank_name','=','TARJETA FACIL')], limit=1)
+            lines = {'company_id':rec.reqres_id.company_id.id, 'project_id':rec.reqres_id.project_id.id, 'concepto':'Reposición de Caja Chica', 
+                'type_pay':rec.type_pay, 'partner_id':rec.petty_id.employee_id.work_contact_id.id, 'fuerza':0, 'adeudo':rec.credit, 
+                'account_dest':rec.account_id.id, 'cash_id': rec.id}
+            req_lines.append((0, 0, lines))            
 
-                #if destino.type_pay == 'estrategia': --Para pruebas
-                if not destino or destino.type_pay == 'estrategia':
-                    tipo = 'EFECTIVO'
-                else:
-                    tipo = destino.type_pay.upper()
-
-                total = rec.amount_untaxed + rec.amount_total
-                lines = {'company_id':rec.req_id.company_id.id, 'project_id':rec.req_id.project_id.id, 'concepto':'Reposición de Caja Chica', 'type_pay':tipo, 
-                    'partner_id':rec.req_id.employee_id.work_contact_id.id, 'fuerza':0, 'adeudo':total, 'account_dest':destino.id}
-                req_lines.append((0, 0, lines))
-            else:
+        #Nomina
+        cash = self.env['requisition.residents.line'].search([('req_id','in',self.requisition_ids.ids), ('category','=','Nómina')])
+        for rec in cash:
+            if rec.category == 'Nómina':
                 concepto = rec.category
-                if rec.amount_untaxed != 0:
-                    lines = {'company_id':rec.req_id.company_id.id, 'project_id':rec.req_id.project_id.id, 'concepto':concepto, 'type_pay':'EFECTIVO',
-                        'partner_id':rec.req_id.employee_id.work_contact_id.id, 'fuerza':0, 'adeudo':rec.amount_untaxed}
-                    req_lines.append((0, 0, lines))
-                if rec.amount_total != 0:
-                    lines = {'company_id':rec.req_id.company_id.id, 'project_id':rec.req_id.project_id.id, 'concepto':concepto, 'type_pay':'FISCAL',
-                        'partner_id':rec.req_id.employee_id.work_contact_id.id, 'fuerza':0, 'adeudo':rec.amount_total}
-                    req_lines.append((0, 0, lines))
+            else:
+                concepto = 'Reposición de Caja Chica'
+
+            if rec.amount_untaxed != 0:
+                lines = {'company_id':rec.req_id.company_id.id, 'project_id':rec.req_id.project_id.id, 'concepto':concepto, 'type_pay':'EFECTIVO',
+                    'partner_id':rec.req_id.employee_id.work_contact_id.id, 'fuerza':rec.fuerza_untaxed, 'adeudo':rec.amount_untaxed}
+                req_lines.append((0, 0, lines))
+            if rec.amount_total != 0:
+                lines = {'company_id':rec.req_id.company_id.id, 'project_id':rec.req_id.project_id.id, 'concepto':concepto, 'type_pay':'FISCAL',
+                    'partner_id':rec.req_id.employee_id.work_contact_id.id, 'fuerza':rec.fuerza_total, 'adeudo':rec.amount_total}
+                req_lines.append((0, 0, lines))
 
         #Adeudo anterior
-        consulta = ('''SELECT t1.project_id, rr.company_id, t1.concepto, rd.partner_id, rd.id supplier_id, t1.id, t1.type_pay, rw.name, 
+        consulta = ('''SELECT t1.project_id, rr.company_id, t1.concepto, rd.partner_id, rd.id supplier_id, t1.id, t1.type_pay, rw.name, t1.fuerza,
                 (t1.debit - t1.credit) debit 
-            FROM (SELECT project_id, req_id, concepto, reqres_id, MIN(type_pay) type_pay, MIN(id) id, SUM(debit) debit, SUM(credit) credit 
+            FROM (SELECT project_id, req_id, concepto, reqres_id, MIN(type_pay) type_pay, MIN(id) id, SUM(debit) debit, SUM(credit) credit, MAX(fuerza) fuerza
                     FROM requisition_debt_line rdl 
                     WHERE req_id IS NOT NULL AND reqres_id NOT IN ''' + child + ''' GROUP BY 1, 2, 3, 4) as t1 
                 JOIN requisition_residents rr ON t1.reqres_id = rr.id JOIN requisition_debt rd on t1.req_id = rd.id
@@ -159,15 +193,15 @@ class GenerateRequisitionWizard(models.TransientModel):
         cargos = self.env.cr.dictfetchall()
         for rec in cargos:
             lines = {'company_id': rec['company_id'], 'project_id': rec['project_id'], 'concepto': rec['concepto'], 'origen': rec['name'],
-                'partner_id': rec['partner_id'], 'supplier_id': rec['supplier_id'], 'fuerza': 0, 'type_pay': rec['type_pay'], 'adeudo': rec['debit'], 
-                'debt_id': rec['id']}
+                'partner_id': rec['partner_id'], 'supplier_id': rec['supplier_id'], 'fuerza': rec['fuerza'], 'type_pay': rec['type_pay'], 
+                'adeudo': rec['debit'], 'debt_id': rec['id']}
             req_lines.append((0, 0, lines))
         
         #Distinto a caja chica y nómina
         conceptos = self.env['requisition.debt.line'].search([('reqres_id','in',self.requisition_ids.ids), ('debit','!=',0)])
         for rec in conceptos:
             lines = {'company_id': rec.reqres_id.company_id.id, 'project_id': rec.project_id.id, 'concepto': rec.concepto, 
-                'partner_id': rec.req_id.partner_id.id, 'supplier_id': rec.req_id.id, 'fuerza': 0, 'type_pay': rec.type_pay, 'adeudo': rec.debit, 
+                'partner_id': rec.req_id.partner_id.id, 'supplier_id': rec.req_id.id, 'fuerza': rec.fuerza, 'type_pay': rec.type_pay, 'adeudo': rec.debit, 
                 'debt_id': rec.id}
             req_lines.append((0, 0, lines))
         
@@ -180,6 +214,8 @@ class GenerateRequisitionWizard(models.TransientModel):
 
     def generate_requisition(self):
         mensaje = ''
+        mensaje2 = ''
+        mensaje3 = ''
         self.ensure_one()
         self.env.cr.execute("""SELECT 'Requisiciones sin aprobar: '||COUNT(*) com, COUNT(*) num FROM requisition_residents rr 
                 WHERE rr.state NOT IN ('aprobado', 'req') AND rr.finicio = '""" + str(self.fecha) + """' 
@@ -193,10 +229,33 @@ class GenerateRequisitionWizard(models.TransientModel):
             if rec['num'] != 0:
                 mensaje += rec['com'] + '\n'
 
-        if mensaje != '':
-            raise ValidationError('No es posible generar la requisición semanal: \n' + mensaje)
+        for rec in self.requisition_ids:
+            if 'RESIDENTE' in rec.employee_id.job_title:
+                if not rec.employee_id.facil_tarjeta or not rec.employee_id.bank_account_id:
+                    mensaje2 += rec.project_id.name + '\n'
+            else:
+                self.env.cr.execute('SELECT COUNT(*) num FROM project_residents pr WHERE pr.project_id = ' + str(rec.project_id.id))
+                count = self.env.cr.dictfetchall()
+                if count[0]['num'] == 0:
+                    mensaje2 += rec.project_id.name + '\n'
+                else:
+                    self.env.cr.execute('SELECT COUNT(*) num FROM project_residents pr JOIN hr_employee he ON pr.resident_id = he.id WHERE pr.project_id = ' 
+                        + str(rec.project_id.id) + ' AND (he.FACIL_TARJETA IS NOT NULL OR he.bank_account_id IS NOT NULL)')
+                    count = self.env.cr.dictfetchall()
+                    if count[0]['num'] == 0:
+                        mensaje3 += rec.project_id.name + '\n'
+
+        if mensaje3 != '':
+            mensaje3 = 'No hay residente asignado en las obras: ' + mensaje3
+
+        if mensaje2 != '':
+            mensaje2 = 'Falta la información de la tarjeta de caja chica de las obras: ' + mensaje2
+
+        if mensaje != '' or mensaje2 != '' or mensaje3 != '':
+            raise ValidationError('No es posible generar la requisición semanal: \n' + mensaje + ' \n' + mensaje2 + ' \n' + mensaje3)
         
         if self.requisition_ids:
+            self.generate_petty()
             self.generate_adeudo()
             week = self.generate_weekly()
         

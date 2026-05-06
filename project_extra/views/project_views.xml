@@ -97,7 +97,7 @@
                     </group>
                     <group string="Residentes">
                         <field name="resident_ids">
-                            <list>
+                            <list create="true" delete="false" editable="bottom">
                                 <field name="resident_id"/>
                                 <field name="active"/>
                             </list>

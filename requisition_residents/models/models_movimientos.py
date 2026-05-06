@@ -53,6 +53,7 @@ class requisitionDebtLine(models.Model):
     account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
     comprobantes_ids = fields.Many2many(comodel_name='ir.attachment', string='Comprobantes')
     observaciones = fields.Char(string='Observaciones')
+    fuerza = fields.Integer(string='Fuerza Efectivo')
     reqres_id = fields.Many2one('requisition.residents', string='Requisición Residente')
     movcta_id = fields.Many2one('requisition.bank.movements', string='Movimiento bancario')
     reqw_id = fields.Many2one('requisition.weekly', string='Requisición semanal')
