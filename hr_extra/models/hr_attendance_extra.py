@@ -109,6 +109,45 @@ class HrLeaveExtra(models.Model):
         return True
 
 
+    def _get_dias_vacaciones_permitidos(self, employee, fecha):
+        from dateutil.relativedelta import relativedelta
+        contrato = employee.sudo().contract_id
+        if not contrato or not contrato.date_start:
+            return 0
+
+        delta = relativedelta(fecha, contrato.date_start)
+        años = delta.years
+        if años < 1:
+            return 0
+        
+        tabla = self.env['hr.leave.vacation.days'].sudo().search([('numinical', '<=', años), ('numfinal', '>=', años)], limit=1)
+        return tabla.numdias if tabla else 0
+
+
+    def action_confirm(self):
+        for leave in self:
+            tipo = leave.holiday_status_id
+            if tipo.time_type == 'leave' and 'vacacion' in (tipo.name or '').lower():
+                employee = leave.employee_id
+                fecha = leave.date_from.date() if leave.date_from else fields.Date.today()
+                dias_permitidos = self._get_dias_vacaciones_permitidos(employee, fecha)
+                if dias_permitidos == 0:
+                    raise ValidationError(
+                        f'El empleado {employee.name} no tiene derecho a vacaciones '
+                        f'(menos de 1 año de antigüedad).'
+                    )
+                dias_solicitados = leave.number_of_days
+                dias_tomados = self.env['hr.leave'].sudo().search_count([('employee_id', '=', employee.id), ('holiday_status_id', '=', tipo.id),
+                    ('state', 'in', ['validate', 'validate1']), ('id', '!=', leave.id),])
+                dias_acumulados = sum(self.env['hr.leave'].sudo().search([('employee_id', '=', employee.id), ('holiday_status_id', '=', tipo.id),
+                    ('state', 'in', ['validate', 'validate1']), ('id', '!=', leave.id),]).mapped('number_of_days'))
+                if dias_acumulados + dias_solicitados > dias_permitidos:
+                    raise ValidationError(f'El empleado {employee.name} solo tiene derecho a {dias_permitidos} días '
+                        f'de vacaciones según su antigüedad. Ya tiene {dias_acumulados:.0f} días '
+                        f'tomados y está solicitando {dias_solicitados:.0f} días más.')
+        return super().action_confirm()
+
+
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
         if self.env.user.login == 'admin':

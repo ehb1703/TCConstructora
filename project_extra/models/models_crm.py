@@ -640,8 +640,8 @@ class CrmLead(models.Model):
         for rec in correos:
             if rec.work_email:
                 emails.add(rec.work_email.strip())
-            elif rec.private_email:
-                emails.add(rec.private_email.strip())
+            elif rec.work_contact_id.email:
+                emails.add(rec.work_contact_id.email.strip())
             elif rec.address_id.email:
                 emails.add(rec.address_id.email.strip())
             else:

@@ -127,6 +127,12 @@ class HrEmployeeObra(models.Model):
             if record.fecha_inicio and record.fecha_fin and record.fecha_fin < record.fecha_inicio:
                 raise ValidationError('La fecha final no puede ser anterior a la fecha de inicio.')
 
+    def unlink(self):
+        for record in self:
+            if record.hourly_wage != 0.0:
+                raise ValidationError(_('El registro actual no puede ser eliminado'))
+        return super(HrEmployeeObra, self).unlink()
+
 
 class hrEmployeeInherit(models.Model):
     _inherit = 'hr.employee'

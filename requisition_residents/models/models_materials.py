@@ -23,6 +23,17 @@ class requisitionMaterials(models.Model):
     state = fields.Selection(selection=[('draft','Borrador'), ('send','Enviado'), ('aprobado','Aprobado')],
         string='Estatus', default='draft', tracking=True)
     
+    @api.model
+    def _search(self, domain, offset=0, limit=None, order=None):
+        """if self.env.user.login == 'admin':
+            return super()._search(domain, offset=offset, limit=limit, order=order)"""
+
+        if self.env.user.has_group('requisition_residents.group_requisition_capture'):
+            domain = [('create_uid', '=', self.env.user.id)]
+
+        return super()._search(domain, offset=offset, limit=limit, order=order)
+
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:

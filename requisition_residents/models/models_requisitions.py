@@ -65,6 +65,17 @@ class requisitionResidents(models.Model):
             req.amount_untaxed = total_untaxed
             req.amount_total = total
 
+    @api.model
+    def _search(self, domain, offset=0, limit=None, order=None):
+        """if self.env.user.login == 'admin':
+            return super()._search(domain, offset=offset, limit=limit, order=order)"""
+
+        if self.env.user.has_group('requisition_residents.group_requisition_capture'):
+            domain = [('create_uid', '=', self.env.user.id)]
+
+        return super()._search(domain, offset=offset, limit=limit, order=order)
+
+
     @api.onchange('finicio')
     def validar_fechas(self):
         if self.finicio:
@@ -188,13 +199,15 @@ class requisitionResidents(models.Model):
         
         if self.destajo_ids:
             self.env.cr.execute('''SELECT pp.nombre, partner_id, SUM(CASE WHEN ra.type_pay = 'FISCAL' THEN amount_total ELSE 0 END) fiscal, 
-                    SUM(CASE WHEN ra.type_pay = 'EFECTIVO' THEN amount_total ELSE 0 END) efectivo
+                    SUM(CASE WHEN ra.type_pay = 'EFECTIVO' THEN amount_total ELSE 0 END) efectivo, 
+                    SUM(CASE WHEN ra.type_pay = 'FISCAL' THEN fuerza ELSE 0 END) ffiscal, 
+                    SUM(CASE WHEN ra.type_pay = 'EFECTIVO' THEN fuerza ELSE 0 END) fefectivo
                 FROM requisition_destajo ra LEFT JOIN project_piecework pp ON ra.DESTAJO_ID = pp.ID WHERE ra.amount_total != 0 AND req_id = ''' + 
                 str(self.id) + ' GROUP BY 1, 2')
             destajo = self.env.cr.dictfetchall()
             for rec in destajo:
-                lines = {'category': 'Destajo', 'description': rec['nombre'], 'partner_id': rec['partner_id'], 'amount_untaxed': rec['efectivo'], 
-                    'amount_total': rec['fiscal']}
+                lines = {'category': 'Destajo', 'description': rec['nombre'], 'partner_id': rec['partner_id'], 'fuerza_untaxed': rec['fefectivo'], 
+                    'amount_untaxed': rec['efectivo'], 'fuerza_total': rec['ffiscal'], 'amount_total': rec['fiscal']}
                 req_lines.append((0, 0, lines))
 
         if self.other_ids:
@@ -931,9 +944,14 @@ class requisitionWeekly(models.Model):
                     importe = ad.importe
 
                 if importe != 0.0:
-                    ade_line = self.env['requisition.debt.line'].create({'fecha': rec['fecha'], 'project_id': ad.project_id.id, 'debit': 0.0, 'credit': importe,
-                        'concepto': ad.concepto, 'origen': self.name, 'reqw_id': self.id, 'movcta_id': cta_line.id, 'req_id': ad.debt_id.req_id.id, 
-                        'reqres_id': ad.debt_id.reqres_id.id, 'type_pay': ad.type_pay})
+                    if ad.cash_id:
+                        ade_line = self.env['requisition.petty.cash.line'].create({'fecha': rec['fecha'], 'project_id': ad.project_id.id, 'debit': importe, 
+                            'credit': 0.0, 'concepto': ad.concepto, 'origen': self.name, 'reqw_id': self.id, 'movcta_id': cta_line.id, 
+                            'petty_id': ad.cash_id.petty_id.id, 'reqres_id': ad.debt_id.reqres_id.id, 'type_pay': ad.type_pay})
+                    else:
+                        ade_line = self.env['requisition.debt.line'].create({'fecha': rec['fecha'], 'project_id': ad.project_id.id, 'debit': 0.0, 
+                            'credit': importe, 'concepto': ad.concepto, 'origen': self.name, 'reqw_id': self.id, 'movcta_id': cta_line.id, 
+                            'req_id': ad.debt_id.req_id.id, 'reqres_id': ad.debt_id.reqres_id.id, 'type_pay': ad.type_pay})
             self.write({'state': 'done'})
 
 
@@ -959,4 +977,5 @@ class requisitionWeeklyLine(models.Model):
     account_dest = fields.Many2one('res.partner.bank', string='Cuenta a depositar', tracking=True, ondelete='restrict', copy=False)
     accountbank_id = fields.Many2one('requisition.bank.account', string='Cuenta bancaria', domain="[('obsolete', '=', False)]")
     debt_id = fields.Many2one('requisition.debt.line', string='Linea de adeudo')
+    cash_id = fields.Many2one('requisition.petty.cash.line', string='Linea de adeudo')
     state = fields.Selection(related='weekly_id.state', string='Estatus')
