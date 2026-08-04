@@ -51,7 +51,7 @@ class ControllerReporteAsistencias(http.Controller):
                 domain += extra
 
         attendances = request.env['hr.attendance'].sudo().search(domain)
-        attendances = attendances.sorted(key=lambda a: (a.employee_id.current_project_name or '', a.employee_id.name or '', a.check_in or datetime.min,))
+        attendances = attendances.sorted(key=lambda a: ((a.project_id.name if a.project_id else (a.employee_id.current_project_name or '')), a.employee_id.name or '', a.check_in or datetime.min,))
         output = io.BytesIO()
         wb = xlsxwriter.Workbook(output)
         ws = wb.add_worksheet('Asistencias')
@@ -110,7 +110,7 @@ class ControllerReporteAsistencias(http.Controller):
             ws.write(fila, 0, emp.name or '', fmt_normal)
             ws.write(fila, 1, emp.department_id.name if emp.department_id else '', fmt_centro)
             ws.write(fila, 2, emp.job_id.name if emp.job_id else '', fmt_centro)
-            ws.write(fila, 3, emp.current_project_name or '', fmt_centro)
+            ws.write(fila, 3, (att.project_id.name if att.project_id else (emp.current_project_name or '')), fmt_centro)
             ws.write(fila, 4, check_in_local.strftime('%d/%m/%Y') if check_in_local else '', fmt_centro)
             ws.write(fila, 5, check_in_local.strftime('%H:%M') if check_in_local else '', fmt_centro)
             ws.write(fila, 6, check_out_local.strftime('%d/%m/%Y') if check_out_local else '', fmt_centro)

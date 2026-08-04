@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
@@ -115,7 +116,7 @@ class HrEmployeeObra(models.Model):
     etapa_id = fields.Many2one('project.project.stage', string='Etapa', related='project_id.stage_id', readonly=True, store=True)
     fecha_inicio = fields.Date(string='Fecha inicio')
     fecha_fin = fields.Date(string='Fecha fin')
-    hourly_wage = fields.Float(string='Salario por hora', digits=(10, 2), default=0.0)
+    hourly_wage = fields.Float(string='Salario por hora', digits=(16, 6), default=0.0)
 
     @api.constrains('fecha_inicio', 'fecha_fin')
     def _chech_end_date(self):
@@ -151,10 +152,11 @@ class hrEmployeeInherit(models.Model):
     finiquito = fields.Boolean(string='Finiquito', default=False, tracking=True)
     empresa_empleadora = fields.Many2one('res.company', string='Empresa empleadora')
     antique = fields.Integer(string='Antigüedad', default=0)
+    ultimo_aviso_vacaciones = fields.Integer(string='Último año avisado vacaciones', default=0, copy=False)
     encargado_nomina = fields.Selection(selection=[('quincenal', 'Quincenal'), ('semanal', 'Semanal'), ('ambas', 'Ambas')],
         string='Encargado de Nómina')
     can_number = fields.Boolean(compute='_compute_can_number')
-    hourly_cost = fields.Monetary(string='Salario por hora', currency_field='currency_id', store=True, readonly=True, compute='_compute_salary')
+    hourly_cost = fields.Float(string='Salario por hora', digits=(16, 6), store=True, readonly=True, compute='_compute_salary')
     is_system_user = fields.Boolean(compute='_compute_is_system_user')
     facil_tarjeta = fields.Many2one('res.partner.bank', string='Tarjeta facil', tracking=True, ondelete='restrict', copy=False, 
         domain="[('bank_id.name', '=', 'TARJETA FACIL')]")
@@ -170,17 +172,14 @@ class hrEmployeeInherit(models.Model):
 
     @api.depends('obra_ids.hourly_wage')
     def _compute_salary(self):
-        cost = 0.00
-        c = 0
-        for rec in self.obra_ids:
-            if rec.hourly_wage > 0:
-                c += 1
-                cost += rec.hourly_wage
-                
-        if c != 0:
-            self.hourly_cost = cost/c
-        else:
-            self.hourly_cost = 0
+        for employee in self:
+            cost = 0.00
+            c = 0
+            for rec in employee.obra_ids:
+                if rec.hourly_wage > 0:
+                    c += 1
+                    cost += rec.hourly_wage
+            employee.hourly_cost = cost / c if c != 0 else 0
 
 
     @api.constrains('l10n_mx_curp')
@@ -281,17 +280,37 @@ class hrEmployeeInherit(models.Model):
             self.env.cr.execute('UPDATE hr_employee SET antique = %s WHERE id = %s AND antique != %s',(years, emp_id, years))
 
 
+    def cron_aviso_vacaciones(self):
+        hoy = date.today()
+        todo = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
+        if not todo:
+            return
+        empleados = self.search([('state', '=', 'activo'), ('first_contract_date', '!=', False)])
+        for emp in empleados:
+            ingreso = emp.first_contract_date
+            if ingreso.month == hoy.month and ingreso.day == hoy.day and ingreso.year < hoy.year \
+                    and emp.ultimo_aviso_vacaciones != hoy.year:
+                anios = hoy.year - ingreso.year
+                emp.activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    date_deadline=hoy,
+                    summary=_('Aniversario laboral: gestionar vacaciones'),
+                    note=_('%(name)s cumple %(anios)s año(s) de antigüedad hoy. Gestionar el periodo de vacaciones y el pago correspondiente.',
+                           name=emp.name, anios=anios),
+                    user_id=self.env.ref('base.user_admin').id)
+                emp.ultimo_aviso_vacaciones = hoy.year
+
     @api.depends('obra_ids', 'obra_ids.project_id', 'obra_ids.project_id.active', 'obra_ids.fecha_inicio', 'obra_ids.fecha_fin', 'work_location_id')
     def _compute_current_project(self):
         today = date.today()
         for emp in self:
             obra_encontrada = False
             if emp.obra_ids:
-                obras_vigentes = emp.obra_ids.filtered(lambda o: o.project_id and o.project_id.active and o.fecha_inicio and o.fecha_fin
-                    and o.fecha_inicio <= today <= o.fecha_fin)
+                obras_vigentes = emp.obra_ids.filtered(lambda o: o.project_id and o.project_id.active and o.fecha_inicio
+                    and o.fecha_inicio <= today and (not o.fecha_fin or today <= o.fecha_fin))
                 obras_buscar = obras_vigentes or emp.obra_ids.filtered(lambda o: o.project_id and o.project_id.active)
                 if obras_buscar:
-                    emp.current_project_name = obras_buscar.sorted('id', reverse=True)[0].project_id.name
+                    emp.current_project_name = obras_buscar.sorted('fecha_inicio', reverse=True)[0].project_id.name
                     obra_encontrada = True
             
             if not obra_encontrada:
@@ -537,7 +556,12 @@ class hrContractInherit(models.Model):
 
 
     def _preprocess_work_hours_data(self, work_data, date_from, date_to):
-        self.env.cr.execute("SELECT COUNT(*) num FROM (SELECT * FROM generate_series('" + str(date_from) + "'::date, '" + str(date_to) + 
+        # El dia 31 nunca se computa: si el periodo termina en 31, el tope de calculo es 30.
+        _dt_to = date_to.date() if hasattr(date_to, 'date') and not isinstance(date_to, date) else date_to
+        date_to_calc = date_to
+        if _dt_to.strftime('%d') == '31':
+            date_to_calc = date_to - timedelta(days=1)
+        self.env.cr.execute("SELECT COUNT(*) num FROM (SELECT * FROM generate_series('" + str(date_from) + "'::date, '" + str(date_to_calc) + 
             "'::date, '1 day') as d ORDER BY 1) as t1 WHERE NOT EXISTS(SELECT * FROM resource_calendar_attendance rca WHERE rca.calendar_id = " + 
             str(self.resource_calendar_id.id) + " AND rca.dayofweek::integer+1 = EXTRACT(dow from t1.d))")
         descanso = self.env.cr.dictfetchall()
@@ -552,9 +576,9 @@ class hrContractInherit(models.Model):
             return
 
         overtime_hours = self.env['hr.attendance.overtime']._read_group([('employee_id', 'in', self.employee_id.ids), ('date', '>=', date_from), 
-            ('date', '<=', date_to)], [], ['duration:sum'],)[0][0]
+            ('date', '<=', date_to_calc)], [], ['duration:sum'],)[0][0]
         unapproved_overtime_hours = round(self.env['hr.attendance'].sudo()._read_group([('employee_id', 'in', self.employee_id.ids), 
-            ('check_in', '>=', date_from), ('check_out', '<=', date_to), ('overtime_hours', '>', 0), ('overtime_status', '!=', 'approved')], [], 
+            ('check_in', '>=', date_from), ('check_out', '<=', date_to_calc), ('overtime_hours', '>', 0), ('overtime_status', '!=', 'approved')], [], 
             ['overtime_hours:sum'],)[0][0], 2)
 
         if overtime_hours or overtime_hours > 0:
@@ -562,41 +586,77 @@ class hrContractInherit(models.Model):
             overtime_hours -= unapproved_overtime_hours
 
         empleados = str(self.employee_id.ids)
-        if self.schedule_pay != 'weekly':
-            if date_to.date().strftime('%d') == '31':
-                self.env.cr.execute("""SELECT coalesce(sum(hao.duration), 0.0) duration 
-                    FROM hr_work_entry hao WHERE hao.employee_id IN (""" + empleados[1:-1] + ") AND hao.DATE_START::DATE = '" + str(date_to) + "'::DATE ")
-                out_day = self.env.cr.dictfetchall()
-                if out_day[0]['duration'] > 0:
-                    work_data[default_work_entry_type.id] -= out_day[0]['duration']
 
-            if date_to.date().strftime('%d') == '28':
+        # --- T0105: regla sabado/domingo para personal de OBRA ---
+        # Domingo trabajado = DESC (ya calculado) + DOMTRAB (dia extra) + excedente>5h a OVERTIME.
+        # Sabado trabajado = dia normal (ya en WORK100) + excedente>5h a OVERTIME.
+        # El excedente lo calcula esta regla (horas reales - 5), NO el overtime del checador,
+        # que se excluye para sab/dom y se devuelve a WORK100 antes de reclasificar.
+        if self.employee_id.current_project_name != 'OFICINA':
+            domtrab_type = self.env.ref('hr_extra.work_entry_type_domtrab', False)
+            if domtrab_type:
+                self.env.cr.execute("SELECT EXTRACT(dow FROM check_in) dow, SUM(worked_hours) h "
+                    "FROM hr_attendance WHERE employee_id IN (" + empleados[1:-1] + ") "
+                    "AND check_in::date BETWEEN '" + str(date_from) + "' AND '" + str(date_to_calc) + "' "
+                    "AND EXTRACT(dow FROM check_in) IN (0,6) GROUP BY 1, check_in::date")
+                sab_exc = dom_exc = dom_h = 0.0
+                dom_dias = 0.0
+                for _r in self.env.cr.dictfetchall():
+                    _h = float(_r['h'] or 0)
+                    if int(_r['dow']) == 6:
+                        sab_exc += max(0.0, _h - 5)
+                    else:
+                        dom_h += _h
+                        dom_exc += max(0.0, _h - 5)
+                        dom_dias += 1.0 if _h >= 5 else _h / 10.0
+                # Overtime de fin de semana que el flujo previo ya resto de WORK100: se devuelve
+                self.env.cr.execute("SELECT COALESCE(SUM(duration),0) d FROM hr_attendance_overtime "
+                    "WHERE employee_id IN (" + empleados[1:-1] + ") "
+                    "AND date BETWEEN '" + str(date_from) + "' AND '" + str(date_to_calc) + "' "
+                    "AND EXTRACT(dow FROM date) IN (0,6)")
+                _ot_finde = float(self.env.cr.dictfetchall()[0]['d'] or 0)
+                work_data[default_work_entry_type.id] += _ot_finde
+                overtime_hours -= _ot_finde
+                # Sacar domingo entero + excedente sabado de WORK100 (dias normales solo L-V + sab hasta 5h)
+                work_data[default_work_entry_type.id] -= dom_h
+                work_data[default_work_entry_type.id] -= sab_exc
+                # DOMTRAB (dia extra del domingo). En horas: dias*10 para que el motor lo convierta.
+                if dom_dias > 0:
+                    work_data[domtrab_type.id] = dom_dias * 10
+                # Excedentes reales (sab+dom) a OVERTIME (horas exactas)
+                overtime_hours += sab_exc + dom_exc
+        # --- fin T0105 ---
+        if self.schedule_pay != 'weekly':
+            if _dt_to.strftime('%d') == '28':
                 work_data[default_work_entry_type.id] += 20
 
+            if _dt_to.strftime('%d') == '29':
+                work_data[default_work_entry_type.id] += 10
+
         self.env.cr.execute("""SELECT coalesce(sum(hao.duration), 0.0) duration 
-            FROM hr_attendance_overtime hao JOIN resource_calendar_leaves rcl ON hao.date = rcl.date_from::date 
-            WHERE hao.employee_id IN (""" + empleados[1:-1] + ") AND hao.DATE BETWEEN '" + str(date_from) + "' AND '" + str(date_to) + "'")
+            FROM hr_attendance_overtime hao JOIN resource_calendar_leaves rcl ON hao.date = rcl.date_from::date AND rcl.resource_id IS NULL AND rcl.holiday_id IS NULL 
+            WHERE hao.employee_id IN (""" + empleados[1:-1] + ") AND hao.DATE BETWEEN '" + str(date_from) + "' AND '" + str(date_to_calc) + "'")
         inh_trab = self.env.cr.dictfetchall()
         if inh_trab[0]['duration'] != 0.0:
             overtime_hours -= inh_trab[0]['duration']
             inhabilestrab_type = self.env['hr.work.entry.type'].search([('code', '=', 'FESTTRAB')])
             work_data[inhabilestrab_type.id] = inh_trab[0]['duration']
 
-        self.env.cr.execute("SELECT COUNT(*) num FROM (SELECT * FROM generate_series('" + str(date_from) + "'::date, '" + str(date_to) + 
+        self.env.cr.execute("SELECT COUNT(*) num FROM (SELECT * FROM generate_series('" + str(date_from) + "'::date, '" + str(date_to_calc) + 
                 """'::date, '1 day') as d ORDER BY 1) as t1 
-            WHERE EXISTS(SELECT * FROM resource_calendar_leaves rca WHERE rca.date_from::date = t1.d::date AND rca.holiday_id is null)
+            WHERE EXISTS(SELECT * FROM resource_calendar_leaves rca WHERE rca.date_from::date = t1.d::date AND rca.holiday_id is null AND rca.resource_id IS NULL)
             AND NOT EXISTS(SELECT * FROM hr_attendance_overtime hao WHERE hao.DATE = t1.d::date AND hao.employee_id IN (""" + empleados[1:-1] + '))')
         inhabiles = self.env.cr.dictfetchall()
         if inhabiles[0]['num'] > 0:
             inhabil_type = self.env['hr.work.entry.type'].search([('code', '=', 'FESTNOT')])
             work_data[inhabil_type.id] = inhabiles[0]['num'] * 10
 
-        if overtime_hours != 0:
+        if overtime_hours != 0 and self.employee_id.current_project_name != 'OFICINA':
             work_data[overtime_work_entry_type.id] = overtime_hours
 
         self.env.cr.execute('''SELECT * FROM hr_leave hl JOIN hr_leave_type hlt ON hl.holiday_status_id = hlt.id AND hlt.name->>'es_MX' = 'Vacaciones' 
             WHERE hl.state = 'validate' AND hl.employee_id IN (''' + empleados[1:-1] + ") AND hl.request_date_from BETWEEN '" + str(date_from) + "' AND '" 
-            + str(date_to) + "'")
+            + str(date_to_calc) + "'")
         prima = self.env.cr.dictfetchall()
         if prima:
             prima_type = self.env['hr.work.entry.type'].search([('code', '=', 'LEAVE120P')])
@@ -628,7 +688,7 @@ class hrContractInherit(models.Model):
             c = 1
 
         res = super(hrContractInherit, self).write(vals)
-        if c == 1 and self.contract_type_name == 'Obra determinada':
+        if c == 1 and self.contract_type_name in ('Obra determinada', 'Tiempo de prueba'):
             if self.project_id:
                 obra = self.env['hr.employee.obra'].search([('employee_id', '=', self.employee_id.id), ('project_id', '=', self.project_id.id)])
                 if not obra:
@@ -660,6 +720,7 @@ class HrWorkEntryTypeInherit(models.Model):
 class HrPayslipInherit(models.Model):
     _inherit = 'hr.payslip'
 
+    active = fields.Boolean(string='Activo', default=True)
     employee_id = fields.Many2one('hr.employee', string='Employee', required=True,
         domain="[('finiquito', '=', False), '|', ('company_id', '=', False), ('company_id', '=', company_id), '|', ('active', '=', True), ('active', '=', False)]")
     amount = fields.Float(string='Total a pagar', compute='_compute_amount', store=True)
@@ -669,11 +730,14 @@ class HrPayslipInherit(models.Model):
         for payslip in self:
             payslip.amount = sum(payslip.worked_days_line_ids.mapped('amount'))
 
-    @api.depends('contract_id')
+    @api.depends('contract_id', 'employee_id.current_project_name', 'contract_id.daily_wage', 'employee_id.hourly_cost')
     def _compute_daily_salary(self):
         for payslip in self:
-            cost = payslip.employee_id.hourly_cost
-            payslip.l10n_mx_daily_salary = cost * 8
+            if payslip.employee_id.current_project_name == 'OFICINA':
+                payslip.l10n_mx_daily_salary = payslip.contract_id.daily_wage
+            else:
+                cost = payslip.employee_id.hourly_cost
+                payslip.l10n_mx_daily_salary = cost * 8
 
     def _get_worked_day_lines_values(self, domain=None):
         self.ensure_one()
@@ -729,15 +793,19 @@ class HrPayslipInherit(models.Model):
     def compute_sheet(self):
         payslips = self.filtered(lambda slip: slip.state in ['draft', 'verify'])
         for payslip in payslips:
-            if payslip.warning_message:
+            if payslip.structure_code == 'MX_REGULAR' and payslip.warning_message:
                 raise ValidationError('Existen inconsistencias en el recibo, favor de resolver antes de continuar con el proceso')
         
-        self.calculate_project()
+        for payslip in payslips:
+            if payslip.structure_code == 'MX_REGULAR':
+                payslip.calculate_project()
         return super().compute_sheet()
 
 
     def calculate_project(self):
         attendance = self._get_attendance_by_payslip()[self]
+        if not attendance:
+            return
         salary = sum(x.amount for x in self.worked_days_line_ids)
         self.env.cr.execute('''SELECT project_id, hourly_wage, SUM(worked_hours - overtime_hours) horas, SUM(overtime_hours) extra, MIN(check_in::DATE) fecha
             FROM hr_attendance ha WHERE id in (''' + str(attendance.ids).replace('[', '').replace(']', '') + ") GROUP BY 1, 2 ORDER BY 3 DESC, 5 DESC")
@@ -785,6 +853,25 @@ class HrPayslipInherit(models.Model):
 class HrPayslipEmployeesFiniquitoFilter(models.TransientModel):
     _inherit = 'hr.payslip.employees'
 
+    # --- T0105-P2: filtro por Obra en el wizard "Generar recibos de nomina" ---
+    obra_id = fields.Many2one('project.project', string='Obra',
+        help='Si se indica una obra, la tabla de empleados muestra solo los asignados a esa obra y con estatus Activo.')
+
+    @api.depends('structure_id', 'department_id', 'structure_type_id', 'job_id', 'obra_id')
+    def _compute_employee_ids(self):
+        for wizard in self:
+            wizard.employee_ids = self.env['hr.employee'].search(wizard.get_employees_domain())
+
+    def get_employees_domain(self):
+        domain = super().get_employees_domain()
+        if self.obra_id:
+            domain = expression.AND([
+                domain,
+                [('obra_ids.project_id', '=', self.obra_id.id), ('state', '=', 'activo')],
+            ])
+        return domain
+    # --- fin T0105-P2 ---
+
     def _get_available_contracts_domain(self):
         employee = self.env['hr.employee'].search([('user_id','=',self.env.user.id)])
         if employee:
@@ -817,6 +904,8 @@ class HrWorkEntryEncargadoFilter(models.Model):
 
 class HrPayslipWorkedDaysInherit(models.Model):
     _inherit = 'hr.payslip.worked_days'
+
+    amount = fields.Float(string='Amount', digits=(16, 6), compute='_compute_amount', store=True, readonly=True, copy=True)
 
     def _get_costo_hora_por_fecha(self, employee, date_from, date_to):
         if not employee or not date_from or not date_to:
@@ -877,8 +966,9 @@ class HrPayslipWorkedDaysInherit(models.Model):
                     comp = 0
                     parcial = 0
                     amount = 0.0
+                    es_oficina = worked_days.payslip_id.employee_id.current_project_name == 'OFICINA'
                     for x in percentage:
-                        if x.percentage == 100:
+                        if x.percentage == 100 or es_oficina:
                             comp += 1
                         else:
                             parcial += 1
@@ -903,3 +993,9 @@ class HrPayslipProject(models.Model):
     project_id = fields.Many2one('project.project', string='Nombre de la obra', required=True)
     importe = fields.Float(string='Salario')
 
+
+class HrPayslipLinePrecision(models.Model):
+    _inherit = 'hr.payslip.line'
+
+    amount = fields.Float(digits=(16, 6))
+    total = fields.Float(string='Total', digits=(16, 6))

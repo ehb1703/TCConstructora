@@ -185,7 +185,35 @@
             </xpath>
 
             <xpath expr="//field[@name='hr_responsible_id']" position="before">
-                <field name="project_id" string="Obra" options="{'no_create':True, 'no_open':True, 'no_edit':True}" invisible="contract_type_name not in ['Obra determinada']"/>
+                <field name="project_id" string="Obra" options="{'no_create':True, 'no_open':True, 'no_edit':True}" invisible="contract_type_name not in ['Obra determinada', 'Tiempo de prueba']" required="contract_type_name in ['Obra determinada', 'Tiempo de prueba']"/>
+            </xpath>
+            <!-- T0102: Campos obligatorios en la vista de contrato -->
+            <xpath expr="//field[@name='date_start']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='resource_calendar_id'][@groups='!hr_contract.group_hr_contract_manager']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='resource_calendar_id'][@groups='hr_contract.group_hr_contract_manager']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='department_id'][@groups='!hr_contract.group_hr_contract_manager']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='department_id'][@groups='hr_contract.group_hr_contract_manager']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='job_id'][@groups='!hr_contract.group_hr_contract_manager']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='job_id'][@groups='hr_contract.group_hr_contract_manager']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='contract_type_id'][@groups='!hr_contract.group_hr_contract_manager']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='contract_type_id'][@groups='hr_contract.group_hr_contract_manager']" position="attributes">
+                <attribute name="required">1</attribute>
             </xpath>
 
             <xpath expr="//notebook" position="inside">
@@ -327,10 +355,33 @@
                 <attribute name="domain">[('finiquito', '=', False)]</attribute>
             </xpath>
             <xpath expr="//field[@name='check_out']" position="after">
-                <field name="project_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}" readonly="1"/>
+                <field name="project_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                 <field name="hourly_wage" invisible="1"/>
             </xpath>
         </field>
     </record>
 
+    <record id="hr_payslip_form_archive_button" model="ir.ui.view">
+        <field name="name">hr.payslip.form.archive</field>
+        <field name="model">hr.payslip</field>
+        <field name="inherit_id" ref="hr_payroll.view_hr_payslip_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_archive" string="Archivar" type="object"
+                    invisible="state != 'cancel'"
+                    groups="hr_payroll.group_hr_payroll_user"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hr_payslip_search_archive_filter" model="ir.ui.view">
+        <field name="name">hr.payslip.search.archive</field>
+        <field name="model">hr.payslip</field>
+        <field name="inherit_id" ref="hr_payroll.view_hr_payslip_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='credit_note']" position="after">
+                <filter name="archived" string="Archivado" domain="[('active','=',False)]"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>
