@@ -1,0 +1,11 @@
+# Bytecode de Python
+__pycache__/
+*.py[cod]
+
+# Respaldos in-place
+*.bak
+*.bak_*
+
+# Sistema/editor
+.DS_Store
+*.swp
