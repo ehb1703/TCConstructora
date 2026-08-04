@@ -418,3 +418,65 @@ class tipoDestajo(models.Model):
                 rec.display_name = f'{rec.codigo} - {rec.nombre}'
             else:
                 rec.display_name = rec.nombre or rec.codigo or ''
+
+
+class projectTipoCampamento(models.Model):
+    _name = 'project.tipo.campamento'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _description = 'Tipos de campamento'
+    _rec_name = 'name'
+    _order = 'name'
+
+    name = fields.Char(string='Nombre', required=True, tracking=True)
+    descripcion = fields.Text(string='Descripción', tracking=True)
+    active = fields.Boolean(string='Activo', default=True, tracking=True)
+
+    _sql_constraints = [('name_uniq', 'unique(name)', 'El nombre del tipo de campamento debe ser único.'),]
+
+    @api.onchange('name')
+    def _onchange_name_upper(self):
+        if self.name:
+            self.name = self.name.upper()
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('name'):
+                vals['name'] = vals['name'].upper()
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if vals.get('name'):
+            vals['name'] = vals['name'].upper()
+        return super().write(vals)
+
+
+class projectCapacidad(models.Model):
+    _name = 'project.capacidad'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _description = 'Capacidades'
+    _rec_name = 'name'
+    _order = 'name'
+
+    name = fields.Char(string='Nombre', required=True, tracking=True)
+    descripcion = fields.Text(string='Descripción', tracking=True)
+    active = fields.Boolean(string='Activo', default=True, tracking=True)
+
+    _sql_constraints = [('name_uniq', 'unique(name)', 'El nombre de la capacidad debe ser único.'),]
+
+    @api.onchange('name')
+    def _onchange_name_upper(self):
+        if self.name:
+            self.name = self.name.upper()
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('name'):
+                vals['name'] = vals['name'].upper()
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if vals.get('name'):
+            vals['name'] = vals['name'].upper()
+        return super().write(vals)

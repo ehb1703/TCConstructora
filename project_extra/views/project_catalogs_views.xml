@@ -530,6 +530,68 @@
         </field>
     </record>
 
+    <record id="action_tipo_campamento" model="ir.actions.act_window">
+        <field name="name">Tipos de campamento</field>
+        <field name="res_model">project.tipo.campamento</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="view_tipo_campamento_tree" model="ir.ui.view">
+        <field name="name">project.tipo.campamento.list</field>
+        <field name="model">project.tipo.campamento</field>
+        <field name="arch" type="xml">
+            <list string="Tipos de campamento">
+                <field name="name"/>
+                <field name="descripcion"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_tipo_campamento_form" model="ir.ui.view">
+        <field name="name">project.tipo.campamento.form</field>
+        <field name="model">project.tipo.campamento</field>
+        <field name="arch" type="xml">
+            <form string="Tipos de campamento">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="descripcion"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_capacidad" model="ir.actions.act_window">
+        <field name="name">Capacidades</field>
+        <field name="res_model">project.capacidad</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="view_capacidad_tree" model="ir.ui.view">
+        <field name="name">project.capacidad.list</field>
+        <field name="model">project.capacidad</field>
+        <field name="arch" type="xml">
+            <list string="Capacidades">
+                <field name="name"/>
+                <field name="descripcion"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_capacidad_form" model="ir.ui.view">
+        <field name="name">project.capacidad.form</field>
+        <field name="model">project.capacidad</field>
+        <field name="arch" type="xml">
+            <form string="Capacidades">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="descripcion"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
     <menuitem id="menu_catalog_project" name="Catálogos" parent="project.menu_main_pm" sequence="200" groups="project.group_project_user,group_project_catalog">
         <menuitem id="menu_project_type" name="Especialidades" action="action_project_type" sequence="1"/>
         <menuitem id="menu_project_docsrequeridos" name="Documentos" action="action_project_docsrequeridos" sequence="2"/>
@@ -542,6 +604,8 @@
         <menuitem id="menu_modalidad_precios" name="Modalidad Precios Contrato" action="action_modalidad_precios" sequence="9"/>
         <menuitem id="menu_normatividad" name="Normatividad" action="action_normatividad" sequence="10"/>
         <menuitem id="menu_piecework" name="Tipo de destajo" action="action_piecework" sequence="11"/>
+        <menuitem id="menu_tipo_campamento" name="Tipos de campamento" action="action_tipo_campamento" sequence="12"/>
+        <menuitem id="menu_capacidad" name="Capacidades" action="action_capacidad" sequence="13"/>
     </menuitem>
 
     <!-- Menú Tipos de insumo en Compras → Productos -->

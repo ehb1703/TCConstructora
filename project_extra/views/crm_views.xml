@@ -42,7 +42,12 @@
                 <button name="action_autorizar_presupuesto" type="object" string="Autorizar" class="btn-primary" groups="project_extra.group_budget_authorizer" invisible="stage_name != 'Propuesta Económica' or not pe_presupuesto_revisado or pe_presupuesto_autorizado"/>
                 <button name="action_advance_stage" type="object" string="Avanzar etapa" class="btn-secondary" invisible="stage_name in ('Declinado', 'Ganado')"/>
                 <button name="action_revert_stage" type="object" string="Regresar etapa" class="btn-secondary" invisible="stage_name in ('Nuevas Convocatorias', 'Declinado')"/>
-                <button name="action_genera_ordenventa" type="object" string="Orden de venta" class="btn-secondary" invisible="stage_name != 'Ganado'"/>
+                <field name="is_center" invisible="1"/>
+                <field name="req_bases" invisible="1"/>
+                <button name="action_genera_ordenventa" type="object" string="Orden de venta" class="btn-secondary" invisible="stage_name != 'Ganado' or (is_center and not req_bases)"/>
+                <button name="action_crear_obra" type="object" string="Crear obra" class="btn-secondary" invisible="stage_name != 'Ganado' or not is_center or req_bases or obra_creada"/>
+                <field name="obra_creada" invisible="1"/>
+                <field name="obra_creada_name" invisible="1"/>
             </xpath>
 
             <xpath expr="//button[@name='%(crm.crm_lead_lost_action)d']" position="attributes">
@@ -109,6 +114,11 @@
                 </group>
             </xpath>
 
+            <xpath expr="//sheet/notebook" position="before">
+                <div class="alert alert-success" role="alert" invisible="not obra_creada">
+                    <strong>✓ Obra CREADA</strong> - <field name="obra_creada_name" readonly="1" class="oe_inline"/>
+                </div>
+            </xpath>
             <xpath expr="//sheet/notebook" position="inside">
                 <page string="1ras. Etapas" invisible="stage_name == 'Nuevas Convocatorias'">
                     <group>
@@ -489,7 +499,7 @@
                     </group>
                     <group invisible="stage_name != 'Ganado'">
                         <div class="oe_button_box">
-                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_concept" string="Cargar" type="object" invisible="concept_ids" confirm="Se agregará el contenido del documento de conceptos, ¿continuar?"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_concept" string="Cargar" type="object" confirm="Se reemplazará el contenido de conceptos por el del documento, ¿continuar?"/>
                             <button class="oe_stat_button" icon="fa-upload" name="action_genera_partidas" string="Partidas" type="object" invisible="not concept_ids"/>
                             <button class="oe_stat_button" icon="fa-upload" name="action_genera_concept" string="Conceptos" type="object" invisible="not concept_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
                             <!--button class="oe_stat_button" icon="fa-upload" name="action_cargar_combo" string="Cargar Matriz" type="object" invisible="combo_ids"/>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Extra Proyectos',
-    'version': '1.2',
+    'version': '1.3',
     'summary': 'Extra de proyectos',
     'sequence': 151,
     'description': """
@@ -17,6 +17,8 @@ Personalización del modulo:
         'data/cron_visita.xml',
         'data/ir_sequence.xml',
         'data/ir_actions_server.xml',
+        'data/tipo_campamento_data.xml',
+        'data/capacidad_data.xml',
         'security/res_groups.xml',
         'security/ir.model.access.csv',
         'views/project_catalogs_views.xml',
