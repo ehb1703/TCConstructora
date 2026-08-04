@@ -107,6 +107,21 @@ class saleOrderLineInherit(models.Model):
                 }
                 values.update(vals_crm)
 
+                # --- T0101: Logica de BLOQUE ---
+                if opp.bloque_id:
+                    proyecto_bloque = self.env['project.project'].search([('bloque', '=', opp.bloque_id.name)], limit=1)
+                    if proyecto_bloque:
+                        # La obra del bloque ya existe: vincular esta orden y terminar sin crear duplicado
+                        if not proyecto_bloque.type_ids:
+                            proyecto_bloque.type_ids = self.env['project.task.type'].create([{'name': name, 'fold': fold, 'sequence': sequence,} for name, fold, sequence in [
+                                (_('To Do'), False, 5), (_('In Progress'), False, 10), (_('Done'), False, 15), (_('Cancelled'), True, 20),]])
+                        self.write({'project_id': proyecto_bloque.id})
+                        proyecto_bloque.reinvoiced_sale_order_id = self.order_id
+                        return proyecto_bloque
+                    # No existe: crear la obra con el NOMBRE DEL BLOQUE
+                    values['name'] = opp.bloque_id.name
+                    values['bloque'] = opp.bloque_id.name
+
             project = self.env['project.project'].create(values)
             project.cargar_docs()
 
