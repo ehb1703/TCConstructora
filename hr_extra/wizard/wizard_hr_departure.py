@@ -15,7 +15,7 @@ class HrDepartureWizard(models.TransientModel):
 
             if self.departure_reason_id.name.upper() in ['RETIRO']:
                 description = 'pensionado'
-            elif self.departure_reason_id.name.upper() in ['DESPEDIDO', 'RENUNCIA']:
+            elif self.departure_reason_id.name.upper() in ['DESPEDIDO', 'RENUNCIA', 'TÉRMINO DE LA OBRA']:
                 description = 'baja'
             elif self.departure_reason_id.name.upper() in ['ENFERMEDAD']:
                 description = 'incapacidad'

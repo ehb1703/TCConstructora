@@ -171,7 +171,7 @@ class PurchaseAsignacion(models.Model):
     nombre_id = fields.Many2one('hr.employee', string='Nombre',
         domain="[('department_id.name', 'ilike', 'compras')]")
     referencia_id = fields.Many2one('purchase.order', string='Referencia',
-        domain="[('lead_id', '!=', False)]")
+        domain="['|', ('lead_id', '!=', False), ('project_id', '!=', False)]")
     fecha_asignacion = fields.Date(string='Fecha de asignación', default=fields.Date.context_today)
     fecha_limite = fields.Datetime(string='Fecha límite', related='referencia_id.date_order', readonly=True)
     observaciones = fields.Char(string='Observaciones')

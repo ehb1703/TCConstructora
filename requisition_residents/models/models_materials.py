@@ -25,12 +25,13 @@ class requisitionMaterials(models.Model):
     
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
-        """if self.env.user.login == 'admin':
-            return super()._search(domain, offset=offset, limit=limit, order=order)"""
-
-        if self.env.user.has_group('requisition_residents.group_requisition_capture'):
-            domain = [('create_uid', '=', self.env.user.id)]
-
+        user = self.env.user
+        ve_todas = (
+            user.has_group('requisition_residents.group_requisition_admin')
+            or user.has_group('requisition_residents.group_materials_view_all')
+        )
+        if not ve_todas and user.has_group('requisition_residents.group_requisition_capture'):
+            domain = list(domain) + [('create_uid', '=', user.id)]
         return super()._search(domain, offset=offset, limit=limit, order=order)
 
 
@@ -113,7 +114,7 @@ class requisitionMaterials(models.Model):
 
         values = {'materials_id': self.id, 'name': sequence, 'partner_id': supplier.id, 'company_id': self.env.user.company_id.id, 'origin': origin, 
             'currency_id': self.env.user.company_id.currency_id.id, 'user_id': self.env.uid, 'state': 'draft', 'invoice_status': 'no', 'type_purchase': 'mat', 
-            'order_line': order_lines}
+            'project_id': self.project_id.id, 'order_line': order_lines}
         orders.append(values)
         return orders
 

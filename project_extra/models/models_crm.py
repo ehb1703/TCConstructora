@@ -46,6 +46,8 @@ class CrmLead(models.Model):
     with_project = fields.Boolean(string='Con proyecto')
     is_center = fields.Boolean(string='Centro de negocio')
     req_bases = fields.Boolean(string='Requiere pago de bases', compute='_compute_bases')
+    obra_creada = fields.Boolean(string='Obra creada', compute='_compute_obra_creada')
+    obra_creada_name = fields.Char(string='Nombre obra creada', compute='_compute_obra_creada')
     tipo_obra_ok = fields.Boolean('Tipo de obra cumple', tracking=True)
     dependencia_ok = fields.Boolean('Dependencia emisora cumple', tracking=True)
     capital_ok = fields.Boolean('Capital contable cumple', tracking=True)
@@ -101,7 +103,7 @@ class CrmLead(models.Model):
     junta_dudas_notif_auto_sent = fields.Boolean(string='Notif. Automática fecha límite dudas enviada', default=False)
     # Insumos
     input_ids = fields.One2many('crm.input.line', 'lead_id', string='Insumos')
-    input_file = fields.Binary(string='Archivo', attachment=True)
+    input_file = fields.Binary(string='Archivo')
     input_filename = fields.Char(string='Nombre del archivo de Insumos', tracking=True)
     no_cotizar_insumos = fields.Boolean(string='No se necesita cotizar insumos', default=True)
     # Junta de Apertura de Propuestas
@@ -226,6 +228,13 @@ class CrmLead(models.Model):
             record.origen_name = record.origen_id.name if record.origen_id else False
             if not record.nombre_interno:
                 record.nombre_interno = record.name
+
+    @api.depends('nombre_interno')
+    def _compute_obra_creada(self):
+        for record in self:
+            project = self.env['project.project'].search([('lead_id', '=', record.id)], limit=1)
+            record.obra_creada = bool(project)
+            record.obra_creada_name = project.name if project else False
 
     @api.depends('revert_log_ids')
     def _compute_revert_log_count(self):
@@ -944,6 +953,7 @@ class CrmLead(models.Model):
             sheet = wb[sheet_name]
             registros = []
             cargar = False
+            max_idx = max(cod, desc, uni, prec, qty, imp)
             for row in sheet.iter_rows(values_only=True):
                 col1 = str(row[0]).strip()
                 col2 = str(row[1]).strip()
@@ -1068,8 +1078,7 @@ class CrmLead(models.Model):
             if not docto:
                 raise ValidationError('El documento no se encuentra cargado, favor de revisar la documentación.')
 
-            if record.concept_ids:
-                raise ValidationError('Ya hay información cargada. En caso de ser necesario volver a cargar debe eliminarlos.')
+            # Se permite recargar: los conceptos y partidas previos se reemplazan (ver (5,0,0) mas abajo)
 
             if docto.file_extension in ['xlsx', 'xls', 'xlsm']:
                 record.__leer_carga_concept(docto)
@@ -1099,27 +1108,30 @@ class CrmLead(models.Model):
                         if y.columna == 'importe':
                             imp = int(y.no_columna) - 1
 
-            attachment = docto.attachment_id
+            attachment = docto.attachment_id.sudo()
             decoded_data = base64.b64decode(attachment.datas)
             workbook = openpyxl.load_workbook(filename=io.BytesIO(decoded_data), data_only=True)
             sheet = workbook.active
             column = sheet.max_column
-            registros = []
-            partidas = []
+            registros = [(5, 0, 0)]
+            partidas = [(5, 0, 0)]
             cargar = True
             partida = False
             contador = 1
+            max_idx = max(cod, desc, uni, prec, qty, imp)
             for row in sheet.iter_rows(values_only=True):
                 if contador < inicio:
                     contador += 1
                     continue
+                if len(row) <= max_idx:
+                    row = row + (None,) * (max_idx + 1 - len(row))
 
-                if row[desc] != None:
+                if isinstance(row[desc], str):
                     if row[desc].upper() == 'RESUMEN DE PARTIDAS':
                         cargar = False
                         partida = True
 
-                if row[cod] != None:
+                if isinstance(row[cod], str):
                     if row[cod].upper() == 'RESUMEN DE PARTIDAS':
                         cargar = False
                         partida = True
@@ -1132,8 +1144,8 @@ class CrmLead(models.Model):
                         registros.append((0, 0, registro))
 
                 if partida:
-                    if row[cod] != None and row[desc] != None:
-                        registro = {'col1': row[cod], 'col2': row[desc]}
+                    if row[cod] != None:
+                        registro = {'col1': row[cod], 'col2': row[desc] or row[cod]}
                         partidas.append((0, 0, registro))
 
             record.write({'concept_ids': registros, 'budget_ids': partidas})
@@ -1608,6 +1620,103 @@ class CrmLead(models.Model):
         oc_obj = self.env['sale.order']
         new_oc = oc_obj.create(oc_vals)
         return new_oc
+
+
+    def action_crear_obra(self):
+        """T0104: Crear obra directamente desde oportunidad Privada sin generar Orden de Venta.
+        Replica la logica esencial de _timesheet_create_project (sales_extra) incluyendo
+        la logica de bloque (T0101), sin requerir sale.order.
+        """
+        self.ensure_one()
+
+        if not self.nombre_interno:
+            raise UserError(_('Debe capturar el Nombre interno de la obra antes de crear la obra.'))
+
+        existing = self.env['project.project'].search([('lead_id', '=', self.id)], limit=1)
+        if existing:
+            raise UserError(_('Ya existe una obra vinculada a esta oportunidad: %s') % existing.name)
+
+        no_lic = self.no_licitacion or ''
+
+        vals = {
+            'name': self.nombre_interno,
+            'lead_id': self.id,
+            'type_id': self.tipo_obra_id.id if self.tipo_obra_id else False,
+            'num_contrato': self.contrato_documento_name,
+            'dependencia': self.partner_emisor_id.name if self.partner_emisor_id else False,
+            'licitacion': self.no_licitacion,
+            'orden_trabajo': no_lic[-12:] if len(no_lic) >= 12 else no_lic,
+            'proj_fecha_adjudicacion': self.fallo_fecha_adjudicacion,
+            'partner_id': self.partner_emisor_id.id if self.partner_emisor_id else False,
+            'description': self.desc_licitacion,
+            'company_id': self.company_id.id if self.company_id else False,
+            'date_start': self.bases_fecha_inicio_trabajos,
+            'date': self.bases_fecha_terminacion_trabajos,
+            'proj_dias': self.bases_plazo_ejecucion,
+            'authorized_budget': self.importe_contratado,
+            'proj_anticipo_porcentaje': self.bases_anticipo_porcentaje,
+            'proj_importe_anticipo': self.importe_anticipo,
+            'modalidad_contratacion_id': self.bases_modalidad_contrato_id.id if self.bases_modalidad_contrato_id else False,
+            'proj_fecha_apertura': self.fecha_apertura,
+            'proj_rupc_siop': self.rupc_siop,
+            'proj_es_siop': self.es_siop,
+            'proj_sancion_atraso': self.bases_sancion_atraso,
+            'proj_ret_5_millar': self.bases_ret_5_millar,
+            'proj_ret_2_millar': self.bases_ret_2_millar,
+            'allow_timesheets': True,
+        }
+
+        # --- T0101: Logica de BLOQUE ---
+        if self.bloque_id:
+            proyecto_bloque = self.env['project.project'].search(
+                [('bloque', '=', self.bloque_id.name)], limit=1
+            )
+            if proyecto_bloque:
+                if not proyecto_bloque.type_ids:
+                    proyecto_bloque.type_ids = self.env['project.task.type'].create([
+                        {'name': name, 'fold': fold, 'sequence': seq}
+                        for name, fold, seq in [
+                            (_('To Do'), False, 5), (_('In Progress'), False, 10),
+                            (_('Done'), False, 15), (_('Cancelled'), True, 20),
+                        ]
+                    ])
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': _('Obra vinculada'),
+                        'message': _('Se vinculó a la obra existente del bloque: %s') % proyecto_bloque.name,
+                        'type': 'success',
+                        'sticky': False,
+                        'next': {'type': 'ir.actions.act_window_close'},
+                    },
+                }
+            vals['name'] = self.bloque_id.name
+            vals['bloque'] = self.bloque_id.name
+
+        project = self.env['project.project'].create(vals)
+        project.cargar_docs()
+
+        if not project.type_ids:
+            project.type_ids = self.env['project.task.type'].create([
+                {'name': name, 'fold': fold, 'sequence': seq}
+                for name, fold, seq in [
+                    (_('To Do'), False, 5), (_('In Progress'), False, 10),
+                    (_('Done'), False, 15), (_('Cancelled'), True, 20),
+                ]
+            ])
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Obra creada'),
+                'message': _('Se creó la obra: %s') % project.name,
+                'type': 'success',
+                'sticky': False,
+                'next': {'type': 'ir.actions.act_window_close'},
+            },
+        }
 
     def action_set_lost(self, **kwargs):
         for lead in self:

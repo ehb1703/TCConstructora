@@ -16,6 +16,7 @@
                 <field name="status" decoration-success="status=='success'" decoration-danger="status=='error'" widget="badge"/>
                 <field name="log_status"/>
                 <field name="attendance_id" optional="show" string="Asistencia Odoo"/>
+                <field name="project_checador" optional="show" string="Obra checador"/>
                 <field name="lateness_time"/>
                 <field name="verification_status"/>
                 <field name="match_percentage"/>
@@ -41,6 +42,7 @@
                         <widget name="web_ribbon" title="Error" bg_color="text-bg-danger" invisible="status != 'error'"/>
                     </div>
                     <field name="is_system_user" invisible="1"/>
+                    <field name="emp_snapshot" invisible="1"/>
                     <group>
                         <group string="Información del Empleado">
                             <field name="registration_number" readonly="not is_system_user"/>
@@ -49,6 +51,7 @@
                             <field name="check_type" readonly="not is_system_user"/>
                             <field name="check_date_local" string="Hora Local Checador" readonly="1"/>
                             <field name="check_date" widget="datetime" string="Fecha UTC (almacenada)" readonly="1" options="{'tz': False}"/>
+                            <field name="project_checador" readonly="1"/>
                         </group>
                         <group string="Estado de Validación">
                             <field name="status" widget="badge" decoration-success="status=='success'" decoration-danger="status=='error'" readonly="not is_system_user"/>
@@ -71,6 +74,7 @@
                     </group>
                     <group string="Información de Log">
                         <field name="log_message" colspan="2" readonly="not is_system_user"/>
+                        <field name="obra_audit_log" colspan="2" readonly="1" placeholder="Sin cambios registrados"/>
                         <field name="attendance_id" string="Asistencia Odoo Generada" invisible="attendance_id == False" readonly="not is_system_user"/>
                         <field name="sigob_log_folio" readonly="not is_system_user"/>
                         <field name="user_valid_id" readonly="not is_system_user"/>

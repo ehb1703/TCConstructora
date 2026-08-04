@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- T0105-P2: campo "Obra" en el wizard Generar recibos de nomina -->
+    <record id="view_hr_payslip_by_employees_obra" model="ir.ui.view">
+        <field name="name">hr.payslip.employees.form.obra</field>
+        <field name="model">hr.payslip.employees</field>
+        <field name="inherit_id" ref="hr_payroll.view_hr_payslip_by_employees"/>
+        <field name="arch" type="xml">
+            <field name="structure_type_id" position="before">
+                <field name="obra_id" class="w-75"
+                    help="Si se indica una obra, la tabla de empleados muestra solo los asignados a esa obra y con estatus Activo."/>
+            </field>
+        </field>
+    </record>
+</odoo>

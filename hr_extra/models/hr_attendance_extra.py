@@ -167,7 +167,9 @@ class HrAttendanceEncargadoFilter(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
-        if self.env.user.login == 'admin' or http.request.params.get('model') == 'hr.employee':
+        if self.env.user.login == 'admin' or self._context.get('special_display', False):
+            return super()._search(domain, offset=offset, limit=limit, order=order)
+        if any(isinstance(d, (list, tuple)) and d and d[0] == 'id' for d in domain):
             return super()._search(domain, offset=offset, limit=limit, order=order)
 
         if self._context.get('special_display', False):

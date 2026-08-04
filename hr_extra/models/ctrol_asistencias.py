@@ -47,6 +47,12 @@ class CtrolAsistencias(models.Model):
     date_validated = fields.Datetime(string='Fecha de Validación')
     employee_name = fields.Char(string='Nombre Empleado', compute='_compute_employee_name', store=True)
     is_system_user = fields.Boolean(compute='_compute_is_system_user')
+    project_checador = fields.Char(string='Obra segun checador', readonly=True,
+        help='Obra vigente del empleado en la fecha de la checada')
+    obra_audit_log = fields.Text(string='Historial de cambios', readonly=True,
+        help='Registro de cambios de obra: fecha, usuario, obra anterior a nueva')
+    emp_snapshot = fields.Text(string='Snapshot empleado', readonly=True,
+        help='Foto interna de datos del empleado para detectar cambios entre checadas')
 
     def _compute_is_system_user(self):
         is_admin = (self.env.user.has_group('base.group_system') or self.env.user.has_group('base.group_erp_manager'))
@@ -317,16 +323,51 @@ class CtrolAsistencias(models.Model):
                     'checkout_notes': f'Cierre automático - sin salida registrada en checador (entrada siguiente: {local_dt})',})
                 auto_closed += 1
 
-            self.env.cr.execute('SELECT min(project_id) project, min(hourly_wage) wage FROM hr_employee_obra WHERE employee_id = ' + str(employee.id) + 
-                    " AND ('" + str(self.check_date_local) + "'::date BETWEEN fecha_inicio AND '" + str(self.check_date_local) + 
-                    "'::date OR fecha_inicio is null)")
+            self.env.cr.execute('SELECT project_id, hourly_wage FROM hr_employee_obra WHERE employee_id = ' + str(employee.id) +
+                    " AND fecha_inicio <= '" + str(self.check_date_local) + "'::date" +
+                    " AND (fecha_fin IS NULL OR '" + str(self.check_date_local) + "'::date <= fecha_fin)" +
+                    " ORDER BY fecha_inicio DESC, id DESC LIMIT 1")
             rows = self.env.cr.fetchall()
-            if rows[0][0] == None:
+            if not rows or rows[0][0] == None:
                 return (False, f'No existe registro de salario | Registration: {self.registration_number}')
 
             try:
                 attendance = AttendanceModel.create({'employee_id':employee.id, 'check_in':check_date_utc, 'in_latitude':self.latitude or 0.0,
                     'in_longitude':self.longitude or 0.0, 'project_id':rows[0][0], 'hourly_wage':rows[0][1],})
+                proj_name = self.env['project.project'].browse(rows[0][0]).name
+                wage_val = rows[0][1]
+                snap = {
+                    'Nombre': employee.name or '',
+                    'Obra': proj_name or '',
+                    'Salario': ('%.2f' % wage_val) if wage_val is not None else '',
+                    'Departamento': employee.department_id.name if employee.department_id else '',
+                    'Puesto': employee.job_id.name if employee.job_id else '',
+                    'Contrato': employee.contract_id.name if employee.contract_id else '',
+                }
+                import json as _json
+                prev_rec = self.sudo().search([
+                    ('registration_number', '=', self.registration_number),
+                    ('id', '!=', self.id),
+                    ('emp_snapshot', '!=', False),
+                ], order='check_date desc', limit=1)
+                cambios = []
+                if prev_rec and prev_rec.emp_snapshot:
+                    try:
+                        prev_snap = _json.loads(prev_rec.emp_snapshot)
+                    except Exception:
+                        prev_snap = {}
+                    for k, v in snap.items():
+                        old = prev_snap.get(k, '')
+                        if old != v:
+                            cambios.append('%s: %s -> %s' % (k, old or '(vacio)', v or '(vacio)'))
+                log_vals = {'project_checador': proj_name, 'emp_snapshot': _json.dumps(snap)}
+                if cambios:
+                    ts = fields.Datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    usr = self.env.user.name
+                    lineas = ['[%s] %s: %s' % (ts, usr, c) for c in cambios]
+                    prev_log = self.obra_audit_log or ''
+                    log_vals['obra_audit_log'] = chr(10).join(lineas) + chr(10) + prev_log
+                self.sudo().write(log_vals)
                 auto_msg = f' (se cerraron {auto_closed} entrada(s) previa(s) sin salida)' if auto_closed else ''
                 return (attendance, f'Entrada registrada | Attendance ID: {attendance.id} | Check-in local: {local_dt}{auto_msg}')
             except Exception as e:
@@ -351,6 +392,40 @@ class CtrolAsistencias(models.Model):
             try:
                 open_attendance.write({'check_out': check_date_utc, 'out_latitude': self.latitude or 0.0, 'out_longitude': self.longitude or 0.0,})
                 worked_hours = open_attendance.worked_hours
+                proj_name = open_attendance.project_id.name if open_attendance.project_id else ''
+                wage_val = open_attendance.hourly_wage
+                snap = {
+                    'Nombre': employee.name or '',
+                    'Obra': proj_name or '',
+                    'Salario': ('%.2f' % wage_val) if wage_val is not None else '',
+                    'Departamento': employee.department_id.name if employee.department_id else '',
+                    'Puesto': employee.job_id.name if employee.job_id else '',
+                    'Contrato': employee.contract_id.name if employee.contract_id else '',
+                }
+                import json as _json
+                prev_rec = self.sudo().search([
+                    ('registration_number', '=', self.registration_number),
+                    ('id', '!=', self.id),
+                    ('emp_snapshot', '!=', False),
+                ], order='check_date desc', limit=1)
+                cambios = []
+                if prev_rec and prev_rec.emp_snapshot:
+                    try:
+                        prev_snap = _json.loads(prev_rec.emp_snapshot)
+                    except Exception:
+                        prev_snap = {}
+                    for k, v in snap.items():
+                        old_v = prev_snap.get(k, '')
+                        if old_v != v:
+                            cambios.append('%s: %s -> %s' % (k, old_v or '(vacio)', v or '(vacio)'))
+                log_vals = {'project_checador': proj_name, 'emp_snapshot': _json.dumps(snap)}
+                if cambios:
+                    ts = fields.Datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    usr = self.env.user.name
+                    lineas = ['[%s] %s: %s' % (ts, usr, c) for c in cambios]
+                    prev_log = self.obra_audit_log or ''
+                    log_vals['obra_audit_log'] = chr(10).join(lineas) + chr(10) + prev_log
+                self.sudo().write(log_vals)
                 return (open_attendance, f'Salida registrada | Attendance ID: {open_attendance.id} | Horas trabajadas: {worked_hours:.2f}')
             except Exception as e:
                 return (False, f'Error al registrar salida | Error: {str(e)}')

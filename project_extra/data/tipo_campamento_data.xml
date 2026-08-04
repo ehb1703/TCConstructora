@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="tipo_campamento_renta_campamento" model="project.tipo.campamento">
+            <field name="name">RENTA DE CAMPAMENTO</field>
+        </record>
+        <record id="tipo_campamento_renta_oficina" model="project.tipo.campamento">
+            <field name="name">RENTA DE OFICINA</field>
+        </record>
+        <record id="tipo_campamento_renta_oficina_movil" model="project.tipo.campamento">
+            <field name="name">RENTA DE OFICINA MÓVIL</field>
+        </record>
+        <record id="tipo_campamento_renta_bano_movil" model="project.tipo.campamento">
+            <field name="name">RENTA DE BAÑO MÓVIL</field>
+        </record>
+    </data>
+</odoo>
