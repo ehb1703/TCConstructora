@@ -79,6 +79,7 @@ class respartnerCurp(models.Model):
 
 
     def write(self, values):
+        if len(self) != 1: return super().write(values)
         if 'is_company' in values:
             is_company = values.get('is_company')
         else:
@@ -93,7 +94,7 @@ class respartnerCurp(models.Model):
             raise ValidationError('El campo de RFC es requerido para el tipo de persona capturado')
 
         if any(field in values for field in ['name', 'vat', 'curp']):
-            empleado = self.env['hr.employee'].search([('work_contact_id', '=', self.id)])
+            empleado = self.env['hr.employee'].search([('work_contact_id', 'in', self.ids)])
             if empleado:
                 if 'name' in values:
                     if values.get('name') != self.name:
