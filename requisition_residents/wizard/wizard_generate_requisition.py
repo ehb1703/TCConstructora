@@ -231,7 +231,7 @@ class GenerateRequisitionWizard(models.TransientModel):
 
         for rec in self.requisition_ids:
             if 'RESIDENTE' in rec.employee_id.job_title:
-                if not rec.employee_id.facil_tarjeta or not rec.employee_id.bank_account_id:
+                if not rec.employee_id.facil_tarjeta and not rec.employee_id.bank_account_id:
                     mensaje2 += rec.project_id.name + '\n'
             else:
                 self.env.cr.execute('SELECT COUNT(*) num FROM project_residents pr WHERE pr.project_id = ' + str(rec.project_id.id))

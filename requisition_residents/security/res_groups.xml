@@ -9,45 +9,78 @@
     <record id="group_requisition_admin" model="res.groups">
         <field name="name">Administrador de Requisiciones</field>
         <field name="category_id" ref="module_category_requisition"/>
+            <field name="comment">Acceso total: ve y edita TODAS las requisiciones de TODAS las obras, aprueba, actualiza nómina y genera el resumen semanal.</field>
     </record>
 
     <record id="group_requisition_move" model="res.groups">
         <field name="name">Administrador de Movimientos Bancarios</field>
         <field name="category_id" ref="module_category_requisition"/>
+            <field name="comment">Administra los movimientos bancarios (depósitos, transferencias y caja) del módulo de requisiciones.</field>
     </record>
 
     <record id="group_requisition_capture" model="res.groups">
         <field name="name">Captura de Requisiciones</field>
         <field name="category_id" ref="module_category_requisition"/>
+            <field name="comment">Captura requisiciones de obra. Ve las requisiciones de las obras donde está asignado como residente, además de las que él mismo creó.</field>
     </record>
 
     <record id="group_requisition_materials" model="res.groups">
         <field name="name">Requisición de Materiales</field>
         <field name="category_id" ref="module_category_requisition"/>
+            <field name="comment">Gestiona las requisiciones de materiales.</field>
     </record>
 
     <record id="group_materials_authorize" model="res.groups">
         <field name="name">Autorización Requisición de Materiales</field>
         <field name="category_id" ref="module_category_requisition"/>
+            <field name="comment">Autoriza las requisiciones de materiales para que pasen a compra.</field>
     </record>
 
     <record id="group_requisition_authorize" model="res.groups">
         <field name="name">Autorización de requisición semanal</field>
         <field name="category_id" ref="module_category_requisition"/>
+            <field name="comment">Autoriza (aprueba) la requisición semanal consolidada. No incluye la gestión de Otros gastos.</field>
     </record>
 
     <record id="group_other_bills" model="res.groups">
         <field name="name">Otros gastos</field>
         <field name="category_id" ref="module_category_requisition"/>
+            <field name="comment">Captura y edita los registros de Otros gastos dentro de la requisición.</field>
     </record>
 
     <record id="group_encargado" model="res.groups">
         <field name="name">Encargado de Residentes</field>
         <field name="category_id" ref="module_category_requisition"/>
+            <field name="comment">Encargado de Residentes: lectura de todas las requisiciones y gestión de los conceptos extraordinarios (los pasa a Costos). Recibe los correos de conceptos.</field>
     </record>
 
     <record id="group_costos" model="res.groups">
         <field name="name">Costos</field>
         <field name="category_id" ref="module_category_requisition"/>
+            <field name="comment">Área de Costos: recibe los correos de conceptos extraordinarios para asignarles precio.</field>
     </record>
+
+    <record id="rule_ir_attachment_requisition_read" model="ir.rule">
+        <field name="name">Attachments: lectura en modelos de requisicion</field>
+        <field name="model_id" ref="base.model_ir_attachment"/>
+        <field name="global" eval="True"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+        <field name="domain_force">['|', '|', ('res_model', '=', False), ('res_id', '=', 0), ('res_model', 'in', ['requisition.destajo', 'requisition.acarreos', 'requisition.campamentos', 'requisition.maquinaria', 'requisition.cash', 'requisition.fuel', 'requisition.residents', 'requisition.weekly', 'requisition.debt', 'requisition.materials'])]</field>
+    </record>
+
+    <record id="group_requisition_reset_draft" model="res.groups">
+        <field name="name">Regresar Requisición a Borrador</field>
+        <field name="category_id" ref="module_category_requisition"/>
+            <field name="comment">Permite regresar una requisición ya enviada o aprobada al estado Borrador (la desvincula de la semanal).</field>
+    </record>
+
+    <record id="group_materials_view_all" model="res.groups">
+        <field name="name">Ver todas las Requisiciones de Materiales</field>
+        <field name="category_id" ref="module_category_requisition"/>
+            <field name="comment">Permite ver TODAS las requisiciones de materiales (de cualquier usuario), no solo las propias. Se combina con Captura de Requisiciones.</field>
+    </record>
+
 </odoo>

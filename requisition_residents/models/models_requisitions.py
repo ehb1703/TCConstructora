@@ -17,26 +17,25 @@ class requisitionResidents(models.Model):
     _rec_name = 'name'
     _description = 'Requisiciones de Residentes de Obras'
 
-    @api.depends('finicio')
-    def _compute_domain_project(self):
-        lista = []
-        for record in self:
-            if self.env.user.has_group('requisition_residents.group_requisition_admin'):
-                projects = self.env['project.project'].search([('stage_id.name','!=','Cancelada')])
-                for x in projects:
-                    lista.append(x.id)
-            else:
-                employee = self.env['hr.employee'].search([('user_id','=',self.env.user.id)])
-                residentes = self.env['project.residents'].search([('resident_id','=',employee.id)])
-                for x in residentes:
-                    lista.append(x.project_id.id)
-            record.project_domain = json.dumps([('id', 'in', lista)])
+    def _get_project_domain_list(self):
+        if self.env.user.has_group('requisition_residents.group_requisition_admin'):
+            projects = self.env['project.project'].search([('stage_id.name','!=','Cancelada')])
+            return projects.ids
+        employee = self.env['hr.employee'].search([('user_id','=',self.env.user.id)])
+        obras = self.env['hr.employee.obra'].search([('employee_id','=',employee.id), ('fecha_fin','=',False), ('project_id.active','=',True), ('project_id.stage_id.name','!=','Cancelada')])
+        return obras.mapped('project_id').ids
+
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        res['project_domain'] = json.dumps([('id', 'in', self._get_project_domain_list())])
+        return res
 
     name = fields.Char(string='Nombre')
+    active = fields.Boolean(string='Activo', default=True)
     finicio = fields.Date(string='Periodo Inicial')
     ffinal = fields.Date(string='Periodo Final')
     project_id = fields.Many2one('project.project', string='Obra')
-    project_domain = fields.Char(readonly=True, store=False, compute=_compute_domain_project)
+    project_domain = fields.Char(readonly=True, store=False, default='[]')
     employee_id = fields.Many2one('hr.employee', string='Responsable')
     company_id = fields.Many2one('res.company', string='Empresa', tracking=True)
     amount_untaxed = fields.Float(string='Importe sin IVA', compute='_compute_amount', store=True, readonly=True, tracking=True)
@@ -70,8 +69,20 @@ class requisitionResidents(models.Model):
         """if self.env.user.login == 'admin':
             return super()._search(domain, offset=offset, limit=limit, order=order)"""
 
-        if self.env.user.has_group('requisition_residents.group_requisition_capture'):
-            domain = [('create_uid', '=', self.env.user.id)]
+        if self.env.user.has_group('requisition_residents.group_requisition_capture') and not self.env.user.has_group('requisition_residents.group_requisition_admin'):
+            if self.env.context.get('_bypass_req_search'):
+                return super()._search(domain, offset=offset, limit=limit, order=order)
+            employee = self.env['hr.employee'].search([('user_id', '=', self.env.user.id)], limit=1)
+            if employee:
+                project_ids = self.with_context(_bypass_req_search=True).sudo().search([
+                    ('employee_id', '=', employee.id)
+                ]).mapped('project_id').ids
+                if project_ids:
+                    domain = list(domain) + ['|', ('project_id', 'in', project_ids), ('create_uid', '=', self.env.user.id)]
+                else:
+                    domain = list(domain) + [('create_uid', '=', self.env.user.id)]
+            else:
+                domain = list(domain) + [('create_uid', '=', self.env.user.id)]
 
         return super()._search(domain, offset=offset, limit=limit, order=order)
 
@@ -86,6 +97,14 @@ class requisitionResidents(models.Model):
             if self.finicio.weekday() != 0:
                 self.finicio = None
                 raise ValidationError('La requisición debe iniciar en lunes')
+            # T0103: rango permitido = 2 semanas atras hasta 1 semana adelante (en lunes)
+            hoy = fields.Date.context_today(self)
+            lunes_actual = hoy - timedelta(days=hoy.weekday())
+            limite_inferior = lunes_actual - timedelta(days=14)
+            limite_superior = lunes_actual + timedelta(days=7)
+            if self.finicio < limite_inferior or self.finicio > limite_superior:
+                self.finicio = None
+                raise ValidationError('La fecha de inicio debe ser un lunes entre el %s y el %s (desde 2 semanas atras hasta 1 semana adelante).' % (limite_inferior.strftime('%d/%m/%Y'), limite_superior.strftime('%d/%m/%Y')))
 
             self.ffinal = self.finicio + timedelta(days=6)
 
@@ -93,6 +112,24 @@ class requisitionResidents(models.Model):
             dias = self.ffinal - self.finicio
             if dias.days > 6:
                 raise ValidationError('El periodo seleccionado es mayor a una semana.')
+
+    @api.onchange('project_id')
+    def _onchange_project_company(self):
+        if not self.project_id:
+            return
+        proj = self.project_id
+        # 1. Directo via lead_id
+        if proj.lead_id and proj.lead_id.empresa_concursante_id:
+            self.company_id = proj.lead_id.empresa_concursante_id
+            return
+        # 2. Buscar lead por no_licitacion o nombre del proyecto
+        lead = self.env['crm.lead'].search([
+            ('empresa_concursante_id', '!=', False),
+            '|', ('no_licitacion', '=', proj.licitacion if proj.licitacion else False),
+                 ('name', 'ilike', proj.name)
+        ], limit=1)
+        if lead and lead.empresa_concursante_id:
+            self.company_id = lead.empresa_concursante_id
 
     @api.onchange('finicio','project_id')
     def validar_obra(self):
@@ -178,12 +215,18 @@ class requisitionResidents(models.Model):
                 req_lines.append((0, 0, lines))
         
         if self.maquinaria_ids:
-            self.env.cr.execute('''SELECT partner_id, SUM(CASE WHEN ra.type_pay = 'FISCAL' THEN ra.total ELSE 0 END) fiscal, 
+            self.env.cr.execute('''SELECT partner_id, tipo_maquinaria, SUM(CASE WHEN ra.type_pay = 'FISCAL' THEN ra.total ELSE 0 END) fiscal,
                     SUM(CASE WHEN ra.type_pay IN ('EFECTIVO', '') OR ra.type_pay IS NULL THEN ra.total ELSE 0 END) efectivo
-                FROM requisition_maquinaria ra WHERE req_id = ''' + str(self.id) + ' GROUP BY 1')
+                FROM requisition_maquinaria ra WHERE req_id = ''' + str(self.id) + ' GROUP BY 1, 2')
             maquinaria = self.env.cr.dictfetchall()
             for rec in maquinaria:
-                lines = {'category': 'Renta', 'description': 'Maquinaria', 'partner_id': rec['partner_id'], 'amount_untaxed': rec['efectivo'], 
+                if rec['tipo_maquinaria'] == 'ligera':
+                    desc = 'Maquinaria Ligera'
+                elif rec['tipo_maquinaria'] == 'pesada':
+                    desc = 'Maquinaria Pesada'
+                else:
+                    desc = 'Maquinaria'
+                lines = {'category': 'Renta', 'description': desc, 'partner_id': rec['partner_id'], 'amount_untaxed': rec['efectivo'],
                     'amount_total': rec['fiscal']}
                 req_lines.append((0, 0, lines))
         
@@ -326,6 +369,22 @@ class requisitionResidents(models.Model):
         self.action_resumen()
         self.state = 'aprobado'
 
+    def action_reset_draft(self):
+        """T0103: Regresar requisicion de estado 'req' a 'draft' (solo con permiso)."""
+        if not self.env.user.has_group('requisition_residents.group_requisition_reset_draft'):
+            raise UserError('No tiene permiso para regresar la requisición a borrador.')
+        if self.state not in ('send', 'aprobado', 'req'):
+            raise UserError('Solo se puede regresar a borrador desde Enviado, Aprobado o Requisición.')
+        # Desvincular de la requisicion semanal
+        weekly = self.rweekly_id
+        self.write({'state': 'draft', 'rweekly_id': False})
+        # Limpiar lineas de resumen
+        self.line_ids.unlink()
+        if weekly and not weekly.reqres_ids:
+            # Si la semanal queda sin requisiciones vinculadas, avisar
+            weekly.message_post(body='La requisición %s fue regresada a borrador.' % self.name)
+
+
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -334,7 +393,28 @@ class requisitionResidents(models.Model):
             employee = self.env['hr.employee'].search([('user_id','=',self.env.user.id)])
             if employee:
                 vals['employee_id'] = employee.id
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        records._auto_resumen()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        # T0103: auto-actualizar Resumen cuando cambian las pestanas de gastos
+        campos_gastos = {'destajo_ids','acarreo_ids','campamento_ids','maquinaria_ids','cash_ids','fuel_ids','nom_ids','other_ids'}
+        if campos_gastos & set(vals.keys()) and not self.env.context.get('_skip_auto_resumen'):
+            self._auto_resumen()
+        return res
+
+    def _auto_resumen(self):
+        # T0103: recalcula line_ids (Resumen) automaticamente, solo en draft, sin romper el guardado.
+        # flush_all garantiza que el SQL crudo de action_resumen lea las lineas hijas ya persistidas.
+        self.env.flush_all()
+        for rec in self:
+            if rec.state == 'draft':
+                try:
+                    rec.with_context(_skip_auto_resumen=True).action_resumen()
+                except Exception:
+                    pass
 
 
 class requisitionResidentsLine(models.Model):
@@ -359,19 +439,29 @@ class requisitionDestajo(models.Model):
 
     @api.depends('req_id')
     def _compute_domain_destajo(self):
+        # T0101: si el proyecto pertenece a un BLOQUE, los tipos de destajo se obtienen
+        # de la union de especialidades de TODOS los frentes del bloque; si no, del type_id del proyecto.
         for record in self:
-            if record.req_id:
-                record.destajo_domain = json.dumps([('id', 'in', record.req_id.project_id.type_id.piecework_ids.ids)])
+            piecework_ids = []
+            if record.req_id and record.req_id.project_id:
+                project = record.req_id.project_id
+                if project.bloque:
+                    bloque = self.env['project.bloque'].search([('name', '=', project.bloque)], limit=1)
+                    if bloque:
+                        piecework_ids = bloque.lead_ids.tipo_obra_id.piecework_ids.ids
+                if not piecework_ids:
+                    piecework_ids = project.type_id.piecework_ids.ids
+            record.destajo_domain = json.dumps([('id', 'in', piecework_ids)])
 
     req_id = fields.Many2one('requisition.residents', readonly=True)
     destajo_id = fields.Many2one('project.piecework', string='Tipo de destajo')
     destajo_domain = fields.Char(readonly=True, store=False, compute=_compute_domain_destajo)
     partner_id = fields.Many2one('res.partner', string='Nombre', tracking=True)
-    fuerza = fields.Integer(string='No. de la cuadrilla del destajista')
+    fuerza = fields.Integer(string='Fuerza de trabajo del destajista')
     account_id = fields.Many2one('res.partner.bank', string='Cuenta Bancaria', tracking=True, ondelete='restrict', copy=False)
-    croquis_id = fields.One2many('ir.attachment', 'res_id', string='Croquis')
-    foto_ids = fields.Many2many(comodel_name='ir.attachment', string="Evidencia Fotográfica")
-    cotizacion_id = fields.One2many('ir.attachment', 'res_id', string='Cotización o presupuesto')
+    croquis_id = fields.Many2many('ir.attachment', 'destajo_croquis_rel', 'destajo_id', 'attachment_id', string='Croquis')
+    foto_ids = fields.Many2many('ir.attachment', 'destajo_foto_rel', 'destajo_id', 'attachment_id', string="Evidencia Fotográfica")
+    cotizacion_id = fields.Many2many('ir.attachment', 'destajo_cotizacion_rel', 'destajo_id', 'attachment_id', string='Cotización o presupuesto')
     amount_total = fields.Float(string='Total', compute='_compute_amount', store=True, readonly=True)
     line_ids = fields.One2many('requisition.destajo.line', 'destajo_id')
     state = fields.Selection(related='req_id.state', string='Estatus')
@@ -489,11 +579,12 @@ class requisitionAcarreos(models.Model):
 
     req_id = fields.Many2one('requisition.residents', readonly=True)
     fecha = fields.Date(string='Fecha')
+    folio = fields.Char(string='Folio')
     partner_id = fields.Many2one('res.partner', string='Nombre', tracking=True, 
         domain="[('is_supplier', '=', True), ('classupplier_id.name', 'ilike', 'ACARREOS')]", 
         default=lambda self: self.env['res.partner'].search([('name','=','ICD transportes, S.A. DE C.V.')]))
     description = fields.Char(string='Concepto')
-    capacidad = fields.Selection(selection=[('7', '7 m3'), ('14', '14 m3'), ('24', '24 m3')], string='Capacidad')
+    capacidad = fields.Many2one('project.capacidad', string='Capacidad', ondelete='set null')
     origen = fields.Char(string='Origen')
     destino = fields.Char(string='Destino')
     km = fields.Float(string='Km recorrido')
@@ -534,6 +625,7 @@ class requisitionCampamentos(models.Model):
 
     req_id = fields.Many2one('requisition.residents', readonly=True)
     partner_id = fields.Many2one('res.partner', string='Beneficiario', tracking=True)    
+    tipo_campamento_id = fields.Many2one('project.tipo.campamento', string='Tipo de campamento', tracking=True)
     product_id = fields.Many2one(comodel_name='product.product', string='Material', change_default=True, ondelete='restrict', 
         domain="[('purchase_ok', '=', True)]")
     product_template_id = fields.Many2one(comodel_name='product.template', string='Product Template', compute='_compute_product_template_id',
@@ -577,16 +669,17 @@ class requisitionMaquinaria(models.Model):
     sequence = fields.Integer(string='Núm')
     partner_id = fields.Many2one('res.partner', string='Proveedor')
     maquinaria = fields.Char(string='Maquinaria/Equipo')
+    tipo_maquinaria = fields.Selection([('ligera', 'Ligera'), ('pesada', 'Pesada')], string='Tipo de maquinaria', default=lambda self: self.env.context.get('default_tipo_maquinaria'))
     no_serie = fields.Char(string='Num. de Serie')
     finicio = fields.Date(string='Fecha Ingreso')
     ffinal = fields.Date(string='Fecha Salida')
-    days = fields.Float(string='Días trabajados')
+    days = fields.Float(string='Días trabajados', compute='_compute_days', store=True, readonly=True)
     time_out = fields.Float(string='Tiempos muertos')
-    total_days = fields.Float(string='Total días')
+    total_days = fields.Float(string='Total días', compute='_compute_total_days', store=True, readonly=True)
     rmountly = fields.Float(string='Monto Renta Mensual')
-    amount = fields.Float(string='Importe')
+    amount = fields.Float(string='Importe', compute='_compute_amount', store=True, readonly=True)
     justification = fields.Char(string='Justificación del tiempo muerto')
-    autoriza_id = fields.Many2one('hr.employee', string='Persona que autoriza renta y precio')
+    autoriza_id = fields.Many2one('hr.employee', string='Persona que autoriza renta y precio', domain="[('state', '!=', 'baja')]")
     line_ids = fields.One2many('requisition.maquinaria.line', 'maquinaria_id', string='Desglose')
     nomina_ids = fields.One2many('requisition.maquinaria.nomina', 'maquinaria_id', string='Nómina')
     flete_ids = fields.One2many('requisition.maquinaria.flete', 'maquinaria_id', string='Fletes')
@@ -595,16 +688,34 @@ class requisitionMaquinaria(models.Model):
     type_pay = fields.Char(string='Tipo de pago', compute='_compute_type_pay', store=True, readonly=True)
     state = fields.Selection(related='req_id.state', string='Estatus')
     total = fields.Float(string='Importe total', compute='_compute_total', store=True, readonly=True)
-    
-    @api.onchange('days', 'time_out')
-    def onchange_days(self):
-        if self.days > 0 and self.time_out > 0:
-            self.total_days = self.days - self.time_out
 
-    @api.onchange('rmountly', 'time_out')
-    def onchange_amount(self):
-        if self.rmountly > 0 and self.total_days > 0:
-            self.amount = (self.rmountly / 30) * self.total_days
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get('tipo_maquinaria') and self.env.context.get('default_tipo_maquinaria'):
+                vals['tipo_maquinaria'] = self.env.context.get('default_tipo_maquinaria')
+        return super().create(vals_list)
+    
+    @api.depends('finicio', 'ffinal')
+    def _compute_days(self):
+        for req in self:
+            if req.finicio and req.ffinal and req.ffinal >= req.finicio:
+                req.days = (req.ffinal - req.finicio).days
+            else:
+                req.days = 0.0
+
+    @api.depends('days', 'time_out')
+    def _compute_total_days(self):
+        for req in self:
+            req.total_days = req.days - req.time_out
+
+    @api.depends('rmountly', 'total_days')
+    def _compute_amount(self):
+        for req in self:
+            if req.rmountly > 0 and req.total_days > 0:
+                req.amount = (req.rmountly / 30) * req.total_days
+            else:
+                req.amount = 0.0
 
     @api.depends('account_id')
     def _compute_type_pay(self):
@@ -731,7 +842,7 @@ class requisitionCash(models.Model):
     reference = fields.Char(string='Referencia')
     comp = fields.Boolean(string='Comprobación')
     observaciones = fields.Char(string='Observaciones')
-    foto = fields.Binary(string='Foto', attachment=True)
+    foto = fields.Binary(string='Foto')
     foto_name = fields.Char(string='Nombre de la foto del comprobante')
     state = fields.Selection(related='req_id.state', string='Estatus')
 
@@ -771,7 +882,7 @@ class requisitionFuel(models.Model):
     product_template_id = fields.Many2one(comodel_name='product.template', string='Product Template', compute='_compute_product_template_id',
         search='_search_product_template_id', domain=[('purchase_ok', '=', True)])
     partner_id = fields.Many2one('res.partner', string='Proveedor', domain=[('is_supplier', '=', True)])
-    reference = fields.Char(string='Referencia')
+    reference = fields.Char(string='Factura')
     observaciones = fields.Char(string='Observaciones')
     amount = fields.Float(string='Monto Gasto', compute='_compute_amount', store=True, readonly=True)
     comprobantes_ids = fields.Many2many(comodel_name='ir.attachment', string='Comprobantes')
