@@ -1165,6 +1165,10 @@ class CrmLead(models.Model):
             raise UserError('Las partidas no han sido cargadas, favor de realizar la carga')
 
         iva = self.env['account.tax'].search([('amount','=',16), ('type_tax_use','=','sale')])
+        # Cuando el archivo NO trae partidas presupuestales (no son necesarias en esta obra), los
+        # conceptos se generan igual: se crea/enlaza el product.template con budget_id vacío. Con
+        # partidas cargadas el comportamiento es idéntico al anterior (sin regresión).
+        sin_partidas = not self.budget_ids
         partida = 0
         for rec in self.concept_ids.filtered(lambda u: not u.concept_ex):
             if not rec.concept_ex:
@@ -1172,25 +1176,32 @@ class CrmLead(models.Model):
                 if partida_id:
                     partida = partida_id.budget_id.id
 
-                if partida != 0 and rec.col1 != '' and rec.col1 != partida_id.budget_id.code:
-                    concept_id = self.env['product.template'].search([('budget_id','=',partida), ('default_code','=',rec.col1)])
+                if sin_partidas:
+                    budget_val = False
+                    procede = bool(rec.col1) and rec.col1 != ''
+                else:
+                    budget_val = partida
+                    procede = partida != 0 and rec.col1 != '' and rec.col1 != partida_id.budget_id.code
+
+                if procede:
+                    concept_id = self.env['product.template'].search([('budget_id','=',budget_val), ('default_code','=',rec.col1)])
                     if concept_id:
                         if concept_id.property_account_income_id:
                             rec.write({'concept_ex': True, 'concept_id': concept_id.id, 'account_ex': True})
                         else:
                             rec.write({'concept_ex': True, 'concept_id': concept_id.id})
                     else:
-                        statement = ('''SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat, REPLACE(cil.col4, ',', '') qty, 
-                                (CASE WHEN cil.col5 = '' THEN '0.0' ELSE REPLACE(cil.col5, ',', '') END)::float importe 
-                            FROM crm_concept_line cil JOIN uom_uom uu ON lower(cil.col3) = lower(uu.name->>'en_US') JOIN product_category pc ON pc.NAME = 'All' 
+                        statement = ('''SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat, REPLACE(cil.col4, ',', '') qty,
+                                (CASE WHEN cil.col5 = '' THEN '0.0' ELSE REPLACE(cil.col5, ',', '') END)::float importe
+                            FROM crm_concept_line cil JOIN uom_uom uu ON lower(cil.col3) = lower(uu.name->>'en_US') JOIN product_category pc ON pc.NAME = 'All'
                             WHERE cil.id = ''' + str(rec.id))
                         self.env.cr.execute(statement)
                         info = self.env.cr.dictfetchall()
                         if info:
-                            insumo = self.env['product.template'].create({'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'], 'uom_po_id': info[0]['uom'], 
-                                'type': 'service', 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': False, 'sale_ok': True, 
-                                'taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'list_price': info[0]['importe'], 
-                                'service_tracking': 'task_in_project', 'active': True, 'budget_id': partida})
+                            insumo = self.env['product.template'].create({'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'], 'uom_po_id': info[0]['uom'],
+                                'type': 'service', 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': False, 'sale_ok': True,
+                                'taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'list_price': info[0]['importe'],
+                                'service_tracking': 'task_in_project', 'active': True, 'budget_id': budget_val})
                             rec.write({'concept_ex': True, 'concept_id': insumo.id})
 
         for rec in self.concept_ids.filtered(lambda u: u.concept_ex):
