@@ -19,7 +19,7 @@
     """,
     'installable': True,
     'application': True,
-    'depends': ['hr_payroll', 'hr_contract', 'hr_holidays', 'hr_attendance', 'l10n_mx_hr_payroll_localisation', 'hr_work_entry', 'project', 'project_extra'],
+    'depends': ['hr_payroll', 'hr_contract', 'hr_holidays', 'hr_attendance', 'l10n_mx_hr', 'l10n_mx_hr_payroll_localisation', 'hr_work_entry', 'hr_timesheet', 'project', 'project_extra', 'contact_extra'],
     'data': [
         'data/ir_cron_attendance.xml',
         'data/ir_sequence.xml',

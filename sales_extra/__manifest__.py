@@ -12,7 +12,7 @@ Personalización de ordenes de venta
 Factura de Anticipo automática al confirmar orden de venta
     """,
     'category': 'Sales/Sales',
-    'depends': ['base', 'product', 'sale_project'],
+    'depends': ['base', 'product', 'sale_project', 'product_unspsc'],
     'data': [
         'security/ir.model.access.csv',
         'views/product_views.xml',
