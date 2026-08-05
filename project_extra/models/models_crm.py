@@ -1186,6 +1186,16 @@ class CrmLead(models.Model):
                 if procede:
                     concept_id = self.env['product.template'].search([('budget_id','=',budget_val), ('default_code','=',rec.col1)])
                     if concept_id:
+                        # El producto ya existía (p.ej. de una carga previa): normalizarlo como
+                        # servicio de obra para que al confirmar la OV genere su tarea. Sin esto,
+                        # un producto con service_tracking distinto deja el concepto fuera de la obra.
+                        norm = {}
+                        if concept_id.service_tracking != 'task_in_project':
+                            norm['service_tracking'] = 'task_in_project'
+                        if not concept_id.sale_ok:
+                            norm['sale_ok'] = True
+                        if norm:
+                            concept_id.write(norm)
                         if concept_id.property_account_income_id:
                             rec.write({'concept_ex': True, 'concept_id': concept_id.id, 'account_ex': True})
                         else:
