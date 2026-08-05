@@ -44,9 +44,11 @@ class saleOrderInherit(models.Model):
         self.env['project.task'].search([('project_id', 'in', obras.ids)]).unlink()
         cuentas = obras.mapped('account_id')
         obras.unlink()
-        # Limpiar la cuenta analítica de la obra si quedó vacía (sin apuntes ni otras obras).
-        for cuenta in cuentas:
-            if cuenta and not self.env['account.analytic.line'].search_count([('account_id', '=', cuenta.id)]) \
+        # Al borrar la obra, Odoo borra su cuenta analítica en cascada. Solo tocar las que
+        # SIGAN existiendo (p.ej. compartidas) y estén vacías; usar .exists() evita el
+        # MissingError sobre una cuenta ya eliminada en cascada.
+        for cuenta in cuentas.exists():
+            if not self.env['account.analytic.line'].search_count([('account_id', '=', cuenta.id)]) \
                     and not self.env['project.project'].search_count([('account_id', '=', cuenta.id)]):
                 cuenta.unlink()
         self.message_post(body=_('Obra(s) eliminada(s) desde la OV cancelada: %s') % nombres)
