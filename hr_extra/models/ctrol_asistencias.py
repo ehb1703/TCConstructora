@@ -306,11 +306,23 @@ class CtrolAsistencias(models.Model):
 
         check_date_utc = self.check_date
         AttendanceModel = self.env['hr.attendance'].sudo()
+        # Supervisión múltiple: los empleados con horario de horas flexibles (flexible_hours) fichan
+        # varias entradas/salidas al día (recorren varias obras). Para ellos NO aplica el tope de
+        # una sola entrada/salida por día; se permiten múltiples pares y las horas se suman normal.
+        flexible = bool(employee.resource_calendar_id and getattr(employee.resource_calendar_id, 'flexible_hours', False))
         if self.check_type == 'entrada':
-            entrada_del_dia = AttendanceModel.search([('employee_id', '=', employee.id), ('check_in', '>=', day_start_utc), ('check_in', '<=', day_end_utc)], 
-                limit=1)
-            if entrada_del_dia:
-                return (False, f'Ya existe entrada del día {current_date} | Attendance ID: {entrada_del_dia.id} | Check-in: {entrada_del_dia.check_in}')
+            if flexible:
+                # Solo se bloquea si ya hay una entrada ABIERTA (sin salida) del mismo día, para
+                # conservar la alternancia entrada→salida; entradas ya cerradas no bloquean.
+                abierta_del_dia = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '=', False),
+                    ('check_in', '>=', day_start_utc), ('check_in', '<=', day_end_utc)], limit=1)
+                if abierta_del_dia:
+                    return (False, f'Ya existe una entrada abierta sin salida del día {current_date} | Attendance ID: {abierta_del_dia.id} | Check-in: {abierta_del_dia.check_in}')
+            else:
+                entrada_del_dia = AttendanceModel.search([('employee_id', '=', employee.id), ('check_in', '>=', day_start_utc), ('check_in', '<=', day_end_utc)],
+                    limit=1)
+                if entrada_del_dia:
+                    return (False, f'Ya existe entrada del día {current_date} | Attendance ID: {entrada_del_dia.id} | Check-in: {entrada_del_dia.check_in}')
 
             # Cerrar entradas abiertas de días ANTERIORES para evitar solapamiento en hr.attendance.
             # Si el empleado no fichó salida en un día previo, se cierra automáticamente con check_out = 1 segundo antes del nuevo check_in. No afecta el día actual.
@@ -377,12 +389,15 @@ class CtrolAsistencias(models.Model):
             """ Busca duplicado de salida verificando que el check_in también pertenezca al día laboral actual. Sin esta condición, un attendance de un día 
             anterior (con check_in fuera del rango) podría coincidir por check_out si su salida real cae dentro del rango UTC del día actual,
             generando un falso positivo de duplicado."""
-            salida_del_dia = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '>=', day_start_utc), ('check_out', '<=', day_end_utc),
-                ('check_in', '>=', day_start_utc),], limit=1)
-            if salida_del_dia:
-                return (False, f'Ya existe salida del día {current_date} | Attendance ID: {salida_del_dia.id} | Check-out: {salida_del_dia.check_out}')
+            # Para horario flexible (supervisión múltiple) se permiten varias salidas al día: se
+            # omite el tope de una sola salida y cada salida cierra la última entrada abierta.
+            if not flexible:
+                salida_del_dia = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '>=', day_start_utc), ('check_out', '<=', day_end_utc),
+                    ('check_in', '>=', day_start_utc),], limit=1)
+                if salida_del_dia:
+                    return (False, f'Ya existe salida del día {current_date} | Attendance ID: {salida_del_dia.id} | Check-out: {salida_del_dia.check_out}')
 
-            open_attendance = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '=', False), ('check_in', '<=', check_date_utc)], 
+            open_attendance = AttendanceModel.search([('employee_id', '=', employee.id), ('check_out', '=', False), ('check_in', '<=', check_date_utc)],
                 order='check_in desc', limit=1)
             if not open_attendance:
                 return (False, f'Salida sin entrada previa | Employee: {employee.name} | Fecha local: {local_dt}')
