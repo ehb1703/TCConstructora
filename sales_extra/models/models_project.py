@@ -12,6 +12,45 @@ class saleOrderInherit(models.Model):
     anticipo_importe = fields.Monetary(string='Importe Anticipo (IVA incluido)')
     tiene_anticipo = fields.Boolean(string='Tiene Anticipo')
     factura_anticipo_generada = fields.Boolean(string='Factura Anticipo Generada')
+    has_obra = fields.Boolean(string='Tiene obra vinculada', compute='_compute_has_obra')
+
+    def _obras_vinculadas(self):
+        # Obra(s) generada(s) por esta OV: por reinvoiced_sale_order_id o por el project_id de la orden.
+        self.ensure_one()
+        if not isinstance(self.id, int):
+            return self.env['project.project']
+        domain = [('reinvoiced_sale_order_id', '=', self.id)]
+        if self.project_id:
+            domain = ['|', ('id', '=', self.project_id.id)] + domain
+        return self.env['project.project'].search(domain)
+
+    @api.depends('project_id', 'state')
+    def _compute_has_obra(self):
+        for order in self:
+            order.has_obra = bool(order._obras_vinculadas())
+
+    def action_eliminar_obra(self):
+        # Elimina la(s) obra(s) creada(s) por esta OV. Solo con la OV cancelada, para deshacer
+        # una obra generada por error (al cancelar la OV la obra no se borra sola).
+        self.ensure_one()
+        if self.state != 'cancel':
+            raise UserError(_('Solo se puede eliminar la obra cuando la orden de venta está cancelada.'))
+        obras = self._obras_vinculadas()
+        if not obras:
+            raise UserError(_('No hay ninguna obra vinculada a esta orden de venta.'))
+        nombres = ', '.join(obras.mapped('name'))
+        # Desligar líneas y borrar tareas antes de la obra para evitar referencias colgadas.
+        self.order_line.write({'project_id': False, 'task_id': False})
+        self.env['project.task'].search([('project_id', 'in', obras.ids)]).unlink()
+        cuentas = obras.mapped('account_id')
+        obras.unlink()
+        # Limpiar la cuenta analítica de la obra si quedó vacía (sin apuntes ni otras obras).
+        for cuenta in cuentas:
+            if cuenta and not self.env['account.analytic.line'].search_count([('account_id', '=', cuenta.id)]) \
+                    and not self.env['project.project'].search_count([('account_id', '=', cuenta.id)]):
+                cuenta.unlink()
+        self.message_post(body=_('Obra(s) eliminada(s) desde la OV cancelada: %s') % nombres)
+        return True
 
     def action_confirm(self):
         # Sobrescribir la confirmación para mostrar wizard de anticipo si la orden tiene anticipo configurado. Si viene del wizard, no mostrar wizard otra vez
