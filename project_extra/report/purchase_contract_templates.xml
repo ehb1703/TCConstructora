@@ -136,23 +136,12 @@
                     <t t-set="company_id" t-value="o.lead_id.empresa_concursante_id"/>
                 </t>
             </xpath>
-            <xpath expr="//t[@t-call='web.external_layout']/t[@t-else='']" position="replace">
+            <xpath expr="//t[@t-call='web.external_layout']/t[@t-if='o.dest_address_id']" position="after">
                 <t t-if="o.type_purchase == 'bases' and o.empresa_solicitante">
                     <t t-set="information_block">
                         <strong class="d-block mt-3">Dirección de envío:</strong>
                         <div t-field="o.empresa_solicitante"
                              t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
-                    </t>
-                </t>
-                <t t-else="">
-                    <t t-set="information_block">
-                        <strong class="d-block mt-3">Dirección de envío:</strong>
-                        <div t-if="o.picking_type_id and o.picking_type_id.warehouse_id">
-                            <span t-field="o.picking_type_id.warehouse_id.name"/>
-                            <div t-field="o.picking_type_id.warehouse_id.partner_id"
-                                 t-options='{"widget": "contact", "fields": ["address", "phone"], "no_marker": True, "phone_icons": True}'
-                                 name="purchase_shipping_address"/>
-                        </div>
                     </t>
                 </t>
             </xpath>
@@ -203,23 +192,12 @@
                     <t t-set="company_id" t-value="o.lead_id.empresa_concursante_id"/>
                 </t>
             </xpath>
-            <xpath expr="//t[@t-call='web.external_layout']/t[@t-else='']" position="replace">
+            <xpath expr="//t[@t-call='web.external_layout']/t[@t-if='o.dest_address_id']" position="after">
                 <t t-if="o.type_purchase == 'bases' and o.empresa_solicitante">
                     <t t-set="information_block">
                         <strong class="d-block mt-3">Dirección de envío:</strong>
                         <div t-field="o.empresa_solicitante"
                              t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
-                    </t>
-                </t>
-                <t t-else="">
-                    <t t-set="information_block">
-                        <strong class="d-block mt-3">Dirección de envío:</strong>
-                        <div t-if="o.picking_type_id and o.picking_type_id.warehouse_id">
-                            <span t-field="o.picking_type_id.warehouse_id.name"/>
-                            <div t-field="o.picking_type_id.warehouse_id.partner_id"
-                                 t-options='{"widget": "contact", "fields": ["address", "phone"], "no_marker": True, "phone_icons": True}'
-                                 name="purchase_shipping_address"/>
-                        </div>
                     </t>
                 </t>
             </xpath>
