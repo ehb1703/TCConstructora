@@ -11,7 +11,7 @@ Personalización de catálogos
 Plan de cuentas contables
     """,
     'category': 'Contacts',
-    'depends': ['base', 'contacts', 'account', 'accountant', 'base_vat'],
+    'depends': ['base', 'contacts', 'account', 'accountant', 'base_vat', 'hr'],
     'data': [
         'security/res_groups.xml',
         'security/ir.model.access.csv',

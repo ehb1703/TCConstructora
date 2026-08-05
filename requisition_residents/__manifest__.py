@@ -9,7 +9,7 @@ Requisiciones
 ====================
 Captura de las requisiciones de los residentes de obras """,
     'category': 'Requisiciones',
-    'depends': ['base', 'mail', 'contacts', 'project_extra'],
+    'depends': ['base', 'mail', 'contacts', 'project_extra', 'contact_extra'],
     'data': [        
         'security/res_groups.xml',
         'security/ir.model.access.csv',
