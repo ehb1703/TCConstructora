@@ -9,11 +9,14 @@ class purchaseOrderInherit(models.Model):
     _inherit = 'purchase.order'
 
     lead_id = fields.Many2one('crm.lead', string='Oportunidad')
+    partner_id = fields.Many2one(required=False)  # Solicitud de cotización puede existir sin proveedor; obligatorio al confirmar (button_confirm)
     type_purchase = fields.Selection(selection=[('bases','Bases de Licitación'), ('ins', 'Insumos'), ('esp', 'Trabajos especiales')],
             string='Tipo de movimiento')
     empresa_solicitante = fields.Many2one('res.partner', string='Empresa solicitante', compute='_compute_empresa_solicitante', store=False)
     bitacora_ids = fields.One2many('purchase.order.bitacora', 'order_id', string='Bitácora')
     folder_id = fields.Many2one('documents.document', string='Carpeta de documentos', readonly=True)
+    comprador_id = fields.Many2one('hr.employee', string='Comprador', domain="[('department_id.name', 'ilike', 'compras')]",
+        help='Persona de Compras que gestiona esta solicitud. Al asignarla se registra en la bitácora y en Consulta de asignación.')
 
     STATES_LABELS = {'draft': 'Solicitud de cotización', 'sent': 'Solicitud de cotización enviada', 'purchase': 'Orden de compra', 'done': 'Bloqueado',
         'cancel': 'Cancelado'}
@@ -88,15 +91,15 @@ class purchaseOrderInherit(models.Model):
     def _get_or_create_folder(self, parent_id, name):
         folder = self.env['documents.document'].sudo().search([('type', '=', 'folder'), ('name', '=', name), ('folder_id', '=', parent_id),], limit=1)
         if not folder:
-            folder = self.env['documents.document'].sudo().create({'name':name, 'type':'folder', 'folder_id':parent_id,})
+            folder = self.env['documents.document'].sudo().create({'name':name, 'type':'folder', 'folder_id':parent_id, 'access_internal': 'edit'})
         return folder
 
     def _crear_carpeta_documentos(self):
         for order in self:
-            compras_folder = self.env['documents.document'].sudo().search([('type', '=', 'folder'), ('name', '=', 'COMPRAS'), ('folder_id', '=', False),], 
+            compras_folder = self.env['documents.document'].sudo().search([('type', '=', 'folder'), ('name', '=', 'COMPRAS'), ('folder_id', '=', False),],
                 limit=1)
             if not compras_folder:
-                compras_folder = self.env['documents.document'].sudo().create({'name': 'COMPRAS', 'type': 'folder', 'folder_id': False})
+                compras_folder = self.env['documents.document'].sudo().create({'name': 'COMPRAS', 'type': 'folder', 'folder_id': False, 'access_internal': 'edit'})
 
             order_folder = self._get_or_create_folder(compras_folder.id, order.name)
             self._get_or_create_folder(order_folder.id, 'FACTURAS')
@@ -104,6 +107,9 @@ class purchaseOrderInherit(models.Model):
 
 
     def button_confirm(self):
+        for order in self:
+            if not order.partner_id:
+                raise UserError(_('Debe asignar un proveedor antes de confirmar la orden de compra %s.') % (order.name or ''))
         res = super().button_confirm()
         self._crear_carpeta_documentos()
         return res
@@ -122,14 +128,47 @@ class purchaseOrderInherit(models.Model):
 
     def write(self, vals):
         old_states = {order.id: order.state for order in self} if 'state' in vals else {}
+        old_compradores = {order.id: order.comprador_id.id for order in self} if 'comprador_id' in vals else {}
         res = super().write(vals)
         if 'state' in vals:
             for order in self:
                 old_state = old_states[order.id]
                 if old_state != order.state:
-                    self.env['purchase.order.bitacora'].create({'order_id':order.id, 'fecha':fields.Datetime.now(), 'usuario':self.env.user.name, 
+                    self.env['purchase.order.bitacora'].create({'order_id':order.id, 'fecha':fields.Datetime.now(), 'usuario':self.env.user.name,
                         'etapa_anterior':order.STATES_LABELS.get(old_state, old_state), 'etapa_nueva':order.STATES_LABELS.get(order.state, order.state)})
+        if 'comprador_id' in vals:
+            for order in self:
+                if order.comprador_id.id != old_compradores.get(order.id):
+                    order._sincronizar_asignacion()
+                    order._notificar_comprador()
         return res
+
+    def _sincronizar_asignacion(self):
+        # Refleja el comprador en Consulta de asignación (purchase.asignacion); sus hooks registran la bitácora
+        self.ensure_one()
+        if not self.comprador_id:
+            return
+        asign = self.env['purchase.asignacion'].search([('referencia_id', '=', self.id)], limit=1)
+        if asign:
+            if asign.nombre_id != self.comprador_id:
+                asign.nombre_id = self.comprador_id
+        else:
+            self.env['purchase.asignacion'].create({'referencia_id': self.id, 'nombre_id': self.comprador_id.id})
+
+    def _notificar_comprador(self):
+        # Envía correo de notificación de asignación al comprador
+        self.ensure_one()
+        if not self.comprador_id:
+            return
+        correo = self.comprador_id.work_email or (self.comprador_id.user_id.partner_id.email if self.comprador_id.user_id else False)
+        template = self.env.ref('project_extra.mail_tmpl_purchase_comprador', raise_if_not_found=False)
+        if not template or not correo:
+            self.message_post(body=_('No se pudo notificar al comprador %s: sin correo o plantilla.') % self.comprador_id.name,
+                message_type='comment', subtype_xmlid='mail.mt_note')
+            return
+        template.send_mail(self.id, force_send=True, email_values={'email_to': correo})
+        self.message_post(body=_('Se notificó la asignación al comprador: %s (%s)') % (self.comprador_id.name, correo),
+            message_type='comment', subtype_xmlid='mail.mt_note')
 
 
 class AccountMoveInherit(models.Model):
