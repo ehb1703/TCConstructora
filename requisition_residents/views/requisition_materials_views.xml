@@ -26,6 +26,7 @@
         <field name="arch" type="xml">
             <form string="Materiales" delete="0">
                 <header>
+                    <button string="Regresar a Borrador" name="action_regresar_borrador" type="object" class="btn-warning" invisible="state not in ('send', 'aprobado')" groups="requisition_residents.group_materials_authorize"/>
                     <button string="Enviar" name="action_send" type="object" class="btn-primary" invisible="state != 'draft'"/>
                     <button string="Aprobar" name="action_confirm" type="object" class="btn-primary" invisible="state != 'send'" groups="requisition_residents.group_materials_authorize"/>
                     <field name="state" widget="statusbar"/>
@@ -40,7 +41,6 @@
                         <group>
                             <field name="employee_id" invisible="state == 'draft'" readonly="state != 'draft'" context="{'special_display':True}"/>
                             <field name="project_id"/>
-                            <field name="company_id"/>
                         </group>
                     </group>
                     <notebook>

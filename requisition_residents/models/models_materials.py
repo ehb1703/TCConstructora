@@ -23,6 +23,10 @@ class requisitionMaterials(models.Model):
     state = fields.Selection(selection=[('draft','Borrador'), ('send','Enviado'), ('aprobado','Aprobado')],
         string='Estatus', default='draft', tracking=True)
     
+    def _empresa_desde_crm(self, project):
+        # Empresa concursante del CRM asociado a la obra; False si la obra no tiene lead o el lead no la define
+        return project.lead_id.empresa_concursante_id if project and project.lead_id else False
+
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None):
         user = self.env.user
@@ -42,7 +46,19 @@ class requisitionMaterials(models.Model):
             employee = self.env['hr.employee'].search([('user_id','=',self.env.user.id)])
             if employee:
                 vals['employee_id'] = employee.id
+            if vals.get('project_id'):
+                empresa = self._empresa_desde_crm(self.env['project.project'].browse(vals['project_id']))
+                if empresa:
+                    vals['company_id'] = empresa.id
         return super().create(vals_list)
+
+    def write(self, vals):
+        # Si cambia la Obra, toma la empresa concursante del CRM cuando exista; si no, conserva la actual
+        if 'project_id' in vals and 'company_id' not in vals:
+            empresa = self._empresa_desde_crm(self.env['project.project'].browse(vals['project_id'])) if vals['project_id'] else False
+            if empresa:
+                vals['company_id'] = empresa.id
+        return super().write(vals)
 
     def _post_html(self, title, old_stage=None, new_stage=None):
         parts = [f'<p>{html_escape(title)}</p>']
@@ -75,17 +91,34 @@ class requisitionMaterials(models.Model):
         self.state = 'send'
 
 
-    def action_confirm(self):
-        for rec in self.line_ids:
-            if not rec.supplier_ids:
-                raise UserError('No se ha capturado información del proveedor')
+    def action_regresar_borrador(self):
+        self.ensure_one()
+        confirmadas = self.oc_ids.filtered(lambda o: o.state in ('purchase', 'done'))
+        if confirmadas:
+            raise UserError(_('No se puede regresar a borrador: existen órdenes de compra ya confirmadas (%s).') % ', '.join(confirmadas.mapped('name')))
+        rfqs = self.oc_ids.filtered(lambda o: o.state in ('draft', 'sent'))
+        if rfqs:
+            nombres = ', '.join(rfqs.mapped('name'))
+            rfqs.button_cancel()
+            rfqs.sudo().unlink()
+            self._post_html(_('Se cancelaron las órdenes de compra generadas: ') + nombres)
+        self.state = 'draft'
+        self._post_html(_('Requisición regresada a Borrador'))
 
-        self.env.cr.execute('''SELECT rel.supplier_id FROM requisition_materials_line rml JOIN materials_supplier_rel rel ON rml.ID = rel.MATERIALS_ID 
+
+    def action_confirm(self):
+        # Solicitudes de cotización por proveedor (líneas que sí traen proveedor)
+        self.env.cr.execute('''SELECT rel.supplier_id FROM requisition_materials_line rml JOIN materials_supplier_rel rel ON rml.ID = rel.MATERIALS_ID
             WHERE rml.REQ_ID = ''' + str(self.id) + ' GROUP BY 1')
         supplier = self.env.cr.dictfetchall()
         for rec in supplier:
             supplier_id = self.env['res.partner'].search([('id','=',rec['supplier_id'])])
-            oc = self.action_generar_orden(supplier_id)
+            self.action_generar_orden(supplier_id)
+
+        # Solicitud de cotización sin proveedor (líneas sin proveedor) para que compras asigne
+        lineas_sin_prov = self.line_ids.filtered(lambda l: not l.supplier_ids)
+        if lineas_sin_prov:
+            self.action_generar_orden(self.env['res.partner'])
 
         self.state = 'aprobado'
 
@@ -100,12 +133,13 @@ class requisitionMaterials(models.Model):
         orders = []
         order_lines = []
         taxes = []
-        fpos = self.env['account.fiscal.position'].with_company(self.env.user.company_id)._get_fiscal_position(supplier)
+        fpos = self.env['account.fiscal.position'].with_company(self.env.user.company_id)._get_fiscal_position(supplier) if supplier else self.env['account.fiscal.position']
         sequence = self.env['ir.sequence'].next_by_code('purchase.order')
         origin = 'Materiales - ' + self.name
 
         for rec in self.line_ids:
-            if supplier.id in rec.supplier_ids.ids:
+            incluir = (supplier.id in rec.supplier_ids.ids) if supplier else (not rec.supplier_ids)
+            if incluir:
                 taxes = rec.product_id.supplier_taxes_id._filter_taxes_by_company(self.company_id)
                 lines = {'name': rec.product_id.name, 'product_uom': rec.product_uom_id.id, 'product_id': rec.product_id.id, 'partner_id': supplier.id, 
                     'company_id': self.env.user.company_id.id, 'currency_id': rec.product_id.currency_id.id, 'state': 'draft', 'product_qty': rec.product_qty, 
@@ -145,12 +179,14 @@ class purchaseOrderInherit(models.Model):
     materials_id = fields.Many2one('requisition.materials', string='Requisición de Materiales')
     type_purchase = fields.Selection(selection_add=[('mat','Materiales')])
     
-    @api.depends('lead_id', 'lead_id.empresa_concursante_id', 'materials_id', 'lead_id.company_id')
+    @api.depends('lead_id', 'lead_id.empresa_concursante_id', 'materials_id',
+        'materials_id.project_id.lead_id.empresa_concursante_id', 'materials_id.company_id')
     def _compute_empresa_solicitante(self):
         for order in self:
+            empresa = False
             if order.lead_id and order.lead_id.empresa_concursante_id:
-                order.empresa_solicitante = order.lead_id.empresa_concursante_id.partner_id
-            elif order.materials_id and order.materials_id.company_id:
-                order.empresa_solicitante = order.materials_id.company_id.partner_id
-            else:
-                order.empresa_solicitante = False
+                empresa = order.lead_id.empresa_concursante_id
+            elif order.materials_id:
+                # Empresa concursante del CRM de la obra; respaldo a la empresa de la requisición si la obra no tiene lead
+                empresa = order.materials_id.project_id.lead_id.empresa_concursante_id or order.materials_id.company_id
+            order.empresa_solicitante = empresa.partner_id if empresa else False
