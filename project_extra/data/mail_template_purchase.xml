@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <record id="mail_tmpl_purchase_comprador" model="mail.template">
+            <field name="name">Asignación de comprador</field>
+            <field name="model_id" ref="purchase.model_purchase_order"/>
+            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
+            <field name="email_to"></field>
+            <field name="subject">[Compras] Asignación de solicitud {{object.name}}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+                    <p>Estimado/a <t t-out="object.comprador_id.name or ''"/>:</p>
+                    <p>Se le ha asignado la gestión de la siguiente solicitud de cotización:</p>
+                    <ul>
+                        <li><b>Solicitud: </b><t t-out="object.name or ''"/></li>
+                        <li><b>Proyecto: </b><t t-out="object.project_id.name or ''"/></li>
+                        <li><b>Empresa solicitante: </b><t t-out="object.empresa_solicitante.name or ''"/></li>
+                    </ul>
+                    <table align="center">
+                        <tr>
+                            <td>
+                                <a t-att-href="'%s/web#id=%s&amp;model=purchase.order&amp;view_type=form' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#6c757d; color:#fff; border-radius:4px; text-decoration:none;font-size:12px;">Ver</a>
+                            </td>
+                        </tr>
+                    </table>
+                    <p>Enviado automáticamente por el Sistema.</p>
+                </div>
+            </field>
+        </record>
+
+    </data>
+</odoo>
