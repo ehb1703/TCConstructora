@@ -87,7 +87,7 @@
                 <field name="materials_id" invisible="type_purchase != 'mat'" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
             </xpath>
             <xpath expr="//field[@name='empresa_solicitante']" position="replace">
-                <field name="empresa_solicitante" invisible="type_purchase not in ['bases', 'mat']" readonly="1"/>
+                <field name="empresa_solicitante" invisible="type_purchase not in ['bases', 'mat']" readonly="1" options="{'no_open': True}"/>
             </xpath>
         </field>
     </record>

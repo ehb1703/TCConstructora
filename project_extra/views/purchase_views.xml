@@ -26,7 +26,7 @@
             <xpath expr="//field[@name='currency_id']" position="after">
                 <field name="type_purchase"/>
                 <field name="lead_id"/>
-                <field name="empresa_solicitante" invisible="type_purchase != 'bases'" readonly="1"/>
+                <field name="empresa_solicitante" invisible="type_purchase != 'bases'" readonly="1" options="{'no_open': True}"/>
                 <field name="comprador_id" options="{'no_create':True, 'no_open':True}"/>
             </xpath>
 

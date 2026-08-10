@@ -118,13 +118,27 @@ class purchaseOrderInherit(models.Model):
         self.ensure_one()
         if not self.folder_id:
             self._crear_carpeta_documentos()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'Documentos',
-            'res_model': 'documents.document',
-            'view_mode': 'list,form',
-            'domain': [('folder_id', 'child_of', self.folder_id.id)],
-            'context': {'default_folder_id': self.folder_id.id},}
+        # Abre la app de Documentos con la carpeta de la solicitud seleccionada (mismo patrón que CRM):
+        # muestra sus subcarpetas (FACTURAS) y permite subir/arrastrar archivos dentro de la carpeta.
+        action = self.env.ref('documents.document_action').read()[0]
+        action['domain'] = [('folder_id', 'child_of', self.folder_id.id)]
+        action['context'] = {
+            'default_folder_id': self.folder_id.id,
+            'searchpanel_default_folder_id': self.folder_id.id,
+            'default_res_model': 'purchase.order',
+            'default_res_id': self.id,
+        }
+        action['name'] = 'Documentos - %s' % (self.name or '')
+        return action
+
+    def message_post(self, **kwargs):
+        message = super().message_post(**kwargs)
+        # Deja rastro en la Bitácora cuando se envía el correo al proveedor (mensaje tipo comment dirigido al proveedor)
+        if message and self.partner_id and message.message_type == 'comment' and self.partner_id.id in message.partner_ids.ids:
+            self.env['purchase.order.bitacora'].create({'order_id': self.id, 'fecha': fields.Datetime.now(), 'usuario': self.env.user.name,
+                'etapa_anterior': self.STATES_LABELS.get(self.state, self.state),
+                'etapa_nueva': _('Correo enviado al proveedor: %s') % (self.partner_id.name or '')})
+        return message
 
     def write(self, vals):
         old_states = {order.id: order.state for order in self} if 'state' in vals else {}
