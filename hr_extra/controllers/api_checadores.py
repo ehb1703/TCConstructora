@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import hmac
 import logging
 from datetime import datetime, timedelta
 from functools import wraps
@@ -174,7 +175,8 @@ class ApiChecadoresController(http.Controller):
                 return self._error_response('Credenciales no configuradas en el servidor', status=500, error_code='CREDENTIALS_NOT_CONFIGURED')
             
             # Validar credenciales
-            if username != config_username or password != config_password:
+            if not (hmac.compare_digest(username.encode('utf-8'), config_username.encode('utf-8'))
+                    and hmac.compare_digest(password.encode('utf-8'), config_password.encode('utf-8'))):
                 _logger.warning(f"API Checadores: Login fallido para '{username}' desde IP: {request.httprequest.remote_addr}")
                 return self._error_response('Credenciales inválidas', status=401, error_code='INVALID_CREDENTIALS')
             
@@ -189,7 +191,7 @@ class ApiChecadoresController(http.Controller):
                 'token_type': 'Bearer'})
         except Exception as e:
             _logger.error(f"API Checadores Login Error: {str(e)}", exc_info=True)
-            return self._error_response(f'Error interno: {str(e)}', status=500, error_code='INTERNAL_ERROR')
+            return self._error_response('Error interno', status=500, error_code='INTERNAL_ERROR')
 
 
     @http.route('/api/v1/health', type='http', auth='none', methods=['GET'], csrf=False)
@@ -248,7 +250,7 @@ class ApiChecadoresController(http.Controller):
                 'data': result_data['employees'],})
         except Exception as e:
             _logger.error(f"API Checadores Error: {str(e)}", exc_info=True)
-            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
+            return self._error_response('Error interno del servidor', status=500, error_code='INTERNAL_ERROR')
 
 
     @http.route('/api/v1/employees/<int:employee_id>', type='http', auth='none', methods=['GET', 'OPTIONS'], csrf=False)
@@ -277,7 +279,7 @@ class ApiChecadoresController(http.Controller):
                 'message': 'Este endpoint está deprecado. Use /api/v1/employees/by-number/<registration_number>', 'data': employee_data,})
         except Exception as e:
             _logger.error(f"API Checadores Error (employee/{employee_id}): {str(e)}", exc_info=True)
-            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
+            return self._error_response('Error interno del servidor', status=500, error_code='INTERNAL_ERROR')
 
 
     @http.route('/api/v1/employees/by-number/<string:registration_number>', type='http', auth='none', methods=['GET', 'OPTIONS'], csrf=False)
@@ -320,7 +322,7 @@ class ApiChecadoresController(http.Controller):
             return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'data': employee_data,})
         except Exception as e:
             _logger.error(f"API Checadores Error (employee/by-number/{registration_number}): {str(e)}", exc_info=True)
-            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
+            return self._error_response('Error interno del servidor', status=500, error_code='INTERNAL_ERROR')
 
 
     @http.route('/api/v1/departments', type='http', auth='none', methods=['GET', 'OPTIONS'], csrf=False)
@@ -340,7 +342,7 @@ class ApiChecadoresController(http.Controller):
             return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'count': len(departments_data), 'data': departments_data,})
         except Exception as e:
             _logger.error(f"API Checadores Error (departments): {str(e)}", exc_info=True)
-            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
+            return self._error_response('Error interno del servidor', status=500, error_code='INTERNAL_ERROR')
 
 
     @http.route('/api/v1/job_positions', type='http', auth='none', methods=['GET', 'OPTIONS'], csrf=False)
@@ -388,7 +390,7 @@ class ApiChecadoresController(http.Controller):
             return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'count': len(jobs_data), 'data': jobs_data,})
         except Exception as e:
             _logger.error(f"API Checadores Error (job_positions): {str(e)}", exc_info=True)
-            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
+            return self._error_response('Error interno del servidor', status=500, error_code='INTERNAL_ERROR')
 
 
     @http.route('/api/v1/schedules', type='http', auth='none', methods=['GET', 'OPTIONS'], csrf=False)
@@ -423,7 +425,7 @@ class ApiChecadoresController(http.Controller):
             return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'count': len(schedules_data), 'data': schedules_data,})
         except Exception as e:
             _logger.error(f"API Checadores Error (schedules): {str(e)}", exc_info=True)
-            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
+            return self._error_response('Error interno del servidor', status=500, error_code='INTERNAL_ERROR')
 
 
     @http.route('/api/v1/attendances', type='http', auth='none', methods=['POST', 'OPTIONS'], csrf=False, cors='*')
@@ -550,7 +552,7 @@ class ApiChecadoresController(http.Controller):
             return self._error_response('Body JSON inválido', status=400, error_code='INVALID_JSON')
         except Exception as e:
             _logger.error(f"API Checadores Error (attendance_create): {str(e)}", exc_info=True)
-            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
+            return self._error_response('Error interno del servidor', status=500, error_code='INTERNAL_ERROR')
 
 
     @http.route('/api/v1/attendances', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
@@ -640,7 +642,7 @@ class ApiChecadoresController(http.Controller):
                 'limit': limit, 'offset': offset, 'filters_applied': filters, 'data': attendances_data})
         except Exception as e:
             _logger.error(f"API Checadores Error (attendance_list): {str(e)}", exc_info=True)
-            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
+            return self._error_response('Error interno del servidor', status=500, error_code='INTERNAL_ERROR')
 
     
     @http.route('/api/v1/employees/sync', type='http', auth='none', methods=['GET', 'OPTIONS'], csrf=False, cors='*')
@@ -752,4 +754,4 @@ class ApiChecadoresController(http.Controller):
             except:
                 pass  # Si falla el log de error, no interrumpir
             
-            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
+            return self._error_response('Error interno del servidor', status=500, error_code='INTERNAL_ERROR')
