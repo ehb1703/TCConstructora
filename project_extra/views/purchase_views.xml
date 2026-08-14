@@ -27,7 +27,7 @@
                 <field name="type_purchase"/>
                 <field name="lead_id"/>
                 <field name="empresa_solicitante" invisible="type_purchase != 'bases'" readonly="1" options="{'no_open': True}"/>
-                <field name="comprador_id" options="{'no_create':True, 'no_open':True}"/>
+                <field name="comprador_id" context="{'special_display':True}" options="{'no_create':True, 'no_open':True}"/>
             </xpath>
 
             <xpath expr="//notebook" position="inside">
