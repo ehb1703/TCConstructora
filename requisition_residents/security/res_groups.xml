@@ -60,15 +60,31 @@
             <field name="comment">Área de Costos: recibe los correos de conceptos extraordinarios para asignarles precio.</field>
     </record>
 
+    <!-- R1: los usuarios de requisicion SOLO leen adjuntos de sus modelos de requisicion.
+         Antes era una regla GLOBAL (rompia la lectura de adjuntos a todos, incl. facturacion);
+         ahora es de GRUPO: restringe solo a los residentes, sin tocar a contabilidad/admin. -->
     <record id="rule_ir_attachment_requisition_read" model="ir.rule">
-        <field name="name">Attachments: lectura en modelos de requisicion</field>
+        <field name="name">Attachments: residentes solo leen adjuntos de requisicion</field>
         <field name="model_id" ref="base.model_ir_attachment"/>
-        <field name="global" eval="True"/>
+        <field name="groups" eval="[(6, 0, [ref('group_requisition_admin'), ref('group_requisition_move'), ref('group_requisition_capture'), ref('group_requisition_materials'), ref('group_materials_authorize'), ref('group_requisition_authorize'), ref('group_other_bills'), ref('group_encargado'), ref('group_costos'), ref('group_requisition_reset_draft'), ref('group_materials_view_all')])]"/>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>
         <field name="perm_create" eval="False"/>
         <field name="perm_unlink" eval="False"/>
         <field name="domain_force">['|', '|', ('res_model', '=', False), ('res_id', '=', 0), ('res_model', 'in', ['requisition.destajo', 'requisition.acarreos', 'requisition.campamentos', 'requisition.maquinaria', 'requisition.cash', 'requisition.fuel', 'requisition.residents', 'requisition.weekly', 'requisition.debt', 'requisition.materials'])]</field>
+    </record>
+
+    <!-- R2: bypass de lectura de adjuntos para Facturacion/Contabilidad (y Azucena, que tiene este grupo).
+         Al ser regla de grupo permisiva se combina en OR: contabilidad lee TODOS los adjuntos (comprobantes/CFDI). -->
+    <record id="rule_ir_attachment_comprobantes_bypass" model="ir.rule">
+        <field name="name">Attachments: acceso total para Facturacion/Contabilidad</field>
+        <field name="model_id" ref="base.model_ir_attachment"/>
+        <field name="groups" eval="[(6, 0, [ref('account.group_account_invoice')])]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
     </record>
 
     <record id="group_requisition_reset_draft" model="res.groups">
