@@ -68,7 +68,31 @@ class documentosRequeridos(models.Model):
     tipo_venta_id = fields.Many2one('crm.lead.type', string='Tipo de Venta', tracking=True)
     active = fields.Boolean(string='Activo', tracking=True, default=True, required=True)
 
-    _sql_constraints = [('nombre_archivo_uniq', 'unique(nombre_archivo, desc_archivo)', 'El archivo debe de ser único.'),]
+    @api.constrains('nombre_archivo', 'desc_archivo', 'model_id', 'etapa', 'tipo_venta_id', 'dependencia_ids', 'active')
+    def _check_documento_duplicado(self):
+        for rec in self:
+            if not rec.active:
+                continue
+            domain = [
+                ('id', '!=', rec.id),
+                ('nombre_archivo', '=', rec.nombre_archivo),
+                ('desc_archivo', '=', rec.desc_archivo),
+                ('model_id', '=', rec.model_id.id),
+                ('etapa', '=', rec.etapa),
+                ('tipo_venta_id', '=', rec.tipo_venta_id.id),
+                ('active', '=', True),
+            ]
+            candidatos = self.search(domain)
+            if rec.dependencia_ids:
+                candidatos = candidatos.filtered(lambda d: d.dependencia_ids & rec.dependencia_ids)
+            else:
+                candidatos = candidatos.filtered(lambda d: not d.dependencia_ids)
+            if candidatos:
+                dependencias = ', '.join(candidatos.mapped('dependencia_ids.name')) or 'sin dependencia'
+                raise ValidationError(
+                    f'Ya existe el documento "{rec.nombre_archivo}" con esta descripción para la(s) misma(s) '
+                    f'dependencia(s): {dependencias}.'
+                )
 
     @api.depends('nombre_archivo', 'desc_archivo')
     def _compute_display_name(self):
