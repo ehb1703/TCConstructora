@@ -1170,6 +1170,8 @@ class CrmLead(models.Model):
         # partidas cargadas el comportamiento es idéntico al anterior (sin regresión).
         sin_partidas = not self.budget_ids
         partida = 0
+        encabezados_sin_match = []
+        conceptos_huerfanos = 0
         for rec in self.concept_ids.filtered(lambda u: not u.concept_ex):
             if not rec.concept_ex:
                 partida_id = self.env['crm.budget.line'].search([('lead_id','=',rec.lead_id.id), ('col1','=',rec.col1)])
@@ -1180,6 +1182,19 @@ class CrmLead(models.Model):
                     budget_val = False
                     procede = bool(rec.col1) and rec.col1 != ''
                 else:
+                    # Las filas de encabezado de partida (p.ej. "PDA-001 ...") llegan mezcladas en
+                    # concept_ids sin descripción propia; se distinguen de un concepto real por eso.
+                    # Si un encabezado no encuentra su partida (texto distinto al de "Resumen de
+                    # partidas", o la fila se perdió por "inicio_datos" mal configurado), "partida"
+                    # se quedaba con el valor de la ANTERIOR y los conceptos siguientes se
+                    # atribuían en silencio a la partida equivocada (o a ninguna, si era la primera).
+                    es_encabezado_partida = not rec.col2
+                    if es_encabezado_partida and not partida_id:
+                        encabezados_sin_match.append(rec.col1)
+                        continue
+                    if not es_encabezado_partida and partida == 0:
+                        conceptos_huerfanos += 1
+                        continue
                     budget_val = partida
                     procede = partida != 0 and rec.col1 != '' and rec.col1 != partida_id.budget_id.code
 
@@ -1213,6 +1228,21 @@ class CrmLead(models.Model):
                                 'taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'list_price': info[0]['importe'],
                                 'service_tracking': 'task_in_project', 'active': True, 'budget_id': budget_val})
                             rec.write({'concept_ex': True, 'concept_id': insumo.id})
+
+        if encabezados_sin_match or conceptos_huerfanos:
+            partes = []
+            if encabezados_sin_match:
+                partes.append(
+                    'Encabezados de partida no encontrados en "Resumen de partidas": '
+                    + ', '.join(encabezados_sin_match)
+                )
+            if conceptos_huerfanos:
+                partes.append(
+                    f'{conceptos_huerfanos} concepto(s) sin ninguna partida asignada. Revise "Fila '
+                    'donde inician los datos" del tipo de documento: puede estar excluyendo el '
+                    'primer encabezado de partida del archivo.'
+                )
+            raise UserError('No se pudo generar el catálogo de conceptos:\n\n' + '\n'.join(partes))
 
         for rec in self.concept_ids.filtered(lambda u: u.concept_ex):
             if rec.concept_id.property_account_income_id:
