@@ -18,6 +18,7 @@ Plan de cuentas contables
         'views/models_catalogs_views.xml',
         'views/res_company_views.xml',
         'views/models_account_views.xml',
+        'data/partner_nature_data.xml',
     ],        
     'license': 'LGPL-3',
     'installable': True,

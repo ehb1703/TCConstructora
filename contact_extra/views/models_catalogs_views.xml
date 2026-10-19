@@ -114,6 +114,42 @@
         </field>
     </record>
 
+    <record id="action_nature_supplier" model="ir.actions.act_window">
+        <field name="name">Naturaleza del Proveedor</field>
+        <field name="res_model">partner.nature.supplier</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_nature_supplier_list" model="ir.ui.view">
+        <field name="name">view.nature.supplier.list</field>
+        <field name="model">partner.nature.supplier</field>
+        <field name="arch" type="xml">
+            <list string="Naturaleza del Proveedor">
+                <field name="name"/>
+                <field name="description"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_nature_supplier_form" model="ir.ui.view">
+        <field name="name">view.nature.supplier.form</field>
+        <field name="model">partner.nature.supplier</field>
+        <field name="arch" type="xml">
+            <form string="Naturaleza del Proveedor" delete="0" duplicate="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="description"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
     <record id="action_classification_supplier" model="ir.actions.act_window">
         <field name="name">Clasificación del Proveedor</field>
         <field name="res_model">partner.classification.supplier</field>
@@ -194,6 +230,7 @@
     <menuitem id="menu_type_taxpayer" name="Tipo de Contribuyente" parent="menu_catalogs_company" action="action_type_taxpayer" sequence="1"/>
     <menuitem id="menu_type_supplier" name="Tipo de Proveedor" parent="menu_catalogs_company" action="action_type_supplier" sequence="2"/>
     <menuitem id="menu_classification_supplier" name="Clasificación del Proveedor" parent="menu_catalogs_company" action="action_classification_supplier" sequence="3"/>
+    <menuitem id="menu_nature_supplier" name="Naturaleza del Proveedor" parent="menu_catalogs_company" action="action_nature_supplier" sequence="4"/>
 
     <!-- Menú nuevo en Contabilidad -->
     <menuitem id="menu_catalogs_root" name="Catálogos" parent="accountant.menu_accounting" sequence="5">
