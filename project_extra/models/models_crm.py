@@ -1630,6 +1630,17 @@ class CrmLead(models.Model):
 
 
     def get_work_default_values(self):
+        # T0107: cantidad o precio vacío en un concepto cargado rompía la generación (col4/col5 son Char y llegan NULL o '')
+        sin_cantidad = self.concept_ids.filtered(lambda u: u.concept_ex and not (u.col4 or '').strip())
+        sin_precio = self.concept_ids.filtered(lambda u: u.concept_ex and not (u.col5 or '').strip())
+        if sin_cantidad or sin_precio:
+            detalle = []
+            for etiqueta, recs in (('Sin cantidad', sin_cantidad), ('Sin precio unitario', sin_precio)):
+                if recs:
+                    codigos = list(dict.fromkeys(r.col1 or str(r.id) for r in recs))
+                    detalle.append('%s (%d): %s%s' % (etiqueta, len(codigos), ', '.join(codigos[:10]), ' ...' if len(codigos) > 10 else ''))
+            raise UserError(_('No se puede generar la orden de venta: hay conceptos de trabajo incompletos. Corrija la matriz de conceptos y vuelva a intentar.\n') + '\n'.join(detalle))
+
         sequence = self.env['ir.sequence'].next_by_code('sale.order')
         orders = []
         order_lines = []
