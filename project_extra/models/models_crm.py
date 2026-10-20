@@ -1125,6 +1125,8 @@ class CrmLead(models.Model):
                     continue
                 if len(row) <= max_idx:
                     row = row + (None,) * (max_idx + 1 - len(row))
+                # T0107: espacios a la izquierda/derecha en las celdas de texto rompían el enlace con las partidas; se guardan sin ellos
+                row = tuple(c.strip() if isinstance(c, str) else c for c in row)
 
                 if isinstance(row[desc], str):
                     if row[desc].upper() == 'RESUMEN DE PARTIDAS':
