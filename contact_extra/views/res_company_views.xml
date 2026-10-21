@@ -82,14 +82,6 @@
                     <field name="soporte_ids" widget="many2many_binary"/>
                 </group>
             </xpath>
-        </field>
-    </record>
-
-    <record id="view_contacts_fiscal_nature_form" model="ir.ui.view">
-        <field name="name">view.contacts.fiscal.nature.form</field>
-        <field name="model">res.partner</field>
-        <field name="inherit_id" ref="account.view_partner_property_form"/>
-        <field name="arch" type="xml">
             <xpath expr="//group[@name='fiscal_information']/field[@name='property_account_position_id']" position="after">
                 <field name="nature_supplier_id" options="{'no_create': True, 'no_open': True}"/>
             </xpath>
