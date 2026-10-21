@@ -18,6 +18,7 @@ class respartnerCurp(models.Model):
         string='Clasificación', default='gob')
     typesupplier_id = fields.Many2one('partner.type.supplier', string='Tipo de Proveedor', tracking=True)
     classupplier_id = fields.Many2one('partner.classification.supplier', string='Clasificación del Proveedor', tracking=True)
+    nature_supplier_id = fields.Many2one('partner.nature.supplier', string='Naturaleza del Proveedor', tracking=True)
     area_em = fields.Char(string='Zona Geográfica', tracking=True)
     soporte_ids = fields.Many2many(comodel_name='ir.attachment', string="Documentos fiscales")
     responsable_id = fields.Many2one('res.partner', string='Responsable', tracking=True)
