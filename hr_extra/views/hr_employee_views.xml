@@ -46,12 +46,12 @@
                 <field name="state" widget="statusbar"/>
             </xpath>
             <xpath expr="//sheet/div[2]/div[1]/h1[1]" position="replace">
-                <field name="work_contact_id" domain="[('is_company', '=', False)]"/>
+                <field name="work_contact_id" domain="[('is_company', '=', False)]" class="w-100"/>
                 <h1 class="d-flex flex-row align-items-center">
                     <div invisible="not user_id" class="me-2">
                         <widget name="hr_employee_chat" invisible="not context.get('chat_icon')"/>
                     </div>
-                    <field name="name" placeholder="Employee's Name" required="True" style="font-size: min(4vw, 2.6rem);" readonly="1"/>
+                    <field name="name" placeholder="Employee's Name" required="True" style="font-size: min(4vw, 2.6rem);" readonly="1" force_save="1"/>
                 </h1>
             </xpath>
             <xpath expr="//field[@name='work_email']" position="attributes">
