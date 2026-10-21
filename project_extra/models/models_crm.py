@@ -103,7 +103,7 @@ class CrmLead(models.Model):
     junta_dudas_notif_auto_sent = fields.Boolean(string='Notif. Automática fecha límite dudas enviada', default=False)
     # Insumos
     input_ids = fields.One2many('crm.input.line', 'lead_id', string='Insumos')
-    input_file = fields.Binary(string='Archivo')
+    input_file = fields.Binary(string='Archivo', attachment=True)
     input_filename = fields.Char(string='Nombre del archivo de Insumos', tracking=True)
     no_cotizar_insumos = fields.Boolean(string='No se necesita cotizar insumos', default=True)
     # Junta de Apertura de Propuestas
@@ -274,30 +274,29 @@ class CrmLead(models.Model):
                     lead.documents_count_tecnica = 0
                     lead.documents_count_economica = 0
                     continue
-                
+
                 lic_folder = Document.search([('name', '=', lic_name), ('type', '=', 'folder'), ('folder_id', '=', root.id)], limit=1)
                 if not lic_folder:
                     lead.documents_count = 0
                     lead.documents_count_tecnica = 0
                     lead.documents_count_economica = 0
                     continue
-                
+
                 tecnica_folder = Document.search([('name', '=', 'Tecnico'), ('type', '=', 'folder'), ('folder_id', '=', lic_folder.id)], limit=1)
                 economica_folder = Document.search([('name', '=', 'Economico'), ('type', '=', 'folder'), ('folder_id', '=', lic_folder.id)], limit=1)
-                
-                # Contar documentos SEPARADOS por carpeta
+
                 count_tecnica = 0
                 count_economica = 0
-                
+
                 if tecnica_folder:
                     count_tecnica = Document.search_count([('folder_id', '=', tecnica_folder.id), ('type', '!=', 'folder')])
                 if economica_folder:
                     count_economica = Document.search_count([('folder_id', '=', economica_folder.id), ('type', '!=', 'folder')])
-                
+
                 lead.documents_count_tecnica = count_tecnica
                 lead.documents_count_economica = count_economica
                 lead.documents_count = count_tecnica + count_economica
-                
+
             except Exception as e:
                 _logger.error("Error contando documentos para lead %s: %s" % (lead.id, str(e)))
                 lead.documents_count = 0
@@ -1125,6 +1124,8 @@ class CrmLead(models.Model):
                     continue
                 if len(row) <= max_idx:
                     row = row + (None,) * (max_idx + 1 - len(row))
+                # T0107: espacios a la izquierda/derecha en las celdas de texto rompían el enlace con las partidas; se guardan sin ellos
+                row = tuple(c.strip() if isinstance(c, str) else c for c in row)
 
                 if isinstance(row[desc], str):
                     if row[desc].upper() == 'RESUMEN DE PARTIDAS':
@@ -1496,19 +1497,15 @@ class CrmLead(models.Model):
             record.budget_ids.unlink()
 
     def _get_or_create_documents_folder(self, tipo):
-        # Crea/obtiene la estructura de carpetas en Documents CRM / <no_licitacion> / Tecnico o Economico
         self.ensure_one()
         Document = self.env['documents.document']
         # Verificar si el módulo documents está disponible
         if 'documents.document' not in self.env:
             raise UserError(_('El módulo de Documentos no está disponible.\n Por favor, instale el módulo "documents" para usar esta funcionalidad.'))
-        
-        # 1) Carpeta raíz "CRM"
         root_folder = Document.search([('name', '=', 'CRM'), ('type', '=', 'folder'), ('folder_id', '=', False)], limit=1)
         if not root_folder:
-            root_folder = Document.create({'name': 'CRM', 'type': 'folder', 'folder_id': False,})
-        
-        # 2) Carpeta de la licitación
+            root_folder = Document.create({'name': 'CRM', 'type': 'folder', 'folder_id': False})
+
         if self.origen_name == 'Público':
             lic_name = self.no_licitacion or self.name or 'Sin nombre'
         else:
@@ -1517,35 +1514,28 @@ class CrmLead(models.Model):
         lic_folder = Document.search([('name', '=', lic_name), ('type', '=', 'folder'), ('folder_id', '=', root_folder.id)], limit=1)
         if not lic_folder:
             lic_folder = Document.create({'name': lic_name, 'type': 'folder', 'folder_id': root_folder.id})
-        
-        # 3) Subcarpeta Técnico o Económico
+
         sub_folder = Document.search([('name', '=', tipo), ('type', '=', 'folder'), ('folder_id', '=', lic_folder.id)], limit=1)
         if not sub_folder:
-            sub_folder = Document.create({'name': tipo, 'type': 'folder', 'folder_id': lic_folder.id,})
-        
+            sub_folder = Document.create({'name': tipo, 'type': 'folder', 'folder_id': lic_folder.id})
+
         return sub_folder
 
 
     def action_open_attachments(self):
         # Abre documentos en la carpeta específica (Técnico o Económico)
         self.ensure_one()
-        # Determinar si es técnica o económica según el contexto
         tipo = self.env.context.get('folder_type', 'Tecnico')
-        
-        # Intentar usar Documents si está disponible
+
         if 'documents.document' in self.env:
             try:
                 folder = self._get_or_create_documents_folder(tipo)
-                # Buscar la acción de documents
                 action = self.env.ref('documents.document_action').read()[0]
-                
-                # Filtrar por la carpeta específica
                 action['domain'] = [('folder_id', '=', folder.id)]
                 action['context'] = {'default_folder_id': folder.id, 'default_res_model': 'crm.lead', 'default_res_id': self.id, 
                     'searchpanel_default_folder_id': folder.id,}
                 action['name'] = 'Documentos - %s - %s' % (self.no_licitacion or self.name, tipo)
                 return action
-                
             except Exception as e:
                 _logger.error("Error usando Documents: %s" % str(e))
                 raise UserError(_('Error al abrir documentos: %s') % str(e))
@@ -1559,12 +1549,10 @@ class CrmLead(models.Model):
             try:
                 Document = self.env['documents.document']
                 lic_name = self.no_licitacion or self.name or 'Sin nombre'
-                # Buscar carpeta raíz CRM
                 crm_folder = Document.search([('name', '=', 'CRM'), ('type', '=', 'folder'), ('folder_id', '=', False)], limit=1)
                 if not crm_folder:
                     raise UserError(_('No se encontró la carpeta CRM.'))
-                
-                # Buscar carpeta de la licitación
+
                 lic_folder = Document.search([('name', '=', lic_name), ('type', '=', 'folder'), ('folder_id', '=', crm_folder.id)], limit=1)
                 if lic_folder:
                     # Abrir la carpeta de la licitación
@@ -1630,6 +1618,17 @@ class CrmLead(models.Model):
 
 
     def get_work_default_values(self):
+        # T0107: cantidad o precio vacío en un concepto cargado rompía la generación (col4/col5 son Char y llegan NULL o '')
+        sin_cantidad = self.concept_ids.filtered(lambda u: u.concept_ex and not (u.col4 or '').strip())
+        sin_precio = self.concept_ids.filtered(lambda u: u.concept_ex and not (u.col5 or '').strip())
+        if sin_cantidad or sin_precio:
+            detalle = []
+            for etiqueta, recs in (('Sin cantidad', sin_cantidad), ('Sin precio unitario', sin_precio)):
+                if recs:
+                    codigos = list(dict.fromkeys(r.col1 or str(r.id) for r in recs))
+                    detalle.append('%s (%d): %s%s' % (etiqueta, len(codigos), ', '.join(codigos[:10]), ' ...' if len(codigos) > 10 else ''))
+            raise UserError(_('No se puede generar la orden de venta: hay conceptos de trabajo incompletos. Corrija la matriz de conceptos y vuelva a intentar.\n') + '\n'.join(detalle))
+
         sequence = self.env['ir.sequence'].next_by_code('sale.order')
         orders = []
         order_lines = []
@@ -1671,7 +1670,6 @@ class CrmLead(models.Model):
         oc_obj = self.env['sale.order']
         new_oc = oc_obj.create(oc_vals)
         return new_oc
-
 
     def action_crear_obra(self):
         """T0104: Crear obra directamente desde oportunidad Privada sin generar Orden de Venta.

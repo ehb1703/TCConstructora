@@ -30,6 +30,11 @@
                 <field name="comprador_id" context="{'special_display':True}" options="{'no_create':True, 'no_open':True}"/>
             </xpath>
 
+            <!-- T0109: Distribución analítica visible por defecto en las líneas (nativo: optional="hide") -->
+            <xpath expr="//field[@name='order_line']/list/field[@name='analytic_distribution']" position="attributes">
+                <attribute name="optional">show</attribute>
+            </xpath>
+
             <xpath expr="//notebook" position="inside">
                 <page string="Bitácora" name="bitacora">
                     <field name="bitacora_ids" nolabel="1" readonly="1">
