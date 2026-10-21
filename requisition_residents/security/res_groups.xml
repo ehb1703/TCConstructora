@@ -74,7 +74,7 @@
         <field name="domain_force">['|', '|', ('res_model', '=', False), ('res_id', '=', 0), ('res_model', 'in', ['requisition.destajo', 'requisition.acarreos', 'requisition.campamentos', 'requisition.maquinaria', 'requisition.cash', 'requisition.fuel', 'requisition.residents', 'requisition.weekly', 'requisition.debt', 'requisition.materials'])]</field>
     </record>
 
-    <!-- R2: bypass de lectura de adjuntos para Facturacion/Contabilidad (y Azucena, que tiene este grupo).
+    <!-- R2: bypass de lectura de adjuntos para Facturacion/Contabilidad.
          Al ser regla de grupo permisiva se combina en OR: contabilidad lee TODOS los adjuntos (comprobantes/CFDI). -->
     <record id="rule_ir_attachment_comprobantes_bypass" model="ir.rule">
         <field name="name">Attachments: acceso total para Facturacion/Contabilidad</field>
