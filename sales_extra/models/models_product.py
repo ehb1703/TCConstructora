@@ -32,6 +32,7 @@ class supplyProductTemplate(models.Model):
         string='Tipo de Aprovisionamiento', default='ext')
     budget_id = fields.Many2one('product.budget.item', string='Partida Presupestaria')
 
+
 class productBudgetItem(models.Model):
     _name = 'product.budget.item'
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -63,6 +64,7 @@ class ProductComboItemInherit(models.Model):
     _inherit = 'product.combo.item'
 
     combo_qty = fields.Float(string='Cantidad', digits='Product Unit of Measure')
+
 
 class ProductComboLine(models.Model):
     _name = 'product.combo.line'

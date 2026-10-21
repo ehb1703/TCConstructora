@@ -535,6 +535,7 @@
         <field name="res_model">project.tipo.campamento</field>
         <field name="view_mode">list,form</field>
     </record>
+
     <record id="view_tipo_campamento_tree" model="ir.ui.view">
         <field name="name">project.tipo.campamento.list</field>
         <field name="model">project.tipo.campamento</field>
@@ -546,6 +547,7 @@
             </list>
         </field>
     </record>
+
     <record id="view_tipo_campamento_form" model="ir.ui.view">
         <field name="name">project.tipo.campamento.form</field>
         <field name="model">project.tipo.campamento</field>
@@ -561,11 +563,13 @@
             </form>
         </field>
     </record>
+
     <record id="action_capacidad" model="ir.actions.act_window">
         <field name="name">Capacidades</field>
         <field name="res_model">project.capacidad</field>
         <field name="view_mode">list,form</field>
     </record>
+
     <record id="view_capacidad_tree" model="ir.ui.view">
         <field name="name">project.capacidad.list</field>
         <field name="model">project.capacidad</field>
@@ -577,6 +581,7 @@
             </list>
         </field>
     </record>
+
     <record id="view_capacidad_form" model="ir.ui.view">
         <field name="name">project.capacidad.form</field>
         <field name="model">project.capacidad</field>

@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-from datetime import timedelta
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
-from datetime import date, datetime, time
+from datetime import timedelta, date, datetime, time
 from odoo.osv import expression
 import logging
 from odoo.tools import (date_utils,)
@@ -436,6 +435,11 @@ class hrEmployeeInherit(models.Model):
 
 
     def write(self, vals):
+        # T0112: el nombre del empleado sigue al de su contacto. 'name' es readonly en la vista, asi que el onchange no se guardaba
+        if vals.get('work_contact_id'):
+            contacto = self.env['res.partner'].browse(vals['work_contact_id'])
+            if contacto.name:
+                vals = dict(vals, name=contacto.name, legal_name=contacto.name)
         c = 0
         if 'l10n_mx_curp' in vals:
             c = 1

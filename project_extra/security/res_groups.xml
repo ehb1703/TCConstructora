@@ -150,7 +150,6 @@
         <field name="perm_unlink" eval="True"/>
     </record>
 
-
     <!-- Tarea 0106: el permiso "Documentos" (reports) da acceso a la app Documentos
          para consultar/editar/subir/eliminar en las carpetas de las solicitudes de cotización -->
     <record id="reports.group_documentos" model="res.groups">

@@ -250,7 +250,7 @@ class ApiChecadoresController(http.Controller):
                 'data': result_data['employees'],})
         except Exception as e:
             _logger.error(f"API Checadores Error: {str(e)}", exc_info=True)
-            return self._error_response('Error interno del servidor', status=500, error_code='INTERNAL_ERROR')
+            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
 
 
     @http.route('/api/v1/employees/<int:employee_id>', type='http', auth='none', methods=['GET', 'OPTIONS'], csrf=False)
@@ -425,7 +425,7 @@ class ApiChecadoresController(http.Controller):
             return self._json_response({'status': 'success', 'timestamp': datetime.now().isoformat(), 'count': len(schedules_data), 'data': schedules_data,})
         except Exception as e:
             _logger.error(f"API Checadores Error (schedules): {str(e)}", exc_info=True)
-            return self._error_response('Error interno del servidor', status=500, error_code='INTERNAL_ERROR')
+            return self._error_response(f'Error interno del servidor: {str(e)}', status=500, error_code='INTERNAL_ERROR')
 
 
     @http.route('/api/v1/attendances', type='http', auth='none', methods=['POST', 'OPTIONS'], csrf=False, cors='*')
