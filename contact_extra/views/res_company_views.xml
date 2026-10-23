@@ -88,6 +88,33 @@
         </field>
     </record>
 
+    <record id="view_contacts_status_cfdi_list" model="ir.ui.view">
+        <field name="name">view.contacts.status.cfdi.list</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="decoration-success">is_supplier and status_cfdi</attribute>
+                <attribute name="decoration-danger">is_supplier and not status_cfdi</attribute>
+            </xpath>
+            <xpath expr="//list" position="inside">
+                <field name="is_supplier" column_invisible="1"/>
+                <field name="status_cfdi" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_contacts_status_cfdi_search" model="ir.ui.view">
+        <field name="name">view.contacts.status.cfdi.search</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter name="supplier_cfdi_incompleto" string="Proveedores incompletos (CFDI)" domain="[('is_supplier', '=', True), ('status_cfdi', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="action_legal_representative" model="ir.actions.act_window">
         <field name="name">Representante Legal</field>
         <field name="res_model">company.legal.representative</field>

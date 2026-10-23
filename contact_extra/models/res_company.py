@@ -26,6 +26,21 @@ class respartnerCurp(models.Model):
     amaterno = fields.Char(string='Apellido Materno', tracking=True)
     nombre = fields.Char(string='Nombre(s)', tracking=True)
     country_id = fields.Many2one('res.country', string='País', default=lambda self: self.env.company.country_id)
+    status_cfdi = fields.Boolean(string='Estatus CFDI', compute='_compute_status_cfdi', store=True,
+        help='Solo proveedores: RFC con el largo de su tipo de persona (12 moral, 13 física), código postal de 5 dígitos y régimen fiscal de 3 dígitos.')
+
+    @api.depends('is_supplier', 'is_company', 'vat', 'zip', 'l10n_mx_edi_fiscal_regime')
+    def _compute_status_cfdi(self):
+        for record in self:
+            if not record.is_supplier:
+                record.status_cfdi = False
+                continue
+            rfc = (record.vat or '').strip()
+            cp = (record.zip or '').strip()
+            regimen = record.l10n_mx_edi_fiscal_regime or ''
+            record.status_cfdi = (len(rfc) == (12 if record.is_company else 13)
+                and len(cp) == 5 and cp.isascii() and cp.isdigit()
+                and len(regimen) == 3 and regimen.isascii() and regimen.isdigit())
 
     @api.model
     def default_get(self, fields_list):
