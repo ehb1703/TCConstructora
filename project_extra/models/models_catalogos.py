@@ -337,10 +337,107 @@ class TipoInsumo(models.Model):
             self.codigo = codigo_limpio
 
 
+class FamiliaInsumo(models.Model):
+    _name = 'product.familia.insumo'
+    _description = 'Familia de Insumos'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _order = 'codigo'
+    
+    codigo = fields.Char(string='Clave Familia', required=True, tracking=True, help='Clave de 3 dígitos (segmento ZZZ de la Clave Insumo TC)')
+    name = fields.Char(string='Nombre', required=True, tracking=True)
+    descripcion = fields.Char(string='Descripción', tracking=True)
+    active = fields.Boolean(string='Activo', default=True, tracking=True)
+    
+    _sql_constraints = [('codigo_uniq', 'unique(codigo)', 'La clave de la familia debe ser única.'),]
+    
+    @api.constrains('codigo')
+    def _check_codigo(self):
+        for record in self:
+            if not (record.codigo.isascii() and record.codigo.isdigit() and len(record.codigo) == 3):
+                raise ValidationError('La clave de la familia debe ser numérica de 3 dígitos (ej. 001).')
+    
+    @api.onchange('name')
+    def onchange_name(self):
+        if self.name:
+            self.name = self.name.strip().upper()
+    
+    @api.onchange('codigo')
+    def onchange_codigo(self):
+        if self.codigo:
+            self.codigo = self.codigo.strip()
+    
+    @api.depends('codigo', 'name')
+    def _compute_display_name(self):
+        for record in self:
+            record.display_name = f'{record.codigo} - {record.name}' if record.codigo else record.name
+
+
+class CategoriaInsumo(models.Model):
+    _name = 'product.categoria.insumo'
+    _description = 'Categoría de Insumos'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _order = 'codigo'
+    
+    codigo = fields.Char(string='Clave Categoría', required=True, tracking=True, help='Clave de 3 dígitos (segmento YYY de la Clave Insumo TC)')
+    name = fields.Char(string='Nombre', required=True, tracking=True)
+    descripcion = fields.Char(string='Descripción', tracking=True)
+    active = fields.Boolean(string='Activo', default=True, tracking=True)
+    
+    _sql_constraints = [('codigo_uniq', 'unique(codigo)', 'La clave de la categoría debe ser única.'),]
+    
+    @api.constrains('codigo')
+    def _check_codigo(self):
+        for record in self:
+            if not (record.codigo.isascii() and record.codigo.isdigit() and len(record.codigo) == 3):
+                raise ValidationError('La clave de la categoría debe ser numérica de 3 dígitos (ej. 020).')
+    
+    @api.onchange('name')
+    def onchange_name(self):
+        if self.name:
+            self.name = self.name.strip().upper()
+    
+    @api.onchange('codigo')
+    def onchange_codigo(self):
+        if self.codigo:
+            self.codigo = self.codigo.strip()
+    
+    @api.depends('codigo', 'name')
+    def _compute_display_name(self):
+        for record in self:
+            record.display_name = f'{record.codigo} - {record.name}' if record.codigo else record.name
+
+
 class ProductTemplateInsumo(models.Model):
     _inherit = 'product.template'
     
     tipo_insumo_id = fields.Many2one('product.tipo.insumo', string='Tipo de insumo', tracking=True, help='Clasificación del insumo para procesos de compra')
+    categoria_insumo_id = fields.Many2one('product.categoria.insumo', string='Categoría', tracking=True)
+    familia_insumo_id = fields.Many2one('product.familia.insumo', string='Familia', tracking=True)
+    clave_insumo = fields.Char(string='Clave', copy=False, tracking=True, help='Consecutivo único de 5 dígitos (segmento WWWWW)')
+    clave_insumo_tc = fields.Char(string='Clave Insumo TC', compute='_compute_clave_insumo_tc', store=True, readonly=True, copy=False,
+        help='XXX-YYY-ZZZ-WWWWW: Tipo de insumo + Categoría + Familia + Clave. Se forma solo con los cuatro segmentos completos y el tipo con código de 3 dígitos.')
+    
+    _sql_constraints = [('clave_insumo_uniq', 'unique(clave_insumo)', 'La Clave del insumo ya está asignada a otro insumo.'),]
+    
+    @api.constrains('clave_insumo')
+    def _check_clave_insumo(self):
+        for record in self:
+            if record.clave_insumo and not (record.clave_insumo.isascii() and record.clave_insumo.isdigit() and len(record.clave_insumo) == 5):
+                raise ValidationError('La Clave del insumo debe ser numérica de 5 dígitos (ej. 00001).')
+    
+    @api.onchange('clave_insumo')
+    def onchange_clave_insumo(self):
+        if self.clave_insumo:
+            clave = self.clave_insumo.strip()
+            self.clave_insumo = clave.zfill(5) if clave.isdigit() else clave
+    
+    @api.depends('tipo_insumo_id.codigo', 'categoria_insumo_id.codigo', 'familia_insumo_id.codigo', 'clave_insumo')
+    def _compute_clave_insumo_tc(self):
+        for record in self:
+            tipo = record.tipo_insumo_id.codigo
+            partes = [tipo, record.categoria_insumo_id.codigo, record.familia_insumo_id.codigo, record.clave_insumo]
+            valido = all(partes) and tipo.isascii() and tipo.isdigit() and len(tipo) == 3
+            record.clave_insumo_tc = '-'.join(partes) if valido else False
 
 
 class ResPartnerTipoInsumo(models.Model):

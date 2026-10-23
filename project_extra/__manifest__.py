@@ -22,6 +22,7 @@ Personalización del modulo:
         'data/ir_actions_server.xml',
         'data/tipo_campamento_data.xml',
         'data/capacidad_data.xml',
+        'data/insumos_catalogo_data.xml',
         'views/project_catalogs_views.xml',
         'views/project_views.xml',        
         'views/crm_catalog_views.xml',

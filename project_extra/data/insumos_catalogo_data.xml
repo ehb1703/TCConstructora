@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="categoria_insumo_020" model="product.categoria.insumo">
+            <field name="codigo">020</field>
+            <field name="name">CONSTRUCCION</field>
+            <field name="descripcion">Insumos de construcción</field>
+        </record>
+        <record id="familia_insumo_001" model="product.familia.insumo">
+            <field name="codigo">001</field>
+            <field name="name">MATERIALES DE CONSTRUCCION</field>
+            <field name="descripcion">Materiales de construcción</field>
+        </record>
+    </data>
+</odoo>

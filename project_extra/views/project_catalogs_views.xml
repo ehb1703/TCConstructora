@@ -355,6 +355,112 @@
         </field>
     </record>
 
+    <!-- Familias Insumos -->
+    <record id="action_familia_insumo" model="ir.actions.act_window">
+        <field name="name">Familias Insumos</field>
+        <field name="res_model">product.familia.insumo</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_familia_insumo_tree" model="ir.ui.view">
+        <field name="name">product.familia.insumo.list</field>
+        <field name="model">product.familia.insumo</field>
+        <field name="arch" type="xml">
+            <list string="Familias Insumos">
+                <field name="codigo"/>
+                <field name="name"/>
+                <field name="descripcion"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_familia_insumo_form" model="ir.ui.view">
+        <field name="name">product.familia.insumo.form</field>
+        <field name="model">product.familia.insumo</field>
+        <field name="arch" type="xml">
+            <form string="Familia de Insumos">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="codigo"/>
+                            <field name="name"/>
+                        </group>
+                        <group>
+                            <field name="descripcion"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Categorías Insumos -->
+    <record id="action_categoria_insumo" model="ir.actions.act_window">
+        <field name="name">Categorías Insumos</field>
+        <field name="res_model">product.categoria.insumo</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_categoria_insumo_tree" model="ir.ui.view">
+        <field name="name">product.categoria.insumo.list</field>
+        <field name="model">product.categoria.insumo</field>
+        <field name="arch" type="xml">
+            <list string="Categorías Insumos">
+                <field name="codigo"/>
+                <field name="name"/>
+                <field name="descripcion"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_categoria_insumo_form" model="ir.ui.view">
+        <field name="name">product.categoria.insumo.form</field>
+        <field name="model">product.categoria.insumo</field>
+        <field name="arch" type="xml">
+            <form string="Categoría de Insumos">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="codigo"/>
+                            <field name="name"/>
+                        </group>
+                        <group>
+                            <field name="descripcion"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Campos de la Clave Insumo TC en el formulario y la lista de Insumos -->
+    <record id="view_product_template_clave_insumo_tc_form" model="ir.ui.view">
+        <field name="name">product.template.clave.insumo.tc.form</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="project_extra.view_product_template_tipo_insumo_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tipo_insumo_id']" position="after">
+                <field name="categoria_insumo_id" invisible="not purchase_ok" options="{'no_open':True, 'no_create':True}"/>
+                <field name="familia_insumo_id" invisible="not purchase_ok" options="{'no_open':True, 'no_create':True}"/>
+                <field name="clave_insumo" invisible="not purchase_ok"/>
+                <field name="clave_insumo_tc" invisible="not purchase_ok"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_template_clave_insumo_tc_list" model="ir.ui.view">
+        <field name="name">product.template.clave.insumo.tc.list</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='default_code']" position="after">
+                <field name="clave_insumo_tc" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
     <!-- Vista para agregar tipos de insumo en contactos (proveedores) -->
     <record id="view_partner_tipo_insumo_form" model="ir.ui.view">
         <field name="name">res.partner.tipo.insumo.form</field>
@@ -610,5 +716,7 @@
 
     <!-- Menú Tipos de insumo en Compras → Productos -->
     <menuitem id="menu_tipo_insumo_compras" name="Tipos de insumo" parent="purchase.menu_purchase_products" action="action_tipo_insumo" sequence="1" groups="purchase.group_purchase_user,purchase.group_purchase_manager"/>
+    <menuitem id="menu_familia_insumo_compras" name="Familias Insumos" parent="purchase.menu_purchase_products" action="action_familia_insumo" sequence="2" groups="purchase.group_purchase_user,purchase.group_purchase_manager"/>
+    <menuitem id="menu_categoria_insumo_compras" name="Categorías Insumos" parent="purchase.menu_purchase_products" action="action_categoria_insumo" sequence="3" groups="purchase.group_purchase_user,purchase.group_purchase_manager"/>
 
 </odoo>
