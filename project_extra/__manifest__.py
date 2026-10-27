@@ -11,7 +11,7 @@ Personalización del modulo:
     Campos proyecto
     """,
     'category': 'Services/Project',
-    'depends': ['base', 'crm', 'sale_crm', 'sale_purchase_project', 'project', 'hr', 'hr_holidays', 'documents', 'reports', 'product_unspsc', 'purchase_requisition', 'contact_extra'],
+    'depends': ['base', 'crm', 'sale_crm', 'sale_purchase_project', 'project', 'hr', 'hr_holidays', 'documents', 'reports', 'product_unspsc', 'purchase_requisition', 'contact_extra', 'sales_extra'],
     'data': [
         'security/res_groups.xml',
         'security/ir.model.access.csv',
@@ -22,7 +22,6 @@ Personalización del modulo:
         'data/ir_actions_server.xml',
         'data/tipo_campamento_data.xml',
         'data/capacidad_data.xml',
-        'data/insumos_catalogo_data.xml',
         'views/project_catalogs_views.xml',
         'views/project_views.xml',        
         'views/crm_catalog_views.xml',

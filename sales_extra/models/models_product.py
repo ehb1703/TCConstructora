@@ -84,3 +84,73 @@ class ProductComboLine(models.Model):
     def _compute_price(self):
         for combo in self:
             combo.price = combo.lst_price * combo.combo_qty
+
+
+class FamiliaInsumo(models.Model):
+    _name = 'product.familia.insumo'
+    _description = 'Familia de Insumos'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _order = 'codigo'
+    
+    codigo = fields.Char(string='Clave Familia', required=True, tracking=True, help='Clave de 3 dígitos (segmento ZZZ de la Clave Insumo TC)')
+    name = fields.Char(string='Nombre', required=True, tracking=True)
+    descripcion = fields.Char(string='Descripción', tracking=True)
+    active = fields.Boolean(string='Activo', default=True, tracking=True)
+    
+    _sql_constraints = [('codigo_uniq', 'unique(codigo)', 'La clave de la familia debe ser única.'),]
+    
+    @api.constrains('codigo')
+    def _check_codigo(self):
+        for record in self:
+            if not (record.codigo.isascii() and record.codigo.isdigit() and len(record.codigo) == 3):
+                raise ValidationError('La clave de la familia debe ser numérica de 3 dígitos (ej. 001).')
+    
+    @api.onchange('name')
+    def onchange_name(self):
+        if self.name:
+            self.name = self.name.strip().upper()
+    
+    @api.onchange('codigo')
+    def onchange_codigo(self):
+        if self.codigo:
+            self.codigo = self.codigo.strip()
+    
+    @api.depends('codigo', 'name')
+    def _compute_display_name(self):
+        for record in self:
+            record.display_name = f'{record.codigo} - {record.name}' if record.codigo else record.name
+
+
+class CategoriaInsumo(models.Model):
+    _name = 'product.categoria.insumo'
+    _description = 'Categoría de Insumos'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _order = 'codigo'
+    
+    codigo = fields.Char(string='Clave Categoría', required=True, tracking=True, help='Clave de 3 dígitos (segmento YYY de la Clave Insumo TC)')
+    name = fields.Char(string='Nombre', required=True, tracking=True)
+    descripcion = fields.Char(string='Descripción', tracking=True)
+    active = fields.Boolean(string='Activo', default=True, tracking=True)
+    
+    _sql_constraints = [('codigo_uniq', 'unique(codigo)', 'La clave de la categoría debe ser única.'),]
+    
+    @api.constrains('codigo')
+    def _check_codigo(self):
+        for record in self:
+            if not (record.codigo.isascii() and record.codigo.isdigit() and len(record.codigo) == 3):
+                raise ValidationError('La clave de la categoría debe ser numérica de 3 dígitos (ej. 020).')
+    
+    @api.onchange('name')
+    def onchange_name(self):
+        if self.name:
+            self.name = self.name.strip().upper()
+    
+    @api.onchange('codigo')
+    def onchange_codigo(self):
+        if self.codigo:
+            self.codigo = self.codigo.strip()
+    
+    @api.depends('codigo', 'name')
+    def _compute_display_name(self):
+        for record in self:
+            record.display_name = f'{record.codigo} - {record.name}' if record.codigo else record.name
