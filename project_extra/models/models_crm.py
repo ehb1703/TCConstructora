@@ -103,7 +103,7 @@ class CrmLead(models.Model):
     junta_dudas_notif_auto_sent = fields.Boolean(string='Notif. Automática fecha límite dudas enviada', default=False)
     # Insumos
     input_ids = fields.One2many('crm.input.line', 'lead_id', string='Insumos')
-    input_file = fields.Binary(string='Archivo', attachment=True)
+    input_file = fields.Binary(string='Archivo')
     input_filename = fields.Char(string='Nombre del archivo de Insumos', tracking=True)
     no_cotizar_insumos = fields.Boolean(string='No se necesita cotizar insumos', default=True)
     # Junta de Apertura de Propuestas

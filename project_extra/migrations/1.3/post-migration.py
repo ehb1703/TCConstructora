@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, SUPERUSER_ID
 
-
 def migrate(cr, version):
     # La columna vieja fue renombrada a capacidad_old por el pre-migration.
     cr.execute("""

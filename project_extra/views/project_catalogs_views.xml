@@ -355,6 +355,32 @@
         </field>
     </record>
 
+    <!-- Campos de la Clave Insumo TC en el formulario y la lista de Insumos -->
+    <record id="view_product_template_clave_insumo_tc_form" model="ir.ui.view">
+        <field name="name">product.template.clave.insumo.tc.form</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="project_extra.view_product_template_tipo_insumo_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tipo_insumo_id']" position="after">
+                <field name="categoria_insumo_id" invisible="not purchase_ok" options="{'no_open':True, 'no_create':True}"/>
+                <field name="familia_insumo_id" invisible="not purchase_ok" options="{'no_open':True, 'no_create':True}"/>
+                <field name="clave_insumo" invisible="not purchase_ok"/>
+                <field name="clave_insumo_tc" invisible="not purchase_ok"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_template_clave_insumo_tc_list" model="ir.ui.view">
+        <field name="name">product.template.clave.insumo.tc.list</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='default_code']" position="after">
+                <field name="clave_insumo_tc" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
     <!-- Vista para agregar tipos de insumo en contactos (proveedores) -->
     <record id="view_partner_tipo_insumo_form" model="ir.ui.view">
         <field name="name">res.partner.tipo.insumo.form</field>

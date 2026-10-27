@@ -30,7 +30,95 @@
                         <field name="level"/>
                         <field name="parent_id" required="level != 1"/>
                         <field name="code"/>
-                        <field name="name"/>
+                        <!--field name="name"/-->
+                    </group>
+                    <field name="line_ids" widget="one2many_list">
+                        <list string="Detalles" delete="0" create="0" edit="0" context="{'default_line_id': id}">
+                            <field name="company_id" options="{'no_open': 1,'no_create':1,'no_create_edit':1}"/>
+                            <field name="lead_id" options="{'no_open': 1,'no_create':1,'no_create_edit':1}"/>
+                            <field name="name"/>
+                        </list>
+                        <form><p>Información no disponible a través de esta vista</p></form>
+                    </field>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Familias Insumos -->
+    <record id="action_familia_insumo" model="ir.actions.act_window">
+        <field name="name">Familias Insumos</field>
+        <field name="res_model">product.familia.insumo</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_familia_insumo_tree" model="ir.ui.view">
+        <field name="name">product.familia.insumo.list</field>
+        <field name="model">product.familia.insumo</field>
+        <field name="arch" type="xml">
+            <list string="Familias Insumos">
+                <field name="codigo"/>
+                <field name="name"/>
+                <field name="descripcion"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_familia_insumo_form" model="ir.ui.view">
+        <field name="name">product.familia.insumo.form</field>
+        <field name="model">product.familia.insumo</field>
+        <field name="arch" type="xml">
+            <form string="Familia de Insumos">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="codigo"/>
+                            <field name="name"/>
+                        </group>
+                        <group>
+                            <field name="descripcion"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Categorías Insumos -->
+    <record id="action_categoria_insumo" model="ir.actions.act_window">
+        <field name="name">Categorías Insumos</field>
+        <field name="res_model">product.categoria.insumo</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_categoria_insumo_tree" model="ir.ui.view">
+        <field name="name">product.categoria.insumo.list</field>
+        <field name="model">product.categoria.insumo</field>
+        <field name="arch" type="xml">
+            <list string="Categorías Insumos">
+                <field name="codigo"/>
+                <field name="name"/>
+                <field name="descripcion"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_categoria_insumo_form" model="ir.ui.view">
+        <field name="name">product.categoria.insumo.form</field>
+        <field name="model">product.categoria.insumo</field>
+        <field name="arch" type="xml">
+            <form string="Categoría de Insumos">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="codigo"/>
+                            <field name="name"/>
+                        </group>
+                        <group>
+                            <field name="descripcion"/>
+                        </group>
                     </group>
                 </sheet>
                 <chatter/>
