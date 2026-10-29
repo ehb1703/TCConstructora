@@ -74,3 +74,21 @@ class clasificacionProveedor(models.Model):
     name = fields.Char(string='Clasificación del Proveedor')
     description = fields.Char(string='Descripción')
     active = fields.Boolean(string='Activo', default=True, tracking=True)    
+
+
+class naturalezaProveedor(models.Model):
+    _name = 'partner.nature.supplier'
+    _description = 'Naturaleza del Proveedor'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'name'
+
+    name = fields.Char(string='Nombre', required=True, tracking=True)
+    description = fields.Char(string='Descripción', tracking=True)
+    active = fields.Boolean(string='Activo', default=True, tracking=True)
+
+    _sql_constraints = [('name_uniq', 'unique(name)', 'La naturaleza del proveedor debe ser única.')]
+
+    @api.onchange('name')
+    def onchange_name(self):
+        if self.name:
+            self.name = self.name.strip()

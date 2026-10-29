@@ -73,6 +73,9 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="account.view_partner_property_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//group[@name='fiscal_information']/field[@name='property_account_position_id']" position="after">
+                <field name="nature_supplier_id" options="{'no_create': True, 'no_open': True}"/>
+            </xpath>
             <xpath expr="//group[@name='accounting_automation']" position="after">
                 <group name="otros" string="Otros">
                     <field name="area_em"/>
@@ -81,6 +84,33 @@
                     <field name="classupplier_id" invisible="not is_supplier"/>
                     <field name="soporte_ids" widget="many2many_binary"/>
                 </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_contacts_status_cfdi_list" model="ir.ui.view">
+        <field name="name">view.contacts.status.cfdi.list</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="decoration-success">is_supplier and status_cfdi</attribute>
+                <attribute name="decoration-danger">is_supplier and not status_cfdi</attribute>
+            </xpath>
+            <xpath expr="//list" position="inside">
+                <field name="is_supplier" column_invisible="1"/>
+                <field name="status_cfdi" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_contacts_status_cfdi_search" model="ir.ui.view">
+        <field name="name">view.contacts.status.cfdi.search</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter name="supplier_cfdi_incompleto" string="Proveedores incompletos (CFDI)" domain="[('is_supplier', '=', True), ('status_cfdi', '=', False)]"/>
             </xpath>
         </field>
     </record>

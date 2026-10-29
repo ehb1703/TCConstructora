@@ -341,6 +341,33 @@ class ProductTemplateInsumo(models.Model):
     _inherit = 'product.template'
     
     tipo_insumo_id = fields.Many2one('product.tipo.insumo', string='Tipo de insumo', tracking=True, help='Clasificación del insumo para procesos de compra')
+    categoria_insumo_id = fields.Many2one('product.categoria.insumo', string='Categoría', tracking=True)
+    familia_insumo_id = fields.Many2one('product.familia.insumo', string='Familia', tracking=True)
+    clave_insumo = fields.Char(string='Clave', copy=False, tracking=True, help='Consecutivo único de 5 dígitos (segmento WWWWW)')
+    clave_insumo_tc = fields.Char(string='Clave Insumo TC', compute='_compute_clave_insumo_tc', store=True, readonly=True, copy=False,
+        help='XXX-YYY-ZZZ-WWWWW: Tipo de insumo + Categoría + Familia + Clave. Se forma solo con los cuatro segmentos completos y el tipo con código de 3 dígitos.')
+    
+    _sql_constraints = [('clave_insumo_uniq', 'unique(clave_insumo)', 'La Clave del insumo ya está asignada a otro insumo.'),]
+    
+    @api.constrains('clave_insumo')
+    def _check_clave_insumo(self):
+        for record in self:
+            if record.clave_insumo and not (record.clave_insumo.isascii() and record.clave_insumo.isdigit() and len(record.clave_insumo) == 5):
+                raise ValidationError('La Clave del insumo debe ser numérica de 5 dígitos (ej. 00001).')
+    
+    @api.onchange('clave_insumo')
+    def onchange_clave_insumo(self):
+        if self.clave_insumo:
+            clave = self.clave_insumo.strip()
+            self.clave_insumo = clave.zfill(5) if clave.isdigit() else clave
+    
+    @api.depends('tipo_insumo_id.codigo', 'categoria_insumo_id.codigo', 'familia_insumo_id.codigo', 'clave_insumo')
+    def _compute_clave_insumo_tc(self):
+        for record in self:
+            tipo = record.tipo_insumo_id.codigo
+            partes = [tipo, record.categoria_insumo_id.codigo, record.familia_insumo_id.codigo, record.clave_insumo]
+            valido = all(partes) and tipo.isascii() and tipo.isdigit() and len(tipo) == 3
+            record.clave_insumo_tc = '-'.join(partes) if valido else False
 
 
 class ResPartnerTipoInsumo(models.Model):

@@ -18,6 +18,7 @@ class respartnerCurp(models.Model):
         string='Clasificación', default='gob')
     typesupplier_id = fields.Many2one('partner.type.supplier', string='Tipo de Proveedor', tracking=True)
     classupplier_id = fields.Many2one('partner.classification.supplier', string='Clasificación del Proveedor', tracking=True)
+    nature_supplier_id = fields.Many2one('partner.nature.supplier', string='Naturaleza del Proveedor', tracking=True)
     area_em = fields.Char(string='Zona Geográfica', tracking=True)
     soporte_ids = fields.Many2many(comodel_name='ir.attachment', string="Documentos fiscales")
     responsable_id = fields.Many2one('res.partner', string='Responsable', tracking=True)
@@ -25,6 +26,35 @@ class respartnerCurp(models.Model):
     amaterno = fields.Char(string='Apellido Materno', tracking=True)
     nombre = fields.Char(string='Nombre(s)', tracking=True)
     country_id = fields.Many2one('res.country', string='País', default=lambda self: self.env.company.country_id)
+    status_cfdi = fields.Boolean(string='Estatus CFDI', compute='_compute_status_cfdi', store=True,
+        help='Solo proveedores: RFC con el largo de su tipo de persona (12 moral, 13 física), código postal de 5 dígitos y régimen fiscal de 3 dígitos.')
+
+    @api.depends('is_supplier', 'is_company', 'vat', 'zip', 'l10n_mx_edi_fiscal_regime')
+    def _compute_status_cfdi(self):
+        for record in self:
+            if not record.is_supplier:
+                record.status_cfdi = False
+                continue
+            rfc = (record.vat or '').strip()
+            cp = (record.zip or '').strip()
+            regimen = record.l10n_mx_edi_fiscal_regime or ''
+            record.status_cfdi = (len(rfc) == (12 if record.is_company else 13)
+                and len(cp) == 5 and cp.isascii() and cp.isdigit()
+                and len(regimen) == 3 and regimen.isascii() and regimen.isdigit())
+
+    @api.model
+    def _build_vat_error_message(self, country_code, wrong_vat, record_label):
+        # Mensaje de RFC inválido con el formato de México (el estándar muestra un ejemplo con prefijo MX).
+        if country_code != 'mx':
+            return super()._build_vat_error_message(country_code, wrong_vat, record_label)
+        capturado = len((wrong_vat or '').strip())
+        contacto = '' if 'False' in record_label else ' para %s' % record_label
+        return '\n' + _(
+            'El RFC [%(rfc)s]%(contacto)s no es válido (capturó %(largo)s caracteres).\n'
+            'Formato del RFC en México, sin guiones ni espacios:\n'
+            '- Persona moral (Empresa), 12 caracteres: 3 letras + 6 dígitos de la fecha de constitución (AAMMDD) + 3 de homoclave. Ejemplo: GDE561231GR8\n'
+            '- Persona física (Persona), 13 caracteres: 4 letras + 6 dígitos de la fecha de nacimiento (AAMMDD) + 3 de homoclave. Ejemplo: GODE561231GR8',
+            rfc=wrong_vat, contacto=contacto, largo=capturado)
 
     @api.model
     def default_get(self, fields_list):

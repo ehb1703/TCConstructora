@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- Matriz de tasas de retención por tipo de proveedor (manual de retenciones, sección 2): 1a. columna -->
+    <record id="nature_supplier_moral" model="partner.nature.supplier">
+        <field name="name">Persona Moral (General)</field>
+        <field name="description">Insumos, materiales y servicios comerciales</field>
+    </record>
+    <record id="nature_supplier_resico" model="partner.nature.supplier">
+        <field name="name">Persona Física (RESICO)</field>
+        <field name="description">Servicios profesionales prestados por RESICO</field>
+    </record>
+    <record id="nature_supplier_honorarios" model="partner.nature.supplier">
+        <field name="name">Servicios Profesionales / Arrendamiento</field>
+        <field name="description">Honorarios de P.F. bajo régimen general</field>
+    </record>
+    <record id="nature_supplier_fletes" model="partner.nature.supplier">
+        <field name="name">Servicios de Autotransporte (Fletes)</field>
+        <field name="description">Transporte terrestre de carga y logística</field>
+    </record>
+    <record id="nature_supplier_obra_publica" model="partner.nature.supplier">
+        <field name="name">Obra Pública (Supervisión / SFP)</field>
+        <field name="description">Estimaciones de obra pública estatal o federal</field>
+    </record>
+    <record id="nature_supplier_obra_privada" model="partner.nature.supplier">
+        <field name="name">Obra Privada / Fondo FIC / CMIC</field>
+        <field name="description">Estimaciones con fondo social de desarrollo</field>
+    </record>
+
+</odoo>
