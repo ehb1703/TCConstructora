@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Ejemplo del PDF de T0110 para visualizar los niveles. Solo demostrativo: quitar este archivo del manifest antes de producción -->
+    <record id="cuenta_hospital_n1" model="account.analytic.account">
+        <field name="name">HOSPITAL CIVIL ORIENTE</field>
+        <field name="plan_id" ref="analytic.analytic_plan_projects"/>
+    </record>
+    <record id="cuenta_hospital_n2_f1" model="account.analytic.account">
+        <field name="name">HOSPITAL CIVIL ORIENTE F1</field>
+        <field name="plan_id" ref="plan_n2_frente"/>
+    </record>
+    <record id="cuenta_hospital_n3_a21" model="account.analytic.account">
+        <field name="name">A2.1 CIMENTACION</field>
+        <field name="plan_id" ref="plan_n3_partida"/>
+    </record>
+</odoo>

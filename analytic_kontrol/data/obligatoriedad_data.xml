@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Solo N1 es obligatorio: pedido de compra, factura de proveedor, partes de horas y almacén -->
+    <record id="regla_n1_purchase_order" model="account.analytic.applicability">
+        <field name="analytic_plan_id" ref="analytic.analytic_plan_projects"/>
+        <field name="business_domain">purchase_order</field>
+        <field name="applicability">mandatory</field>
+    </record>
+    <record id="regla_n1_bill" model="account.analytic.applicability">
+        <field name="analytic_plan_id" ref="analytic.analytic_plan_projects"/>
+        <field name="business_domain">bill</field>
+        <field name="applicability">mandatory</field>
+    </record>
+    <record id="regla_n1_timesheet" model="account.analytic.applicability">
+        <field name="analytic_plan_id" ref="analytic.analytic_plan_projects"/>
+        <field name="business_domain">timesheet</field>
+        <field name="applicability">mandatory</field>
+    </record>
+    <record id="regla_n1_stock_picking" model="account.analytic.applicability">
+        <field name="analytic_plan_id" ref="analytic.analytic_plan_projects"/>
+        <field name="business_domain">stock_picking</field>
+        <field name="applicability">mandatory</field>
+    </record>
+    <record id="regla_n1_stock_move" model="account.analytic.applicability">
+        <field name="analytic_plan_id" ref="analytic.analytic_plan_projects"/>
+        <field name="business_domain">stock_move</field>
+        <field name="applicability">mandatory</field>
+    </record>
+</odoo>

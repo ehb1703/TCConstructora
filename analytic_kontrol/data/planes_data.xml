@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- N1: el plan 'Project' que ya existe pasa a ser N1 OBRA (conserva sus cuentas y movimientos) -->
+    <record id="analytic.analytic_plan_projects" model="account.analytic.plan">
+        <field name="name">N1 OBRA</field>
+        <field name="description">Proyecto / Obra</field>
+    </record>
+    <!-- N2..N5: planes raíz independientes; cada uno tiene su propia columna analítica y pueden usarse los 5 a la vez -->
+    <record id="plan_n2_frente" model="account.analytic.plan">
+        <field name="name">N2 FRENTE</field>
+        <field name="description">Segmentación operativa de la obra</field>
+    </record>
+    <record id="plan_n3_partida" model="account.analytic.plan">
+        <field name="name">N3 PARTIDA</field>
+        <field name="description">Unidad mínima de control de costos</field>
+    </record>
+    <record id="plan_n4_concepto" model="account.analytic.plan">
+        <field name="name">N4 CONCEPTO</field>
+        <field name="description">Conceptos del catálogo</field>
+    </record>
+    <record id="plan_n5_insumo" model="account.analytic.plan">
+        <field name="name">N5 INSUMO</field>
+        <field name="description">Insumos de cada concepto</field>
+    </record>
+</odoo>
