@@ -349,7 +349,7 @@
             <xpath expr="//field[@name='combo_ids']" position="attributes">
                 <attribute name="invisible">type == 'consu'</attribute>
             </xpath>
-            <xpath expr="//field[@name='categ_id']" position="after">
+            <xpath expr="//field[@name='default_code']" position="before">
                 <field name="tipo_insumo_id" invisible="not purchase_ok" options="{'no_open':True, 'no_create':True}"/>
             </xpath>
         </field>
@@ -361,11 +361,16 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="project_extra.view_product_template_tipo_insumo_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='tipo_insumo_id']" position="before">
+                <div colspan="2" class="o_horizontal_separator mt-4 mb-3 text-uppercase fw-bolder small d-flex align-items-baseline" invisible="not purchase_ok">
+                    <span class="text-nowrap flex-shrink-0 me-5">Clave Insumo TC</span>
+                    <field name="clave_insumo_tc" class="text-success fw-bolder w-auto"/>
+                </div>
+            </xpath>
             <xpath expr="//field[@name='tipo_insumo_id']" position="after">
                 <field name="categoria_insumo_id" invisible="not purchase_ok" options="{'no_open':True, 'no_create':True}"/>
                 <field name="familia_insumo_id" invisible="not purchase_ok" options="{'no_open':True, 'no_create':True}"/>
                 <field name="clave_insumo" invisible="not purchase_ok"/>
-                <field name="clave_insumo_tc" invisible="not purchase_ok"/>
             </xpath>
         </field>
     </record>
@@ -375,11 +380,19 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_tree_view"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='default_code']" position="after">
+            <xpath expr="//field[@name='is_favorite']" position="before">
                 <field name="clave_insumo_tc" optional="show"/>
             </xpath>
         </field>
     </record>
+
+    <!-- Titulo de la lista de Compras > Productos: "Productos" pasa a "Productos Insumos" (en_US y es_MX) -->
+    <record id="purchase.product_normal_action_puchased" model="ir.actions.act_window">
+        <field name="name">Productos Insumos</field>
+    </record>
+    <function model="ir.actions.act_window" name="write"
+              eval="[[ref('purchase.product_normal_action_puchased')], {'name': 'Productos Insumos'}]"
+              context="{'lang': 'es_MX'}"/>
 
     <!-- Vista para agregar tipos de insumo en contactos (proveedores) -->
     <record id="view_partner_tipo_insumo_form" model="ir.ui.view">
