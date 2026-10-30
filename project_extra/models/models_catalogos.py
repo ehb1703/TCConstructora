@@ -341,7 +341,7 @@ class ProductTemplateInsumo(models.Model):
     _inherit = 'product.template'
     
     tipo_insumo_id = fields.Many2one('product.tipo.insumo', string='Tipo de insumo', tracking=True, help='Clasificación del insumo para procesos de compra')
-    categoria_insumo_id = fields.Many2one('product.categoria.insumo', string='Categoría', tracking=True)
+    categoria_insumo_id = fields.Many2one('product.categoria.insumo', string='Categoría de insumo', tracking=True)
     familia_insumo_id = fields.Many2one('product.familia.insumo', string='Familia', tracking=True)
     clave_insumo = fields.Char(string='Clave', copy=False, tracking=True, help='Consecutivo único de 5 dígitos (segmento WWWWW)')
     clave_insumo_tc = fields.Char(string='Clave Insumo TC', compute='_compute_clave_insumo_tc', store=True, readonly=True, copy=False,
