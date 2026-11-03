@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Catálogo Documentos (Proyectos / Catálogos / Documentos): intervalo y tiempo de vigencia -->
+    <record id="view_project_docsrequeridos_vigencia_list" model="ir.ui.view">
+        <field name="name">view.project.docsrequeridos.vigencia.list</field>
+        <field name="model">project.docsrequeridos</field>
+        <field name="inherit_id" ref="project_extra.view_project_docsrequeridos_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tipo_venta_id']" position="after">
+                <field name="intervalo" optional="show"/>
+                <field name="tiempo" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_project_docsrequeridos_vigencia_form" model="ir.ui.view">
+        <field name="name">view.project.docsrequeridos.vigencia.form</field>
+        <field name="model">project.docsrequeridos</field>
+        <field name="inherit_id" ref="project_extra.view_project_docsrequeridos_from"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tipo_venta_id']" position="after">
+                <label for="intervalo"/>
+                <div class="o_row">
+                    <field name="intervalo" class="oe_inline"/>
+                    <field name="tiempo" class="oe_inline"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Catálogo Tipos contratistas (Contactos / Catálogos) -->
+    <record id="action_partner_contractor_type" model="ir.actions.act_window">
+        <field name="name">Tipos contratistas</field>
+        <field name="res_model">partner.contractor.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_partner_contractor_type_list" model="ir.ui.view">
+        <field name="name">view.partner.contractor.type.list</field>
+        <field name="model">partner.contractor.type</field>
+        <field name="arch" type="xml">
+            <list string="Tipos contratistas">
+                <field name="name"/>
+                <field name="docto_req_ids" widget="many2many_tags"/>
+                <field name="docto_noreq_ids" widget="many2many_tags"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_partner_contractor_type_form" model="ir.ui.view">
+        <field name="name">view.partner.contractor.type.form</field>
+        <field name="model">partner.contractor.type</field>
+        <field name="arch" type="xml">
+            <form string="Tipo de contratista">
+                <sheet>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger" invisible="active"/>
+                    <group>
+                        <field name="name"/>
+                        <field name="active" invisible="1"/>
+                    </group>
+                    <group>
+                        <field name="docto_req_ids" widget="many2many_tags" options="{'no_create': True, 'no_edit': True}"/>
+                        <field name="docto_noreq_ids" widget="many2many_tags" options="{'no_create': True, 'no_edit': True}"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_partner_contractor_type" name="Tipos contratistas" parent="contact_extra.menu_catalogs_company" action="action_partner_contractor_type" sequence="5"/>
+
+    <!-- Contacto: Contabilidad / Otros y nueva pestaña Expediente digital -->
+    <record id="view_res_partner_expediente_form" model="ir.ui.view">
+        <field name="name">view.res.partner.expediente.form</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="contact_extra.view_contacts_doctos_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='otros']" position="inside">
+                <field name="tipo_contratista" options="{'no_create': True, 'no_open': True}"/>
+            </xpath>
+            <xpath expr="//page[@name='accounting']" position="after">
+                <page name="expediente_digital" string="Expediente digital" invisible="not tipo_contratista">
+                    <group>
+                        <field name="expediente_completo" readonly="1"/>
+                    </group>
+                    <field name="expediente_digital" nolabel="1">
+                        <list editable="bottom" create="0" delete="0" decoration-success="requerido and archivo" decoration-danger="requerido and not archivo">
+                            <field name="requerido" readonly="1"/>
+                            <field name="docto_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="archivo" filename="archivo_nombre" widget="binary"/>
+                            <field name="archivo_nombre" column_invisible="1"/>
+                            <field name="fecha_documento"/>
+                            <field name="vigencia"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
