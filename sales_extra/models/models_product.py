@@ -42,6 +42,7 @@ class productTemplateLine(models.Model):
     company_id = fields.Many2one('res.company', string='Empresa', tracking=True)
     lead_id = fields.Many2one('crm.lead', string='Oportunidad', tracking=True)
     project_id = fields.Many2one('project.project', string='Proyecto', tracking=True)
+    budget_id = fields.Many2one('product.budget.item', string='Partida Presupestaria')
     code = fields.Char(string='Código')
 
 

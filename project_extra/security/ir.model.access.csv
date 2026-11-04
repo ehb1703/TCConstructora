@@ -42,6 +42,7 @@ access_revert_stage_user,access_revert_stage_user,model_crm_revert_stage_wizard,
 access_crm_cotizacion_insumos_wizard,access_crm_cotizacion_insumos_wizard,model_crm_cotizacion_insumos_wizard,,1,1,1,1
 access_crm_input_line,access_crm_input_line,model_crm_input_line,,1,1,1,1
 access_crm_concept_line,access_crm_concept_line,model_crm_concept_line,,1,1,1,1
+access_crm_budget_total,access_crm_budget_total,model_crm_budget_total,,1,1,1,1
 access_crm_budget_line,access_crm_budget_line,model_crm_budget_line,,1,1,1,1
 access_crm_combo_line,access_crm_combo_line,model_crm_combo_line,,1,1,1,1
 access_crm_basico_line,access_crm_basico_line,model_crm_basico_line,,1,1,1,1
