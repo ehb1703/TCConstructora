@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_gestion_obra_contrato_list" model="ir.ui.view">
+        <field name="name">view.gestion.obra.contrato.list</field>
+        <field name="model">gestion.obra.contrato</field>
+        <field name="arch" type="xml">
+            <list string="Contratos" decoration-muted="state == 'cancel'" decoration-success="state == 'active'" decoration-info="state == 'in_approval'">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="tipo_contrato" optional="show"/>
+                <field name="obra_id"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="monto_contratado" sum="Total contratado"/>
+                <field name="monto_anticipo" optional="show" sum="Total anticipos"/>
+                <field name="expediente_completo" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'active'" decoration-info="state == 'in_approval'" decoration-muted="state in ('done', 'cancel')"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_gestion_obra_contrato_kanban" model="ir.ui.view">
+        <field name="name">view.gestion.obra.contrato.kanban</field>
+        <field name="model">gestion.obra.contrato</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" records_draggable="0" group_create="0" group_delete="0" group_edit="0" quick_create="0">
+                <field name="currency_id"/>
+                <templates>
+                    <t t-name="card">
+                        <field name="name" class="fw-bold"/>
+                        <field name="partner_id"/>
+                        <field name="obra_id" class="text-muted"/>
+                        <footer>
+                            <field name="monto_contratado" widget="monetary"/>
+                            <field name="expediente_completo" widget="boolean" class="ms-auto"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_gestion_obra_contrato_form" model="ir.ui.view">
+        <field name="name">view.gestion.obra.contrato.form</field>
+        <field name="model">gestion.obra.contrato</field>
+        <field name="arch" type="xml">
+            <form string="Contrato">
+                <header>
+                    <button name="action_solicitar_aprobacion" string="Solicitar Aprobación" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_activar_contrato" string="Activar Contrato" type="object" class="oe_highlight" invisible="state != 'in_approval'"
+                        groups="gestion_obras.group_activar_contrato"/>
+                    <button name="action_finiquitar" string="Finiquitar" type="object" invisible="state != 'active'"/>
+                    <button name="action_cancelar" string="Cancelar" type="object" invisible="state not in ('draft', 'in_approval')"/>
+                    <button name="action_borrador" string="Regresar a Borrador" type="object" invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,in_approval,active,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ver_expediente" type="object" class="oe_stat_button" icon="fa-folder-open" invisible="not partner_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Documentos</span>
+                                <span class="o_stat_text text-success" invisible="not expediente_completo">Completo</span>
+                                <span class="o_stat_text text-danger" invisible="expediente_completo">Incompleto</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <notebook>
+                        <page name="general" string="General">
+                            <group>
+                                <group>
+                                    <field name="partner_id" readonly="state != 'draft'" options="{'no_create': True}"/>
+                                    <field name="tipo_contrato"/>
+                                    <field name="obra_id" readonly="state != 'draft'" options="{'no_create': True}"/>
+                                </group>
+                                <group>
+                                    <field name="currency_id" invisible="1"/>
+                                    <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
+                                    <field name="monto_contratado" readonly="state not in ('draft', 'in_approval')"/>
+                                    <field name="monto_anticipo"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="condiciones" string="Condiciones Financieras">
+                            <group>
+                                <group>
+                                    <field name="porcentaje_anticipo" readonly="state not in ('draft', 'in_approval')"/>
+                                </group>
+                                <group>
+                                    <field name="retencion_fondo_garantia" readonly="state not in ('draft', 'in_approval')"/>
+                                    <field name="porcentaje_retencion" invisible="not retencion_fondo_garantia" readonly="state not in ('draft', 'in_approval')"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="expediente" string="Expediente Adjunto">
+                            <group>
+                                <field name="expediente_completo"/>
+                            </group>
+                            <field name="expediente_digital" readonly="1" nolabel="1">
+                                <list decoration-success="requerido and archivo" decoration-danger="requerido and not archivo">
+                                    <field name="requerido"/>
+                                    <field name="docto_id"/>
+                                    <field name="archivo" filename="archivo_nombre" widget="binary"/>
+                                    <field name="archivo_nombre" column_invisible="1"/>
+                                    <field name="fecha_documento"/>
+                                    <field name="vigencia"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gestion_obra_contrato_search" model="ir.ui.view">
+        <field name="name">view.gestion.obra.contrato.search</field>
+        <field name="model">gestion.obra.contrato</field>
+        <field name="arch" type="xml">
+            <search string="Contratos">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="obra_id"/>
+                <filter name="activos" string="Activos" domain="[('state', '=', 'active')]"/>
+                <filter name="en_aprobacion" string="En Aprobación" domain="[('state', '=', 'in_approval')]"/>
+                <separator/>
+                <filter name="expediente_incompleto" string="Expediente incompleto" domain="[('expediente_completo', '=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_state" string="Estatus" context="{'group_by': 'state'}"/>
+                    <filter name="group_obra" string="Obra" context="{'group_by': 'obra_id'}"/>
+                    <filter name="group_partner" string="Contratista" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gestion_obra_contrato" model="ir.actions.act_window">
+        <field name="name">Contratos y Subcontratos</field>
+        <field name="res_model">gestion.obra.contrato</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registre el primer contrato de obra</p>
+            <p>Solo se pueden contratar contactos con el expediente digital completo.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_gestion_obras_root" name="Gestión de Obras" groups="group_gestion_obras_user" sequence="45"/>
+    <menuitem id="menu_gestion_obra_contrato" name="Contratos y Subcontratos" parent="menu_gestion_obras_root" action="action_gestion_obra_contrato" sequence="10"/>
+    <menuitem id="menu_gestion_obras_config" name="Configuración" parent="menu_gestion_obras_root" sequence="90">
+        <menuitem id="menu_gestion_obras_tipos" name="Tipos contratistas" action="project_extra.action_partner_contractor_type" sequence="10"/>
+    </menuitem>
+
+</odoo>

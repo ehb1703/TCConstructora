@@ -8,7 +8,7 @@ class HrDepartureWizard(models.TransientModel):
     
     def action_register_departure(self):
         employee = self.employee_id.sudo()
-        if employee.state == 'activo':
+        if employee.state in ('activo', 'incapacidad', 'permiso'):
             current_contract = employee.sudo().contract_id
             if current_contract and current_contract.date_start > self.departure_date:
                 raise UserError(_('La fecha de salida no puede ser anterior a la fecha de inicio del contrato actual.'))
@@ -21,6 +21,10 @@ class HrDepartureWizard(models.TransientModel):
                 description = 'incapacidad'
             else:
                 description = 'permiso'
+
+            if employee.state != 'activo' and description not in ('baja', 'pensionado'):
+                raise UserError(_('El empleado está en estatus %s. Desde este estatus solo se puede dar de baja: elija un motivo de baja (Despedido, Renuncia, Término de la obra) o Retiro.',
+                    dict(employee._fields['state'].selection)[employee.state]))
 
             employee.state = description
             employee.departure_reason_id = self.departure_reason_id

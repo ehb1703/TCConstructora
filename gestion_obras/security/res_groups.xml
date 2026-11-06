@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_gestion_obras" model="ir.module.category">
+        <field name="name">Gestión de Obras</field>
+        <field name="sequence">40</field>
+    </record>
+
+    <record id="group_gestion_obras_user" model="res.groups">
+        <field name="name">Usuario</field>
+        <field name="category_id" ref="module_category_gestion_obras"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+
+    <record id="group_activar_contrato" model="res.groups">
+        <field name="name">Puede activar contratos</field>
+        <field name="category_id" ref="module_category_gestion_obras"/>
+        <field name="implied_ids" eval="[(4, ref('group_gestion_obras_user'))]"/>
+        <field name="comment">Autoriza pasar un contrato de En Aprobación a Activo / Firmado (Operaciones).</field>
+    </record>
+
+    <record id="group_aprobacion_tecnica" model="res.groups">
+        <field name="name">Aprobación técnica de modificaciones</field>
+        <field name="category_id" ref="module_category_gestion_obras"/>
+        <field name="implied_ids" eval="[(4, ref('group_gestion_obras_user'))]"/>
+        <field name="comment">Primera autorización de aditivas, deductivas, extraordinarios y órdenes de cambio (área técnica).</field>
+    </record>
+
+    <record id="group_aprobacion_direccion" model="res.groups">
+        <field name="name">Aprobación de dirección de modificaciones</field>
+        <field name="category_id" ref="module_category_gestion_obras"/>
+        <field name="implied_ids" eval="[(4, ref('group_gestion_obras_user'))]"/>
+        <field name="comment">Autorización final: al aprobarla, la modificación se aplica al Presupuesto Control.</field>
+    </record>
+</odoo>
