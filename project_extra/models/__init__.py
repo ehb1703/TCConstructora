@@ -4,3 +4,4 @@ from . import models_purchase_order
 from . import models_documents_document
 from . import models_crm
 from . import models_refrendo
+from . import models_expediente

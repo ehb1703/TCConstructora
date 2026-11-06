@@ -23,6 +23,7 @@ Personalización del modulo:
         'security/res_groups.xml',
         'security/ir.model.access.csv',
         'views/project_catalogs_views.xml',
+        'views/expediente_views.xml',
         'views/project_views.xml',        
         'views/crm_catalog_views.xml',
         'views/crm_views.xml',

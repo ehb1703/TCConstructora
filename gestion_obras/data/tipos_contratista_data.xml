@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Documentos del expediente digital y tipos de contratista (imagen de la tarea). noupdate: el catálogo lo mantiene el usuario. -->
+    <data noupdate="1">
+        <record id="doc_csf" model="project.docsrequeridos">
+            <field name="nombre_archivo">Constancia de Situación Fiscal (CSF)</field>
+            <field name="desc_archivo">Constancia de Situación Fiscal (CSF)</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+        </record>
+        <record id="doc_opinion_cumplimiento" model="project.docsrequeridos">
+            <field name="nombre_archivo">Opinión de Cumplimiento</field>
+            <field name="desc_archivo">Opinión de Cumplimiento</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+        </record>
+        <record id="doc_acta_constitutiva" model="project.docsrequeridos">
+            <field name="nombre_archivo">Acta Constitutiva</field>
+            <field name="desc_archivo">Acta Constitutiva</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+        </record>
+        <record id="doc_estado_cuenta" model="project.docsrequeridos">
+            <field name="nombre_archivo">Estado de cuenta bancario</field>
+            <field name="desc_archivo">Estado de cuenta bancario</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+        </record>
+        <record id="doc_repse" model="project.docsrequeridos">
+            <field name="nombre_archivo">REPSE</field>
+            <field name="desc_archivo">REPSE</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+        </record>
+        <record id="doc_csf_infonavit" model="project.docsrequeridos">
+            <field name="nombre_archivo">CSF Infonavit</field>
+            <field name="desc_archivo">CSF Infonavit</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+        </record>
+        <record id="doc_siroc" model="project.docsrequeridos">
+            <field name="nombre_archivo">SIROC</field>
+            <field name="desc_archivo">SIROC</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+        </record>
+        <record id="doc_retencion_isr" model="project.docsrequeridos">
+            <field name="nombre_archivo">Comprobantes de Retención de ISR</field>
+            <field name="desc_archivo">Comprobantes de Retención de ISR</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+        </record>
+        <record id="doc_programa_seguridad" model="project.docsrequeridos">
+            <field name="nombre_archivo">Programa de Seguridad y Salud</field>
+            <field name="desc_archivo">Programa de Seguridad y Salud</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+        </record>
+        <record id="doc_fianzas" model="project.docsrequeridos">
+            <field name="nombre_archivo">Fianzas (cumplimiento y vicios ocultos)</field>
+            <field name="desc_archivo">Fianzas (cumplimiento y vicios ocultos)</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+        </record>
+        <record id="tipo_suministro" model="partner.contractor.type">
+            <field name="name">Suministro</field>
+            <field name="docto_req_ids" eval="[(6, 0, [ref('doc_csf'), ref('doc_opinion_cumplimiento'), ref('doc_acta_constitutiva'), ref('doc_estado_cuenta')])]"/>
+        </record>
+        <record id="tipo_subcontrato" model="partner.contractor.type">
+            <field name="name">Subcontrato</field>
+            <field name="docto_req_ids" eval="[(6, 0, [ref('doc_csf'), ref('doc_opinion_cumplimiento'), ref('doc_acta_constitutiva'), ref('doc_estado_cuenta'), ref('doc_repse'), ref('doc_csf_infonavit'), ref('doc_siroc'), ref('doc_retencion_isr'), ref('doc_programa_seguridad'), ref('doc_fianzas')])]"/>
+        </record>
+    </data>
+</odoo>

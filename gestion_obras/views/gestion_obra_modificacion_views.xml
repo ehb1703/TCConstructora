@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_gestion_obra_modificacion_list" model="ir.ui.view">
+        <field name="name">view.gestion.obra.modificacion.list</field>
+        <field name="model">gestion.obra.modificacion</field>
+        <field name="arch" type="xml">
+            <list string="Modificaciones" decoration-success="state == 'approved'" decoration-muted="state == 'rejected'" decoration-info="state in ('pending_tech', 'pending_dir')">
+                <field name="name"/>
+                <field name="presupuesto_id"/>
+                <field name="obra_id" optional="show"/>
+                <field name="tipo_movimiento"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="monto_total_afectacion"/>
+                <field name="ampliacion_plazo_dias" optional="show"/>
+                <field name="folio_bitacora" optional="hide"/>
+                <field name="state" widget="badge" decoration-success="state == 'approved'" decoration-info="state in ('pending_tech', 'pending_dir')" decoration-danger="state == 'rejected'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_gestion_obra_modificacion_form" model="ir.ui.view">
+        <field name="name">view.gestion.obra.modificacion.form</field>
+        <field name="model">gestion.obra.modificacion</field>
+        <field name="arch" type="xml">
+            <form string="Modificación presupuestal">
+                <header>
+                    <button name="action_enviar" string="Enviar a Aprobación" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_aprobar_tecnico" string="Aprobar (Técnica)" type="object" class="oe_highlight" invisible="state != 'pending_tech'"
+                        groups="gestion_obras.group_aprobacion_tecnica"/>
+                    <button name="action_aprobar_direccion" string="Autorizar y Aplicar (Dirección)" type="object" class="oe_highlight" invisible="state != 'pending_dir'"
+                        groups="gestion_obras.group_aprobacion_direccion"/>
+                    <button name="action_rechazar" string="Rechazar" type="object" invisible="state != 'pending_tech'" groups="gestion_obras.group_aprobacion_tecnica"/>
+                    <button name="action_rechazar" string="Rechazar" type="object" invisible="state != 'pending_dir'" groups="gestion_obras.group_aprobacion_direccion"/>
+                    <button name="action_borrador" string="Regresar a Borrador" type="object" invisible="state != 'rejected'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,pending_tech,pending_dir,approved"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="presupuesto_id" readonly="state != 'draft'" options="{'no_create': True}"/>
+                            <field name="obra_id"/>
+                            <field name="tipo_movimiento" readonly="state != 'draft'"/>
+                            <field name="folio_bitacora" readonly="state not in ('draft', 'pending_tech', 'pending_dir')"/>
+                        </group>
+                        <group>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="monto_total_afectacion"/>
+                            <field name="ampliacion_plazo_dias" readonly="state != 'draft'"/>
+                            <field name="aprobo_tecnico_id" invisible="not aprobo_tecnico_id"/>
+                            <field name="aprobo_direccion_id" invisible="not aprobo_direccion_id"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info mb-2" role="alert" invisible="tipo_movimiento != 'orden_cambio'">
+                        Traspaso: capture en negativo la cantidad de la partida que cede saldo y en positivo la que lo recibe. El desglose debe sumar cero.
+                    </div>
+                    <div class="alert alert-info mb-2" role="alert" invisible="tipo_movimiento != 'extraordinario'">
+                        Extraordinario: desglose cada insumo no previsto (con referencia interna). Al autorizarse se aloja en la partida EXTRAORDINARIOS.
+                    </div>
+                    <notebook>
+                        <page name="desglose" string="Desglose">
+                            <field name="linea_ids" readonly="state != 'draft'" context="{'default_modificacion_id': id}">
+                                <list editable="bottom">
+                                    <field name="presupuesto_id" column_invisible="1"/>
+                                    <field name="tipo_movimiento" column_invisible="1"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="partida_id" options="{'no_create': True}" readonly="tipo_movimiento == 'extraordinario'"/>
+                                    <field name="product_id" options="{'no_create': True}" required="tipo_movimiento == 'extraordinario'"/>
+                                    <field name="descripcion"/>
+                                    <field name="cantidad"/>
+                                    <field name="precio_unitario"/>
+                                    <field name="monto" sum="Total"/>
+                                    <field name="monto_efecto" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page name="justificacion" string="Justificación">
+                            <field name="justificacion" placeholder="Memoria descriptiva / justificación técnica" readonly="state != 'draft'"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gestion_obra_modificacion_search" model="ir.ui.view">
+        <field name="name">view.gestion.obra.modificacion.search</field>
+        <field name="model">gestion.obra.modificacion</field>
+        <field name="arch" type="xml">
+            <search string="Modificaciones">
+                <field name="name"/>
+                <field name="presupuesto_id"/>
+                <field name="obra_id"/>
+                <filter name="por_aprobar_tecnica" string="Por aprobar (técnica)" domain="[('state', '=', 'pending_tech')]"/>
+                <filter name="por_aprobar_direccion" string="Por aprobar (dirección)" domain="[('state', '=', 'pending_dir')]"/>
+                <filter name="aplicadas" string="Aplicadas" domain="[('state', '=', 'approved')]"/>
+                <separator/>
+                <filter name="aditivas" string="Aditivas" domain="[('tipo_movimiento', '=', 'aditiva')]"/>
+                <filter name="deductivas" string="Deductivas" domain="[('tipo_movimiento', '=', 'deductiva')]"/>
+                <filter name="extraordinarios" string="Extraordinarios" domain="[('tipo_movimiento', '=', 'extraordinario')]"/>
+                <filter name="traspasos" string="Traspasos" domain="[('tipo_movimiento', '=', 'orden_cambio')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_presupuesto" string="Presupuesto" context="{'group_by': 'presupuesto_id'}"/>
+                    <filter name="group_tipo" string="Tipo" context="{'group_by': 'tipo_movimiento'}"/>
+                    <filter name="group_state" string="Estatus" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gestion_obra_modificacion" model="ir.actions.act_window">
+        <field name="name">Aditivas, Deductivas y Órdenes de Cambio</field>
+        <field name="res_model">gestion.obra.modificacion</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_gestion_obra_modificacion" name="Aditivas / Deductivas / Órdenes de Cambio" parent="menu_gestion_obras_root" action="action_gestion_obra_modificacion" sequence="30"/>
+
+</odoo>

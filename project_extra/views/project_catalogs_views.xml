@@ -74,6 +74,8 @@
                 <field name="model_id"/>
                 <field name="dependencia_ids" widget="many2many_tags" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                 <field name="tipo_venta_id"/>
+                <field name="intervalo" optional="show"/>
+                <field name="tiempo" optional="show"/>
             </list>
         </field>
     </record>
@@ -91,6 +93,11 @@
                         <field name="etapa"/>
                         <field name="dependencia_ids" widget="many2many_tags" options="{'no_create':True, 'no_edit':True}"/>
                         <field name="tipo_venta_id" options="{'no_create':True, 'no_edit':True}"/>
+                        <label for="intervalo"/>
+                        <div class="o_row">
+                            <field name="intervalo" class="oe_inline"/>
+                            <field name="tiempo" class="oe_inline"/>
+                        </div>
                     </group>
                 </sheet>
                 <chatter/>
