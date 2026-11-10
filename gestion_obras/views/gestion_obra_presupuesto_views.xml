@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_gestion_obra_presupuesto_list" model="ir.ui.view">
+        <field name="name">view.gestion.obra.presupuesto.list</field>
+        <field name="model">gestion.obra.presupuesto</field>
+        <field name="arch" type="xml">
+            <list string="Presupuestos Kontrol" decoration-muted="state == 'draft'">
+                <field name="name"/>
+                <field name="obra_id"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="monto_base_original" sum="Total"/>
+                <field name="monto_aditivas_acum" sum="Total"/>
+                <field name="monto_deductivas_acum" sum="Total"/>
+                <field name="monto_presupuesto_control" sum="Total"/>
+                <field name="monto_comprometido_oc"/>
+                <field name="saldo_disponible_compras" decoration-danger="saldo_disponible_compras &lt; 0"/>
+                <field name="state" widget="badge" decoration-success="state == 'approved'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_gestion_obra_presupuesto_form" model="ir.ui.view">
+        <field name="name">view.gestion.obra.presupuesto.form</field>
+        <field name="model">gestion.obra.presupuesto</field>
+        <field name="arch" type="xml">
+            <form string="Presupuesto Kontrol">
+                <header>
+                    <button name="action_aprobar_base" string="Aprobar y Congelar Base" type="object" class="oe_highlight" invisible="state != 'draft'"
+                        confirm="Al aprobar, las partidas del presupuesto base quedan congeladas: solo se podrán ajustar con Aditivas, Deductivas u Órdenes de Cambio. ¿Continuar?"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ver_modificaciones" type="object" class="oe_stat_button" icon="fa-exchange">
+                            <field name="modificacion_count" widget="statinfo" string="Modificaciones"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Nombre del presupuesto" readonly="state == 'approved'"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="obra_id" readonly="state == 'approved'" options="{'no_create': True}"/>
+                            <field name="fecha_congelamiento" invisible="not fecha_congelamiento"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company" readonly="state == 'approved'"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <!-- Panel de indicadores -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small text-uppercase">Presupuesto Base Original</div>
+                                <field name="monto_base_original" class="fs-4 fw-bold"/>
+                                <div class="text-muted small" invisible="state != 'approved'">Inmutable</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small text-uppercase">Presupuesto Control Vigente</div>
+                                <field name="monto_presupuesto_control" class="fs-4 fw-bold text-primary"/>
+                                <div class="small">+ <field name="monto_aditivas_acum" class="d-inline"/> / - <field name="monto_deductivas_acum" class="d-inline"/></div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small text-uppercase">Saldo Disponible Compras</div>
+                                <field name="saldo_disponible_compras" class="fs-4 fw-bold" decoration-danger="saldo_disponible_compras &lt; 0" decoration-success="saldo_disponible_compras &gt;= 0"/>
+                                <div class="small text-muted">Comprometido: <field name="monto_comprometido_oc" class="d-inline"/></div>
+                            </div>
+                        </div>
+                    </div>
+                    <notebook>
+                        <page name="partidas" string="Partidas e Insumos">
+                            <field name="partida_ids" readonly="state == 'approved'">
+                                <list editable="bottom" decoration-info="es_extraordinario">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="product_id" optional="show" options="{'no_create': True}"/>
+                                    <field name="default_code" optional="hide"/>
+                                    <field name="es_extraordinario" optional="hide"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="cantidad_base"/>
+                                    <field name="precio_unitario_base"/>
+                                    <field name="monto_total_partida" sum="Base"/>
+                                    <field name="monto_modificaciones" sum="Modificaciones"/>
+                                    <field name="monto_control" sum="Control"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page name="modificaciones" string="Historial de Órdenes de Cambio">
+                            <field name="modificacion_ids" readonly="1">
+                                <list decoration-success="state == 'approved'" decoration-muted="state == 'rejected'">
+                                    <field name="name"/>
+                                    <field name="tipo_movimiento"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="monto_total_afectacion"/>
+                                    <field name="ampliacion_plazo_dias"/>
+                                    <field name="folio_bitacora"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gestion_obra_presupuesto_search" model="ir.ui.view">
+        <field name="name">view.gestion.obra.presupuesto.search</field>
+        <field name="model">gestion.obra.presupuesto</field>
+        <field name="arch" type="xml">
+            <search string="Presupuestos">
+                <field name="name"/>
+                <field name="obra_id"/>
+                <filter name="aprobados" string="Base aprobada" domain="[('state', '=', 'approved')]"/>
+                <filter name="borrador" string="Borrador" domain="[('state', '=', 'draft')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gestion_obra_presupuesto" model="ir.actions.act_window">
+        <field name="name">Presupuestos Kontrol</field>
+        <field name="res_model">gestion.obra.presupuesto</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registre el presupuesto base de una obra</p>
+            <p>Al aprobarlo, la base queda congelada y solo cambia por Aditivas, Deductivas, Extraordinarios u Órdenes de Cambio.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_gestion_obra_presupuesto" name="Presupuestos Kontrol" parent="menu_gestion_obras_root" action="action_gestion_obra_presupuesto" sequence="20"/>
+
+</odoo>

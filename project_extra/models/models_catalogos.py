@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
+from odoo.models import Command
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -67,6 +68,8 @@ class documentosRequeridos(models.Model):
     dependencia_ids = fields.Many2many('res.partner', 'project_docsrequeridos_partner_rel', 'doc_id', 'partner_id', string='Dependencia/Cliente', tracking=True)
     tipo_venta_id = fields.Many2one('crm.lead.type', string='Tipo de Venta', tracking=True)
     active = fields.Boolean(string='Activo', tracking=True, default=True, required=True)
+    intervalo = fields.Integer(string='Intervalo', tracking=True, help='Cada cuánto pierde vigencia el documento. Si se deja vacío, el documento no vence.')
+    tiempo = fields.Selection(selection=[('days', 'Días'), ('weeks', 'Semanas'), ('months', 'Meses'), ('years', 'Años')], string='Tiempo', tracking=True)
 
     @api.constrains('nombre_archivo', 'desc_archivo', 'model_id', 'etapa', 'tipo_venta_id', 'dependencia_ids', 'active')
     def _check_documento_duplicado(self):
@@ -93,6 +96,14 @@ class documentosRequeridos(models.Model):
                     f'Ya existe el documento "{rec.nombre_archivo}" con esta descripción para la(s) misma(s) '
                     f'dependencia(s): {dependencias}.'
                 )
+
+    @api.constrains('intervalo', 'tiempo')
+    def _check_vigencia(self):
+        for rec in self:
+            if rec.intervalo < 0:
+                raise ValidationError('El intervalo de vigencia no puede ser negativo.')
+            if rec.intervalo and not rec.tiempo:
+                raise ValidationError(f'Indique el tiempo (días, semanas, meses o años) del intervalo del documento "{rec.display_name}".')
 
     @api.depends('nombre_archivo', 'desc_archivo')
     def _compute_display_name(self):
@@ -341,7 +352,7 @@ class ProductTemplateInsumo(models.Model):
     _inherit = 'product.template'
     
     tipo_insumo_id = fields.Many2one('product.tipo.insumo', string='Tipo de insumo', tracking=True, help='Clasificación del insumo para procesos de compra')
-    categoria_insumo_id = fields.Many2one('product.categoria.insumo', string='Categoría', tracking=True)
+    categoria_insumo_id = fields.Many2one('product.categoria.insumo', string='Categoría de insumo', tracking=True)
     familia_insumo_id = fields.Many2one('product.familia.insumo', string='Familia', tracking=True)
     clave_insumo = fields.Char(string='Clave', copy=False, tracking=True, help='Consecutivo único de 5 dígitos (segmento WWWWW)')
     clave_insumo_tc = fields.Char(string='Clave Insumo TC', compute='_compute_clave_insumo_tc', store=True, readonly=True, copy=False,
@@ -375,6 +386,48 @@ class ResPartnerTipoInsumo(models.Model):
     
     tipo_insumo_ids = fields.Many2many('product.tipo.insumo', 'res_partner_tipo_insumo_rel', 'partner_id', 'tipo_insumo_id', string='Tipos de insumo',
         help='Tipos de insumo que provee este proveedor')
+    tipo_contratista = fields.Many2one('partner.contractor.type', string='Tipo de contratista', tracking=True)
+    expediente_digital = fields.One2many('partner.expediente.digital', 'partner_id', string='Expediente digital')
+    expediente_completo = fields.Boolean(string='Expediente completo', compute='_compute_expediente_completo', store=True,
+        help='Se marca cuando todos los documentos requeridos del tipo de contratista tienen archivo cargado.')
+
+    @api.depends('tipo_contratista', 'expediente_digital.requerido', 'expediente_digital.archivo')
+    def _compute_expediente_completo(self):
+        for rec in self:
+            requeridos = rec.expediente_digital.filtered('requerido')
+            rec.expediente_completo = bool(rec.tipo_contratista) and all(requeridos.mapped('archivo'))
+
+    def _sincronizar_expediente(self):
+        """Alinea las líneas del expediente con el tipo de contratista: agrega los documentos que faltan y quita los que ya no aplican y no tienen archivo.
+        Un documento con archivo cargado nunca se borra; si ya no aplica queda como no requerido."""
+        for rec in self:
+            tipo = rec.tipo_contratista
+            deseados = {d.id: True for d in tipo.docto_req_ids}
+            deseados.update({d.id: False for d in tipo.docto_noreq_ids if d.id not in deseados})
+            comandos = []
+            for linea in rec.expediente_digital:
+                if linea.docto_id.id in deseados:
+                    comandos.append(Command.update(linea.id, {'requerido': deseados.pop(linea.docto_id.id)}))
+                elif linea.archivo:
+                    comandos.append(Command.update(linea.id, {'requerido': False}))
+                else:
+                    comandos.append(Command.delete(linea.id))
+            comandos += [Command.create({'docto_id': docto_id, 'requerido': requerido}) for docto_id, requerido in deseados.items()]
+            if comandos:
+                rec.expediente_digital = comandos
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        partners = super().create(vals_list)
+        partners.filtered('tipo_contratista')._sincronizar_expediente()
+        return partners
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'tipo_contratista' in vals:
+            self._sincronizar_expediente()
+        return res
+
 
 
 class DireccionGeneralEjecutora(models.Model):

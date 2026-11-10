@@ -130,8 +130,6 @@ class CrmLead(models.Model):
     fallo_acta = fields.Binary(string='Acta de fallo', attachment=True)
     fallo_acta_name = fields.Char(string='Nombre acta de fallo')
     # Conceptos de obra
-    doctoconcept_id = fields.Many2one('report.tipodocumento', string='Tipo de documento Catálogo de Conceptos', 
-        domain="[('module_id', '=', 'crm.lead'), ('no_docto', '=', '2')]")
     doctoconcept_nombre = fields.Many2one('documents.document', string='Nombre archivo conceptos', 
         domain="[('res_model','=','crm.lead'), ('res_id','=',id), ('file_extension','not in',['pdf', 'doc', 'docx', 'png', 'csv'])]")
     doctoconcept_inicio = fields.Integer(string = 'Fila inicio conceptos')
@@ -147,6 +145,7 @@ class CrmLead(models.Model):
     doctobasicos_inicio = fields.Integer(string = 'Fila inicio conceptos')
     concept_ids = fields.One2many('crm.concept.line', 'lead_id', string='Conceptos de trabajo')
     budget_ids = fields.One2many('crm.budget.line', 'lead_id', string='Partidas presupestales')
+    partida_ids = fields.One2many('crm.budget.total', 'lead_id', string='Todas las partidas')
     combo_ids = fields.One2many('crm.combo.line', 'lead_id', string='Combos')
     basico_ids = fields.One2many('crm.basico.line', 'lead_id', string='Básicos')
     relacion_ids = fields.One2many('crm.basico.relacion', 'lead_id', string='Relación básicos')
@@ -1008,7 +1007,7 @@ class CrmLead(models.Model):
         self.env.cr.execute('''UPDATE crm_input_line cil SET input_ex = True, input_id = t1.IDCOD
             FROM (SELECT cil.id, TRIM(cil.col1) code, MIN(pt.ID) idcod, COUNT(pt.id) num 
                     FROM crm_input_line cil LEFT JOIN product_template pt ON TRIM(cil.col1) = pt.default_code 
-                   WHERE cil.LEAD_ID = ''' + str(self.id) + ' and cil.id != ' + str(min_id[0]['min_id']) + ''' AND cil.input_ex = False GROUP BY 1, 2) as t1
+                   WHERE cil.LEAD_ID = ''' + str(self.id) + ' AND cil.id != ' + str(min_id[0]['min_id']) + ''' AND cil.input_ex = False GROUP BY 1, 2) as t1
             WHERE cil.id = t1.id AND t1.num != 0;
             UPDATE crm_input_line cil SET account_ex = true
             FROM (SELECT cil.id, TRIM(cil.col1) code, COUNT(pt.property_account_expense_id) num 
@@ -1070,14 +1069,9 @@ class CrmLead(models.Model):
 
     def action_cargar_concept(self):
         for record in self:
-            if not record.doctoconcept_id:
-                raise ValidationError('Falta agregar el tipo de archivo.')
-
             docto = self.env['documents.document'].search([('id','=',self.doctoconcept_nombre.id)])
             if not docto:
                 raise ValidationError('El documento no se encuentra cargado, favor de revisar la documentación.')
-
-            # Se permite recargar: los conceptos y partidas previos se reemplazan (ver (5,0,0) mas abajo)
 
             if docto.file_extension in ['xlsx', 'xls', 'xlsm']:
                 record.__leer_carga_concept(docto)
@@ -1087,69 +1081,56 @@ class CrmLead(models.Model):
 
     def __leer_carga_concept(self, docto):
         for record in self:
-            if not record.doctoconcept_id:
-                raise ValidationError('Falta agregar el tipo de archivo.')
-
-            for x in record.doctoconcept_id:
-                inicio = x.inicio_datos
-                for y in x.configdoc_ids:
-                    if y.no_columna != '*':
-                        if y.columna == 'codigo':
-                            cod = int(y.no_columna) - 1
-                        if y.columna == 'descripcion':
-                            desc = int(y.no_columna) - 1
-                        if y.columna == 'unidad':
-                            uni = int(y.no_columna) - 1
-                        if y.columna == 'precio_unitario':
-                            prec = int(y.no_columna) - 1
-                        if y.columna == 'cantidad':
-                            qty = int(y.no_columna) - 1
-                        if y.columna == 'importe':
-                            imp = int(y.no_columna) - 1
-
             attachment = docto.attachment_id.sudo()
             decoded_data = base64.b64decode(attachment.datas)
             workbook = openpyxl.load_workbook(filename=io.BytesIO(decoded_data), data_only=True)
             sheet = workbook.active
-            column = sheet.max_column
+            c = 1
+            colpart = 2
             registros = [(5, 0, 0)]
             partidas = [(5, 0, 0)]
-            cargar = True
-            partida = False
-            contador = 1
-            max_idx = max(cod, desc, uni, prec, qty, imp)
             for row in sheet.iter_rows(values_only=True):
-                if contador < inicio:
-                    contador += 1
-                    continue
-                if len(row) <= max_idx:
-                    row = row + (None,) * (max_idx + 1 - len(row))
                 # T0107: espacios a la izquierda/derecha en las celdas de texto rompían el enlace con las partidas; se guardan sin ellos
                 row = tuple(c.strip() if isinstance(c, str) else c for c in row)
-
-                if isinstance(row[desc], str):
-                    if row[desc].upper() == 'RESUMEN DE PARTIDAS':
-                        cargar = False
-                        partida = True
-
-                if isinstance(row[cod], str):
-                    if row[cod].upper() == 'RESUMEN DE PARTIDAS':
-                        cargar = False
-                        partida = True
-
-                if cargar:
-                    if row[cod] == row[desc] == row[uni] == row[prec] == row[qty] == row[imp] == None:
+                if c == 1:
+                    c += 1
+                else:
+                    if c == 2:
+                        c += 1
+                        if record.empresa_concursante_id.name.upper() != row[0].upper():
+                            raise ValidationError('La Empresa concursante no coincide con la empresa del archivo.')
+                        if record.nombre_interno.upper() != row[1].upper():
+                            raise ValidationError('La oportunidad no coincide con el archivo. ')
+                        if row[4] != None and row[6] == row[8] == row[10] == None:
+                            colpart = 4
+                        if row[6] != None and row[8] == row[10] == None:
+                            colpart = 6
+                        if row[8] != None and row[10] == None:
+                            colpart = 8
+                        if row[10] != None:
+                            colpart = 10
+                    
+                    if row[12] == row[13] == row[14] == row[15] == row[16] == row[17] == None:
                         _logger.warning('No se guarda la información')
                     else:
-                        registro = {'col1': row[cod], 'col2': row[desc], 'col3': row[uni], 'col4': row[qty], 'col5': row[prec], 'col6': row[imp]}
+                        registro = {'col1': row[12], 'col2': row[13], 'col3': row[14], 'col4': row[15], 'col5': row[16], 'col6': row[17], 'col8': row[colpart]}
                         registros.append((0, 0, registro))
 
-                if partida:
-                    if row[cod] != None:
-                        registro = {'col1': row[cod], 'col2': row[desc] or row[cod]}
+                        registro = {'level1': row[2], 'desc1': row[3], 'level2': row[4], 'desc2': row[5], 'level3': row[6], 'desc3': row[7], 'level4': row[8], 
+                            'desc4': row[9], 'level5': row[10], 'desc5': row[11]}
                         partidas.append((0, 0, registro))
 
-            record.write({'concept_ids': registros, 'budget_ids': partidas})
+            record.write({'concept_ids': registros, 'partida_ids': partidas})
+            
+            self.env.cr.execute('DELETE FROM crm_budget_line WHERE lead_id = ' + str(record.id) + ''';
+                INSERT INTO crm_budget_line (no_char, parent, col1, col2, create_date, write_date, lead_id, create_uid, write_uid) 
+                    SELECT *, NOW(), NOW(), ''' + str(record.id) + ', ' + str(self.env.user.id) + ', ' + str(self.env.user.id) + 
+                    ' FROM (SELECT 1, NULL, level1, desc1 FROM crm_budget_total WHERE lead_id = ''' + str(record.id) + 
+                    ' GROUP BY 1, 2, 3, 4 UNION ALL SELECT 2, level1, level2, desc2 FROM crm_budget_total WHERE lead_id = ' + str(record.id) + 
+                    ' GROUP BY 1, 2, 3, 4 UNION ALL SELECT 3, level2, level3, desc3 FROM crm_budget_total WHERE lead_id = ' + str(record.id) + 
+                    ' GROUP BY 1, 2, 3, 4 UNION ALL SELECT 4, level3, level4, desc4 FROM crm_budget_total WHERE lead_id = ' + str(record.id) + 
+                    ' GROUP BY 1, 2, 3, 4 UNION ALL SELECT 5, level4, level5, desc5 FROM crm_budget_total WHERE lead_id = ' + str(record.id) + 
+                    ' GROUP BY 1, 2, 3, 4) as t1 WHERE level1 IS NOT NULL ORDER BY 1, 2, 3; ')
 
 
     def action_genera_partidas(self):
@@ -1157,7 +1138,7 @@ class CrmLead(models.Model):
         if count == 0:
             raise UserError('Las partidas fueron cargadas correctamente, favor de continuar con la carga de conceptos')
         else:
-            self.env.cr.execute('SELECT carga_partidas(' + str(self.id)+ ', ' + str(self.env.user.id) + ')')
+            self.env.cr.execute('SELECT carga_partidas(' + str(self.id) + ', ' + str(self.env.user.id) + ', ' + str(self.empresa_concursante_id.id) + ')')
             partidas = self.env.cr.dictfetchall()
 
     def action_genera_concept(self):
@@ -1174,80 +1155,48 @@ class CrmLead(models.Model):
         encabezados_sin_match = []
         conceptos_huerfanos = 0
         for rec in self.concept_ids.filtered(lambda u: not u.concept_ex):
-            if not rec.concept_ex:
-                partida_id = self.env['crm.budget.line'].search([('lead_id','=',rec.lead_id.id), ('col1','=',rec.col1)])
-                if partida_id:
-                    partida = partida_id.budget_id.id
+            partida_id = self.env['crm.budget.line'].search([('lead_id','=',rec.lead_id.id), ('col1','=',rec.col8)])
+            if partida_id:
+                partida = partida_id.budget_id.id
 
-                if sin_partidas:
-                    budget_val = False
-                    procede = bool(rec.col1) and rec.col1 != ''
+            if sin_partidas:
+                budget_val = False
+            else:
+                budget_val = partida
+            
+            concept_id = self.env['product.template'].search([('budget_id','=',budget_val), ('default_code','=',rec.col1)])
+            if concept_id:
+                """ El producto ya existía (p.ej. de una carga previa): normalizarlo como servicio de obra para que al confirmar la OV genere su tarea. 
+                Sin esto, un producto con service_tracking distinto deja el concepto fuera de la obra. """
+                norm = {}
+                if concept_id.service_tracking != 'task_in_project':
+                    norm['service_tracking'] = 'task_in_project'
+                if not concept_id.sale_ok:
+                    norm['sale_ok'] = True
+                if norm:
+                    concept_id.write(norm)
+                if concept_id.property_account_income_id:
+                    rec.write({'concept_ex': True, 'concept_id': concept_id.id, 'account_ex': True})
                 else:
-                    # Las filas de encabezado de partida (p.ej. "PDA-001 ...") llegan mezcladas en
-                    # concept_ids sin descripción propia; se distinguen de un concepto real por eso.
-                    # Si un encabezado no encuentra su partida (texto distinto al de "Resumen de
-                    # partidas", o la fila se perdió por "inicio_datos" mal configurado), "partida"
-                    # se quedaba con el valor de la ANTERIOR y los conceptos siguientes se
-                    # atribuían en silencio a la partida equivocada (o a ninguna, si era la primera).
-                    es_encabezado_partida = not rec.col2
-                    if es_encabezado_partida and not partida_id:
-                        encabezados_sin_match.append(rec.col1)
-                        continue
-                    if not es_encabezado_partida and partida == 0:
-                        conceptos_huerfanos += 1
-                        continue
-                    budget_val = partida
-                    procede = partida != 0 and rec.col1 != '' and rec.col1 != partida_id.budget_id.code
-
-                if procede:
-                    concept_id = self.env['product.template'].search([('budget_id','=',budget_val), ('default_code','=',rec.col1)])
-                    if concept_id:
-                        # El producto ya existía (p.ej. de una carga previa): normalizarlo como
-                        # servicio de obra para que al confirmar la OV genere su tarea. Sin esto,
-                        # un producto con service_tracking distinto deja el concepto fuera de la obra.
-                        norm = {}
-                        if concept_id.service_tracking != 'task_in_project':
-                            norm['service_tracking'] = 'task_in_project'
-                        if not concept_id.sale_ok:
-                            norm['sale_ok'] = True
-                        if norm:
-                            concept_id.write(norm)
-                        if concept_id.property_account_income_id:
-                            rec.write({'concept_ex': True, 'concept_id': concept_id.id, 'account_ex': True})
-                        else:
-                            rec.write({'concept_ex': True, 'concept_id': concept_id.id})
-                    else:
-                        statement = ('''SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat, REPLACE(cil.col4, ',', '') qty,
-                                (CASE WHEN cil.col5 = '' THEN '0.0' ELSE REPLACE(cil.col5, ',', '') END)::float importe
-                            FROM crm_concept_line cil JOIN uom_uom uu ON lower(cil.col3) = lower(uu.name->>'en_US') JOIN product_category pc ON pc.NAME = 'All'
-                            WHERE cil.id = ''' + str(rec.id))
-                        self.env.cr.execute(statement)
-                        info = self.env.cr.dictfetchall()
-                        if info:
-                            insumo = self.env['product.template'].create({'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'], 'uom_po_id': info[0]['uom'],
-                                'type': 'service', 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': False, 'sale_ok': True,
-                                'taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'list_price': info[0]['importe'],
-                                'service_tracking': 'task_in_project', 'active': True, 'budget_id': budget_val})
-                            rec.write({'concept_ex': True, 'concept_id': insumo.id})
-
-        if encabezados_sin_match or conceptos_huerfanos:
-            partes = []
-            if encabezados_sin_match:
-                partes.append(
-                    'Encabezados de partida no encontrados en "Resumen de partidas": '
-                    + ', '.join(encabezados_sin_match)
-                )
-            if conceptos_huerfanos:
-                partes.append(
-                    f'{conceptos_huerfanos} concepto(s) sin ninguna partida asignada. Revise "Fila '
-                    'donde inician los datos" del tipo de documento: puede estar excluyendo el '
-                    'primer encabezado de partida del archivo.'
-                )
-            raise UserError('No se pudo generar el catálogo de conceptos:\n\n' + '\n'.join(partes))
+                    rec.write({'concept_ex': True, 'concept_id': concept_id.id})
+            else:
+                statement = ('''SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat, REPLACE(cil.col4, ',', '') qty,
+                        (CASE WHEN cil.col5 = '' THEN '0.0' ELSE REPLACE(cil.col5, ',', '') END)::float importe
+                    FROM crm_concept_line cil JOIN uom_uom uu ON lower(cil.col3) = lower(uu.name->>'en_US') JOIN product_category pc ON pc.NAME = 'All'
+                    WHERE cil.id = ''' + str(rec.id))
+                self.env.cr.execute(statement)
+                info = self.env.cr.dictfetchall()
+                if info:
+                    insumo = self.env['product.template'].create({'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'], 'uom_po_id': info[0]['uom'],
+                        'type': 'service', 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': False, 'sale_ok': True,
+                        'taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'list_price': info[0]['importe'],
+                        'service_tracking': 'task_in_project', 'active': True, 'budget_id': budget_val})
+                    rec.write({'concept_ex': True, 'concept_id': insumo.id})
 
         for rec in self.concept_ids.filtered(lambda u: u.concept_ex):
             if rec.concept_id.property_account_income_id:
                 rec.write({'account_ex': True})
+
 
     def action_autorizar_presupuesto(self):
         self.ensure_one()
@@ -1256,7 +1205,6 @@ class CrmLead(models.Model):
         if self.pe_presupuesto_subtotal <= 0:
             raise ValidationError(_('Debe capturar el Subtotal del presupuesto antes de autorizar.'))
         self.write({'pe_presupuesto_autorizado': True})
-
 
     def _check_pe_authorization_complete(self):
         self.ensure_one()
@@ -1840,6 +1788,22 @@ class crmConceptLine(models.Model):
     account_ex = fields.Boolean(string='Cuenta relacionada', default=False)
     combo_ex = fields.Boolean(string='Combo relacionado', default=False)
 
+class crmBudgetTotal(models.Model):
+    _name = 'crm.budget.total'
+    _description = 'Todas las Partidas'
+    
+    lead_id = fields.Many2one(comodel_name='crm.lead', string='Oportunidad', readonly=True)
+    level1 = fields.Char(string='Nivel 1')
+    desc1 = fields.Char(string='Descripción 1')
+    level2 = fields.Char(string='Nivel 2')
+    desc2 = fields.Char(string='Descripción 2')
+    level3 = fields.Char(string='Nivel 3')
+    desc3 = fields.Char(string='Descripción 3')
+    level4 = fields.Char(string='Nivel 4')
+    desc4 = fields.Char(string='Descripción 4')
+    level5 = fields.Char(string='Nivel 5')
+    desc5 = fields.Char(string='Descripción 5')
+
 class crmBudgetLine(models.Model):
     _name = 'crm.budget.line'
     _description = 'Partidas presupuestarias'
@@ -1849,7 +1813,7 @@ class crmBudgetLine(models.Model):
     col2 = fields.Char(string='Descripción')
     budget_id = fields.Many2one(comodel_name='product.budget.item', string='Partida')
     no_char = fields.Integer(string='No. de Caracteres')
-    parent = fields.Integer(string='Padre')
+    parent = fields.Char(string='Padre')
 
 class crmBasicoRelacion(models.Model):
     _name = 'crm.basico.relacion'
