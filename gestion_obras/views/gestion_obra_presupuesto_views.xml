@@ -26,9 +26,16 @@
         <field name="arch" type="xml">
             <form string="Presupuesto Kontrol">
                 <header>
-                    <button name="action_aprobar_base" string="Aprobar y Congelar Base" type="object" class="oe_highlight" invisible="state != 'draft'"
+                    <button name="action_enviar_revision" string="Enviar a Revisión Técnica" type="object" class="oe_highlight" invisible="state != 'draft'"
+                        groups="gestion_obras.group_tc_budget_control"/>
+                    <button name="action_aprobar_operativo" string="Aprobación Operativa" type="object" class="oe_highlight" invisible="state != 'in_revision'"
+                        groups="gestion_obras.group_tc_director_operativo"/>
+                    <button name="action_aprobar_base" string="Aprobar y Congelar Base" type="object" class="oe_highlight" invisible="state != 'op_approved'"
+                        groups="gestion_obras.group_tc_director_general"
                         confirm="Al aprobar, las partidas del presupuesto base quedan congeladas: solo se podrán ajustar con Aditivas, Deductivas u Órdenes de Cambio. ¿Continuar?"/>
-                    <field name="state" widget="statusbar"/>
+                    <button name="action_regresar_borrador" string="Regresar a Borrador" type="object" invisible="state not in ('in_revision', 'op_approved')"
+                        groups="gestion_obras.group_tc_director_operativo"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,in_revision,op_approved,approved"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -120,6 +127,7 @@
                 <field name="obra_id"/>
                 <filter name="aprobados" string="Base aprobada" domain="[('state', '=', 'approved')]"/>
                 <filter name="borrador" string="Borrador" domain="[('state', '=', 'draft')]"/>
+                <filter name="por_aprobar" string="Por aprobar" domain="[('state', 'in', ('in_revision', 'op_approved'))]"/>
             </search>
         </field>
     </record>

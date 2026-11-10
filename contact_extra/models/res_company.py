@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
 import logging
+import re
+from datetime import date
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 
 _logger = logging.getLogger(__name__)
+
+# T0113: RFC genéricos del SAT (público en general y extranjeros)
+RFC_GENERICOS = ('XAXX010101000', 'XEXX010101000')
+# Campos que Odoo escribe solo (no son una edición del usuario): no disparan la validación fiscal
+CAMPOS_SISTEMA = {'supplier_rank', 'customer_rank', 'message_bounce', 'partner_latitude', 'partner_longitude', 'date_localization', 'partner_gid', 'additional_info'}
 
 class respartnerCurp(models.Model):
     _inherit = 'res.partner'
@@ -105,10 +112,32 @@ class respartnerCurp(models.Model):
         if not vat and is_company:
             raise ValidationError('El campo de RFC es requerido para el tipo de persona capturado')
 
-        return super().create(vals_list)
+        for vals in vals_list:
+            if vals.get('vat'):
+                vals['vat'] = vals['vat'].strip().upper()
+        partners = super().create(vals_list)
+        partners._check_datos_fiscales_sat()
+        return partners
 
 
     def write(self, values):
+        if values.get('vat'):
+            values['vat'] = values['vat'].strip().upper()
+        res = self._write_contacto(values)
+        # T0113: cualquier edición del usuario exige los datos fiscales del SAT (opción B), aunque no toque RFC, CP ni régimen
+        if self._es_edicion_usuario(values):
+            self._check_datos_fiscales_sat()
+        return res
+
+    @api.model
+    def _es_edicion_usuario(self, values):
+        """ False si solo se archiva o Odoo escribe campos internos (rangos, rebotes de correo, chatter). """
+        campos = set(values) - CAMPOS_SISTEMA
+        if 'active' in campos and not values['active']:
+            return False
+        return bool(campos) and not any(f.startswith(('message_', 'activity_', 'signup_')) for f in campos)
+
+    def _write_contacto(self, values):
         if len(self) != 1: return super().write(values)
         if 'is_company' in values:
             is_company = values.get('is_company')
@@ -120,7 +149,7 @@ class respartnerCurp(models.Model):
         else:
             vat = self.vat
 
-        if is_company and not vat:
+        if is_company and not vat and self._es_edicion_usuario(values):
             raise ValidationError('El campo de RFC es requerido para el tipo de persona capturado')
 
         if any(field in values for field in ['name', 'vat', 'curp']):
@@ -138,6 +167,49 @@ class respartnerCurp(models.Model):
                         empleado.with_context(syncing_info=True).update({'l10n_mx_rfc': values.get('vat')})
         return super().write(values)
 
+
+    def _requiere_datos_fiscales(self):
+        """ Proveedores y clientes (personas físicas y morales) activos; no las direcciones o contactos hijos de una empresa. """
+        self.ensure_one()
+        return (self.is_supplier or self.is_customer) and self.active and not self.parent_id
+
+    @api.model
+    def _rfc_valido_sat(self, rfc, es_moral):
+        """ Estructura del SAT: moral 3 letras y física 4 + fecha AAMMDD válida + 3 de homoclave. """
+        if rfc in RFC_GENERICOS:
+            return True
+        coincide = re.fullmatch((r'[A-ZÑ&]{3}' if es_moral else r'[A-ZÑ&]{4}') + r'(\d{2})(\d{2})(\d{2})[A-Z0-9]{3}', rfc or '')
+        if not coincide:
+            return False
+        anio, mes, dia = (int(x) for x in coincide.groups())
+        for siglo in (1900, 2000):
+            try:
+                date(siglo + anio, mes, dia)
+                return True
+            except ValueError:
+                continue
+        return False
+
+    def _check_datos_fiscales_sat(self):
+        for partner in self.filtered(lambda p: p._requiere_datos_fiscales()):
+            es_moral = partner.is_company
+            faltantes = []
+            rfc = partner.vat or ''
+            if not rfc:
+                faltantes.append('RFC')
+            elif not self._rfc_valido_sat(rfc, es_moral):
+                faltantes.append(f'RFC válido: {rfc} no cumple el formato del SAT para persona {"moral (12" if es_moral else "física (13"} caracteres: '
+                                 f'{"3" if es_moral else "4"} letras + fecha AAMMDD + 3 de homoclave, en mayúsculas y sin espacios)')
+            cp = (partner.zip or '').strip()
+            if not cp:
+                faltantes.append('Código postal')
+            elif (not partner.country_id or partner.country_id.code == 'MX') and not re.fullmatch(r'\d{5}', cp):
+                faltantes.append(f'Código postal válido: {cp} debe tener 5 dígitos')
+            if not partner.l10n_mx_edi_fiscal_regime:
+                faltantes.append('Régimen fiscal')
+            if faltantes:
+                raise ValidationError(_('No se puede guardar %(contacto)s (persona %(tipo)s). Para proveedores y clientes el SAT requiere:\n- %(faltantes)s',
+                                        contacto=partner.display_name, tipo='moral' if es_moral else 'física', faltantes='\n- '.join(faltantes)))
 
     @api.depends('vat', 'company_id', 'company_registry')
     def _compute_same_vat_partner_id(self):

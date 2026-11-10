@@ -37,9 +37,16 @@ class ExpedienteDigital(models.Model):
     docto_id = fields.Many2one('project.docsrequeridos', string='Documento', required=True, domain="[('model_id.model', '=', 'res.partner')]")
     archivo = fields.Binary(string='Archivo', attachment=True)
     archivo_nombre = fields.Char(string='Nombre del archivo')
+    # Como en el CRM (¿Generado?), pero se marca solo al subir el archivo y se desmarca si se quita
+    generado = fields.Boolean(string='Generado', compute='_compute_generado', store=True)
     fecha_documento = fields.Date(string='Fecha del documento')
     vigencia = fields.Date(string='Vigencia', compute='_compute_vigencia', store=True,
         help='Fecha del documento más el intervalo y tiempo definidos en el catálogo de documentos.')
+
+    @api.depends('archivo')
+    def _compute_generado(self):
+        for rec in self:
+            rec.generado = bool(rec.archivo)
 
     @api.depends('fecha_documento', 'docto_id.intervalo', 'docto_id.tiempo')
     def _compute_vigencia(self):

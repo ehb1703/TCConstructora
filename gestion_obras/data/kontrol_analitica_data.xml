@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- T0110: el renombre del plan Project a N1 OBRA lo hace hooks.py (adoptar_kontrol) (su xml_id es noupdate en analytic) -->
+        <!-- N2..N5: planes raíz independientes; cada uno tiene su propia columna analítica y pueden usarse los 5 a la vez -->
+        <record id="plan_n2_frente" model="account.analytic.plan">
+            <field name="name">N2 FRENTE</field>
+            <field name="description">Segmentación operativa de la obra</field>
+        </record>
+        <record id="plan_n3_partida" model="account.analytic.plan">
+            <field name="name">N3 PARTIDA</field>
+            <field name="description">Unidad mínima de control de costos</field>
+        </record>
+        <record id="plan_n4_concepto" model="account.analytic.plan">
+            <field name="name">N4 CONCEPTO</field>
+            <field name="description">Conceptos del catálogo</field>
+        </record>
+        <record id="plan_n5_insumo" model="account.analytic.plan">
+            <field name="name">N5 INSUMO</field>
+            <field name="description">Insumos de cada concepto</field>
+        </record>
+
+        <!-- Solo N1 es obligatorio: pedido de compra, factura de proveedor, partes de horas y almacén -->
+        <record id="regla_n1_purchase_order" model="account.analytic.applicability">
+            <field name="analytic_plan_id" ref="analytic.analytic_plan_projects"/>
+            <field name="business_domain">purchase_order</field>
+            <field name="applicability">mandatory</field>
+        </record>
+        <record id="regla_n1_bill" model="account.analytic.applicability">
+            <field name="analytic_plan_id" ref="analytic.analytic_plan_projects"/>
+            <field name="business_domain">bill</field>
+            <field name="applicability">mandatory</field>
+        </record>
+        <record id="regla_n1_timesheet" model="account.analytic.applicability">
+            <field name="analytic_plan_id" ref="analytic.analytic_plan_projects"/>
+            <field name="business_domain">timesheet</field>
+            <field name="applicability">mandatory</field>
+        </record>
+        <record id="regla_n1_stock_picking" model="account.analytic.applicability">
+            <field name="analytic_plan_id" ref="analytic.analytic_plan_projects"/>
+            <field name="business_domain">stock_picking</field>
+            <field name="applicability">mandatory</field>
+        </record>
+        <record id="regla_n1_stock_move" model="account.analytic.applicability">
+            <field name="analytic_plan_id" ref="analytic.analytic_plan_projects"/>
+            <field name="business_domain">stock_move</field>
+            <field name="applicability">mandatory</field>
+        </record>
+    </data>
+</odoo>
