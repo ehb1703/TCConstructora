@@ -62,6 +62,15 @@ BEGIN
 END;
     $function$ ;   ''')
 
+    cr.execute('''INSERT INTO project_blocks (create_uid, write_uid, create_date, write_date, active, block_id)
+SELECT create_uid, write_uid, now(), now(), true, id from project_bloque pb;
+
+UPDATE project_project pp SET block_id = t1.id
+  FROM (SELECT pp.id clid, pb1.id 
+          FROM project_bloque pb JOIN crm_lead cl ON pb.id = cl.bloque_id 
+                                 JOIN project_project pp ON cl.id = pp.lead_id JOIN project_blocks pb1 ON pb.id = pb1.id) as t1
+ WHERE pp.id = t1.clid; ''')
+
 
 def migrate(cr, version):
     if not version:
