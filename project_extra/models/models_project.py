@@ -1,14 +1,51 @@
 # -*- coding: utf-8 -*-
-import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 from odoo.tools import config
+import ast
+import logging
 
 _logger = logging.getLogger(__name__)
+
+class projectBlocks(models.Model):
+    _name = 'project.blocks'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'block_id'
+    _description = 'Bloques del proyecto'
+
+    def _compute_project_count(self, count_field='project_count'):
+        count_fields = {fname for fname in self._fields if 'count' in fname}
+        if count_field not in count_fields:
+            raise ValueError(f"Parameter 'count_field' can only be one of {count_fields}, got {count_field} instead.")
+        domain = [('block_id', 'in', self.ids)] #, ('display_in_project', '=', True)
+        tasks_count_by_project = dict(self.env['project.project'].with_context(active_test=any(project.active for project in self))._read_group(
+            domain, ['block_id'], ['__count']))
+        for project in self:
+            project.update({count_field: tasks_count_by_project.get(project, 0)})
+
+    block_id = fields.Many2one('project.bloque', string='Bloque', readonly=True, copy=False)
+    label_proj = fields.Char(string='Use Project as', default=lambda s: s.env._('Contrato'), translate=True, help='Name used to refer to the project of your block')
+    project_ids = fields.One2many(comodel_name='project.project', inverse_name='block_id', string='Proyecto')
+    project_count = fields.Integer(compute='_compute_project_count', string='Contratos')
+    active = fields.Boolean(default=True)
+
+    def action_view_tasks(self):
+        action = self.env['ir.actions.act_window'].with_context(active_id=self.id)._for_xml_id('open_view_project_filter')
+        #action['display_name'] = self.block_id.name
+        context = action['context'].replace('active_id', str(self.id))
+        context = ast.literal_eval(context)
+        context.update({
+            'create': self.active,
+            'active_test': self.active
+            })
+        action['context'] = context
+        return action
+
 
 class projectObra(models.Model):
     _inherit = 'project.project'
     
+    block_id = fields.Many2one('project.blocks', string='Bloque', readonly=True)
     lead_id = fields.Many2one('crm.lead', string='Oportunidad/Licitación', readonly=True, copy=False)
     orden_trabajo = fields.Char(string='Orden de trabajo', readonly=True)
     proj_fecha_adjudicacion = fields.Date(string='Fecha de adjudicación', readonly=True)

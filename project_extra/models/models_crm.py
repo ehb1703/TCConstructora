@@ -1110,7 +1110,7 @@ class CrmLead(models.Model):
                         if row[10] != None:
                             colpart = 10
                     
-                    if row[12] == row[13] == row[14] == row[15] == row[16] == row[17] == None:
+                    if row[12] == row[13] == row[14] == row[15] == None:
                         _logger.warning('No se guarda la información')
                     else:
                         registro = {'col1': row[12], 'col2': row[13], 'col3': row[14], 'col4': row[15], 'col5': row[16], 'col6': row[17], 'col8': row[colpart]}
