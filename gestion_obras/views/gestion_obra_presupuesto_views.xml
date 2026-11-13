@@ -127,6 +127,7 @@
                 <field name="obra_id"/>
                 <filter name="aprobados" string="Base aprobada" domain="[('state', '=', 'approved')]"/>
                 <filter name="borrador" string="Borrador" domain="[('state', '=', 'draft')]"/>
+                <filter name="por_aprobar" string="Por aprobar" domain="[('state', 'in', ('in_revision', 'op_approved'))]"/>
             </search>
         </field>
     </record>
@@ -141,6 +142,8 @@
         </field>
     </record>
 
-    <menuitem id="menu_gestion_obra_presupuesto" name="Presupuestos Kontrol" parent="menu_gestion_obras_root" action="action_gestion_obra_presupuesto" sequence="20"/>
+    <menuitem id="menu_presupuestos_gestion_obra" name="Presupuestos" parent="menu_gestion_obras_root" sequence="20">
+        <menuitem id="menu_gestion_obra_presupuesto" name="Presupuesto Kontrol" action="action_gestion_obra_presupuesto" sequence="20"/>
+    </menuitem>
 
 </odoo>
