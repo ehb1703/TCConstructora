@@ -389,13 +389,13 @@ class ResPartnerTipoInsumo(models.Model):
     tipo_contratista = fields.Many2one('partner.contractor.type', string='Tipo de contratista', tracking=True)
     expediente_digital = fields.One2many('partner.expediente.digital', 'partner_id', string='Expediente digital')
     expediente_completo = fields.Boolean(string='Expediente completo', compute='_compute_expediente_completo', store=True,
-        help='Se marca cuando todos los documentos requeridos del tipo de contratista tienen archivo cargado.')
+        help='Se marca cuando todos los documentos requeridos del tipo de contratista están generados (con archivo cargado).')
 
-    @api.depends('tipo_contratista', 'expediente_digital.requerido', 'expediente_digital.archivo')
+    @api.depends('tipo_contratista', 'expediente_digital.requerido', 'expediente_digital.generado')
     def _compute_expediente_completo(self):
         for rec in self:
             requeridos = rec.expediente_digital.filtered('requerido')
-            rec.expediente_completo = bool(rec.tipo_contratista) and all(requeridos.mapped('archivo'))
+            rec.expediente_completo = bool(rec.tipo_contratista) and all(requeridos.mapped('generado'))
 
     def _sincronizar_expediente(self):
         """Alinea las líneas del expediente con el tipo de contratista: agrega los documentos que faltan y quita los que ya no aplican y no tienen archivo.

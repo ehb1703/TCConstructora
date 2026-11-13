@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_presupuesto_base" model="ir.actions.act_window">
+        <field name="name">Presupuesto Base</field>
+        <field name="res_model">gestion.obra.presupuesto.base</field>
+        <field name="view_mode">kanban,list,form</field>
+    </record>
+
+    <record id="view_gestion_obra_presupuesto_base_list" model="ir.ui.view">
+        <field name="name">view.gestion.obra.presupuesto.base.list</field>
+        <field name="model">gestion.obra.presupuesto.base</field>
+        <field name="arch" type="xml">
+            <list string="Presupuesto Base">
+                <field name="lead_id"/>
+                <field name="presupuesto"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_gestion_obra_presupuesto_base_kanban" model="ir.ui.view">
+        <field name="name">view.gestion.obra.presupuesto.base.kanban</field>
+        <field name="model">gestion.obra.presupuesto.base</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" records_draggable="0" group_create="0" group_delete="0" group_edit="0" quick_create="0">
+                <templates>
+                    <t t-name="card">
+                        <field name="lead_id" class="fw-bold"/>
+                        <footer>
+                            <field name="presupuesto" widget="monetary"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_gestion_obra_presupuesto_base_form" model="ir.ui.view">
+        <field name="name">view.gestion.obra.presupuesto.base.form</field>
+        <field name="model">gestion.obra.presupuesto.base</field>
+        <field name="arch" type="xml">
+            <form string="Presupuesto Base">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="lead_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                        <field name="presupuesto"/>
+                    </group>
+                    <notebook>
+                        <page name="informacion" string="Información">
+                            <group>
+                                <div class="oe_button_box">
+                                    <button class="oe_stat_button" icon="fa-upload" name="action_cargar_concept" string="Cargar" type="object" confirm="Se reemplazará el contenido de conceptos por el del documento, ¿continuar?"/>
+                                    <button class="oe_stat_button" icon="fa-upload" name="action_genera_partidas" string="Partidas" type="object" invisible="not concept_ids"/>
+                                    <button class="oe_stat_button" icon="fa-upload" name="action_genera_concept" string="Conceptos" type="object" invisible="not concept_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
+                                </div>
+                            </group>
+                            <group>
+                                <group string="Partidas presupuestales">
+                                    <field name="budget_ids" nolabel="1" widget="one2many_list">                        
+                                        <list delete="0" create="0" edit="0" context="{'default_base_id': id}">
+                                            <field name="col1"/>
+                                            <field name="col2"/>
+                                            <field name="budget_id"/>
+                                        </list>
+                                        <form><p>Información no disponible a través de esta vista</p></form>
+                                    </field>
+                                </group>
+                                <group string="Conceptos de trabajo">
+                                    <field name="concept_ids" nolabel="1" widget="one2many_list">                        
+                                        <list delete="0" create="0" edit="0" context="{'default_base_id': id}">
+                                            <field name="col1"/>
+                                            <field name="col2"/>
+                                            <field name="col3"/>
+                                            <field name="col4"/>
+                                            <field name="col5"/>
+                                            <field name="concept_ex"/>
+                                            <field name="account_ex"/>
+                                            <field name="combo_ex"/>
+                                        </list>
+                                        <form><p>Información no disponible a través de esta vista</p></form>
+                                    </field>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_presupuesto_base" name="Presupuesto Base" parent="menu_presupuestos_gestion_obra" action="action_presupuesto_base" sequence="10"/>
+</odoo>
