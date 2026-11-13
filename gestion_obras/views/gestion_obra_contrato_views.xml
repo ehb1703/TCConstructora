@@ -46,9 +46,10 @@
         <field name="arch" type="xml">
             <form string="Contrato">
                 <header>
-                    <button name="action_solicitar_aprobacion" string="Solicitar Aprobación" type="object" class="oe_highlight" invisible="state != 'draft'"/>
-                    <button name="action_activar_contrato" string="Activar Contrato" type="object" class="oe_highlight" invisible="state != 'in_approval'"
-                        groups="gestion_obras.group_activar_contrato"/>
+                    <button name="action_solicitar_aprobacion" string="Solicitar Vo.Bo. de Dirección" type="object" class="oe_highlight" invisible="state != 'draft'"
+                        groups="gestion_obras.group_tc_contracts_manager"/>
+                    <button name="action_activar_contrato" string="Otorgar Vo.Bo. (Activar Contrato)" type="object" class="oe_highlight" invisible="state != 'in_approval'"
+                        groups="gestion_obras.group_tc_director_operativo"/>
                     <button name="action_finiquitar" string="Finiquitar" type="object" invisible="state != 'active'"/>
                     <button name="action_cancelar" string="Cancelar" type="object" invisible="state not in ('draft', 'in_approval')"/>
                     <button name="action_borrador" string="Regresar a Borrador" type="object" invisible="state != 'cancel'"/>
@@ -99,13 +100,14 @@
                                 <field name="expediente_completo"/>
                             </group>
                             <field name="expediente_digital" readonly="1" nolabel="1">
-                                <list decoration-success="requerido and archivo" decoration-danger="requerido and not archivo">
+                                <list decoration-success="requerido and generado" decoration-danger="requerido and not generado">
                                     <field name="requerido"/>
-                                    <field name="docto_id"/>
+                                    <field name="docto_id" string="Documento"/>
                                     <field name="archivo" filename="archivo_nombre" widget="binary"/>
                                     <field name="archivo_nombre" column_invisible="1"/>
                                     <field name="fecha_documento"/>
                                     <field name="vigencia"/>
+                                    <field name="generado" string="¿Generado?"/>
                                 </list>
                             </field>
                         </page>

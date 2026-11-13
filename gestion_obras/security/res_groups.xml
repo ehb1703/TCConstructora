@@ -6,30 +6,45 @@
     </record>
 
     <record id="group_gestion_obras_user" model="res.groups">
-        <field name="name">Usuario</field>
+        <field name="name">Consulta</field>
         <field name="category_id" ref="module_category_gestion_obras"/>
         <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
         <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+        <field name="comment">Acceso al menú Gestión de Obras en solo lectura. Los niveles de la matriz de autorizaciones lo incluyen.</field>
     </record>
 
-    <record id="group_activar_contrato" model="res.groups">
-        <field name="name">Puede activar contratos</field>
-        <field name="category_id" ref="module_category_gestion_obras"/>
-        <field name="implied_ids" eval="[(4, ref('group_gestion_obras_user'))]"/>
-        <field name="comment">Autoriza pasar un contrato de En Aprobación a Activo / Firmado (Operaciones).</field>
+    <!-- T0120: Matriz jerárquica de autorizaciones. Cada nivel hereda los permisos del nivel inferior. -->
+    <record id="category_tc_security" model="ir.module.category">
+        <field name="name">Constructor TC: Control de Obras y Finanzas</field>
+        <field name="description">Gobierno jerárquico de autorizaciones y segregación de funciones para Grupo Constructor TC</field>
+        <field name="sequence">10</field>
     </record>
 
-    <record id="group_aprobacion_tecnica" model="res.groups">
-        <field name="name">Aprobación técnica de modificaciones</field>
-        <field name="category_id" ref="module_category_gestion_obras"/>
+    <record id="group_tc_budget_control" model="res.groups">
+        <field name="name">Nivel 4: Control Presupuestal y Cambios</field>
+        <field name="category_id" ref="category_tc_security"/>
         <field name="implied_ids" eval="[(4, ref('group_gestion_obras_user'))]"/>
-        <field name="comment">Primera autorización de aditivas, deductivas, extraordinarios y órdenes de cambio (área técnica).</field>
+        <field name="comment">Captura de presupuestos base y Kontrol, registro y revisión técnica de aditivas, deductivas y órdenes de cambio.</field>
     </record>
 
-    <record id="group_aprobacion_direccion" model="res.groups">
-        <field name="name">Aprobación de dirección de modificaciones</field>
-        <field name="category_id" ref="module_category_gestion_obras"/>
-        <field name="implied_ids" eval="[(4, ref('group_gestion_obras_user'))]"/>
-        <field name="comment">Autorización final: al aprobarla, la modificación se aplica al Presupuesto Control.</field>
+    <record id="group_tc_contracts_manager" model="res.groups">
+        <field name="name">Nivel 3: Gerencia de Operaciones y Contratos</field>
+        <field name="category_id" ref="category_tc_security"/>
+        <field name="implied_ids" eval="[(4, ref('group_tc_budget_control'))]"/>
+        <field name="comment">Emisión y formalización de contratos a subcontratistas con requerimiento de Vo.Bo. de Dirección.</field>
+    </record>
+
+    <record id="group_tc_director_operativo" model="res.groups">
+        <field name="name">Nivel 2: Director Operativo</field>
+        <field name="category_id" ref="category_tc_security"/>
+        <field name="implied_ids" eval="[(4, ref('group_tc_contracts_manager'))]"/>
+        <field name="comment">Aprobación operativa de presupuestos, aditivas, deductivas, órdenes de cambio y Vo.Bo. de contratos. Pagos solo en lectura.</field>
+    </record>
+
+    <record id="group_tc_director_general" model="res.groups">
+        <field name="name">Nivel 1: Director General</field>
+        <field name="category_id" ref="category_tc_security"/>
+        <field name="implied_ids" eval="[(4, ref('group_tc_director_operativo')), (4, ref('account.group_account_user')), (4, ref('account.group_account_manager'))]"/>
+        <field name="comment">Aprobación definitiva y congelamiento del presupuesto base, variaciones extraordinarias y ordenación exclusiva de pagos.</field>
     </record>
 </odoo>
