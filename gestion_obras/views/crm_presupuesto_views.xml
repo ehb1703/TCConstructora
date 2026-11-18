@@ -44,7 +44,6 @@
             <form string="Presupuesto Base" create="0">
                 <header>
                     <button name="action_cargar_presupuesto" type="object" string="Cargar" class="btn-primary" invisible="state != 'draft'"/>
-                    <button name="action_autorizar_presupuesto" type="object" string="Autorizar" class="btn-primary" invisible="state != 'draft'"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
