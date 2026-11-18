@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+from .seguridad import NIVEL_1, NIVEL_2, NIVEL_4, exigir_nivel
 
 PARTIDA_EXTRAORDINARIOS = 'EXTRAORDINARIOS'
 CAMPOS_BASE_PARTIDA = {'presupuesto_id', 'name', 'es_extraordinario', 'product_id', 'cantidad_base', 'precio_unitario_base'}
@@ -16,7 +17,9 @@ class GestionObraPresupuesto(models.Model):
     obra_id = fields.Many2one('account.analytic.account', string='Obra / Proyecto', required=True, tracking=True)
     company_id = fields.Many2one('res.company', string='Empresa', required=True, default=lambda self: self.env.company)
     currency_id = fields.Many2one(related='company_id.currency_id', string='Moneda')
-    state = fields.Selection([('draft', 'Borrador'), ('approved', 'Base Aprobada (Congelada)')], string='Estatus', default='draft', required=True, tracking=True)
+    # T0120: N4 captura y envía a revisión; N2 aprueba en lo operativo; N1 aprueba en definitiva y congela la base
+    state = fields.Selection([('draft', 'Borrador'), ('in_revision', 'En Revisión Técnica'), ('op_approved', 'Aprobación Operativa'),
+        ('approved', 'Base Aprobada (Congelada)')], string='Estatus', default='draft', required=True, tracking=True)
     fecha_congelamiento = fields.Datetime(string='Fecha de congelamiento', readonly=True, copy=False)
     partida_ids = fields.One2many('gestion.obra.partida', 'presupuesto_id', string='Partidas')
     modificacion_ids = fields.One2many('gestion.obra.modificacion', 'presupuesto_id', string='Órdenes de Cambio / Aditivas')
@@ -64,9 +67,15 @@ class GestionObraPresupuesto(models.Model):
         for rec in self:
             rec.modificacion_count = len(rec.modificacion_ids)
 
+    # Nivel que exige cada estado destino: ni desde el kanban ni por código se salta la matriz de autorizaciones
+    NIVEL_POR_ESTADO = {'in_revision': (NIVEL_4, 'enviar el presupuesto a revisión técnica'), 'op_approved': (NIVEL_2, 'dar la aprobación operativa del presupuesto'),
+                        'approved': (NIVEL_1, 'aprobar y congelar el presupuesto base'), 'draft': (NIVEL_2, 'regresar el presupuesto a Borrador')}
+
     def write(self, vals):
         if {'obra_id', 'company_id'} & set(vals) and any(rec.state == 'approved' for rec in self):
             raise UserError(_('La obra de un presupuesto con la base congelada no se puede cambiar.'))
+        if vals.get('state') in self.NIVEL_POR_ESTADO and any(rec.state != vals['state'] for rec in self):
+            exigir_nivel(self.env, *self.NIVEL_POR_ESTADO[vals['state']])
         return super().write(vals)
 
     def unlink(self):
@@ -74,14 +83,34 @@ class GestionObraPresupuesto(models.Model):
             raise UserError(_('Un presupuesto con la base congelada no se puede eliminar.'))
         return super().unlink()
 
-    def action_aprobar_base(self):
+    def action_enviar_revision(self):
         for rec in self:
             if rec.state != 'draft':
-                raise UserError(_('El presupuesto ya tiene la base aprobada.'))
+                raise UserError(_('Solo se envía a revisión técnica un presupuesto en Borrador.'))
+            if not rec.partida_ids.filtered(lambda p: not p.es_extraordinario):
+                raise UserError(_('Capture al menos una partida antes de enviar el presupuesto a revisión.'))
+            rec.state = 'in_revision'
+
+    def action_aprobar_operativo(self):
+        for rec in self:
+            if rec.state != 'in_revision':
+                raise UserError(_('Solo se aprueba en lo operativo un presupuesto En Revisión Técnica.'))
+            rec.state = 'op_approved'
+
+    def action_aprobar_base(self):
+        for rec in self:
+            if rec.state != 'op_approved':
+                raise UserError(_('El presupuesto necesita la Aprobación Operativa (Nivel 2) antes de la aprobación definitiva.'))
             if not rec.partida_ids.filtered(lambda p: not p.es_extraordinario):
                 raise UserError(_('Capture al menos una partida antes de aprobar el presupuesto base.'))
             rec.write({'state': 'approved', 'fecha_congelamiento': fields.Datetime.now()})
             rec._partida_extraordinarios()
+
+    def action_regresar_borrador(self):
+        for rec in self:
+            if rec.state not in ('in_revision', 'op_approved'):
+                raise UserError(_('Solo regresa a Borrador un presupuesto En Revisión o con Aprobación Operativa; la base congelada solo cambia con modificaciones.'))
+            rec.state = 'draft'
 
     def _partida_extraordinarios(self):
         # Partida obligatoria donde se alojan los conceptos e insumos no previstos. Se abre al congelar la base.

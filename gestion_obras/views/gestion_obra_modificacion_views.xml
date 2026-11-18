@@ -25,13 +25,16 @@
         <field name="arch" type="xml">
             <form string="Modificación presupuestal">
                 <header>
-                    <button name="action_enviar" string="Enviar a Aprobación" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_enviar" string="Enviar a Revisión Técnica" type="object" class="oe_highlight" invisible="state != 'draft'"
+                        groups="gestion_obras.group_tc_budget_control"/>
                     <button name="action_aprobar_tecnico" string="Aprobar (Técnica)" type="object" class="oe_highlight" invisible="state != 'pending_tech'"
-                        groups="gestion_obras.group_aprobacion_tecnica"/>
-                    <button name="action_aprobar_direccion" string="Autorizar y Aplicar (Dirección)" type="object" class="oe_highlight" invisible="state != 'pending_dir'"
-                        groups="gestion_obras.group_aprobacion_direccion"/>
-                    <button name="action_rechazar" string="Rechazar" type="object" invisible="state != 'pending_tech'" groups="gestion_obras.group_aprobacion_tecnica"/>
-                    <button name="action_rechazar" string="Rechazar" type="object" invisible="state != 'pending_dir'" groups="gestion_obras.group_aprobacion_direccion"/>
+                        groups="gestion_obras.group_tc_budget_control"/>
+                    <button name="action_aprobar_direccion" string="Autorizar y Aplicar (Dirección)" type="object" class="oe_highlight" invisible="state != 'pending_dir' or tipo_movimiento == 'extraordinario'"
+                        groups="gestion_obras.group_tc_director_operativo"/>
+                    <button name="action_aprobar_direccion" string="Autorizar Extraordinario (Director General)" type="object" class="oe_highlight"
+                        invisible="state != 'pending_dir' or tipo_movimiento != 'extraordinario'" groups="gestion_obras.group_tc_director_general"/>
+                    <button name="action_rechazar" string="Rechazar" type="object" invisible="state != 'pending_tech'" groups="gestion_obras.group_tc_budget_control"/>
+                    <button name="action_rechazar" string="Rechazar" type="object" invisible="state != 'pending_dir'" groups="gestion_obras.group_tc_director_operativo"/>
                     <button name="action_borrador" string="Regresar a Borrador" type="object" invisible="state != 'rejected'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,pending_tech,pending_dir,approved"/>
                 </header>

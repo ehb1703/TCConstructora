@@ -278,7 +278,7 @@
                     </group>
                 </page>
 
-                <page string="Insumos" invisible="origen_name != 'Público'">
+                <!--page string="Insumos" invisible="origen_name != 'Público'">
                     <group>
                         <field name="no_cotizar_insumos" widget="boolean_toggle" invisible="1"/>
                     </group>
@@ -310,7 +310,7 @@
                         </list>
                         <form><p>Información no disponible a través de esta vista</p></form>
                     </field>
-                </page>
+                </page-->
 
                 <page string="Propuestas">
                     <notebook>
@@ -369,7 +369,9 @@
                             <div class="alert alert-warning" role="alert" invisible="pe_presupuesto_autorizado or pe_presupuesto_subtotal == 0 or not pe_presupuesto_revisado">
                                 <strong>Pendiente de autorización</strong> - Use el botón "Autorizar" en la parte superior para autorizar el presupuesto.
                             </div>
-
+                            <group string="Presupuesto" invisible="not pe_presupuesto_autorizado">
+                                <field name="doctoconcept_nombre" string="Presupuesto autorizado (plantilla)" options="{'no_create':True, 'no_edit':True}"/>
+                            </group>
                             <group string="Documentos Requeridos">
                                 <field name="pe_doc_line_ids" nolabel="1">
                                     <list editable="bottom" delete="0" create="0">
@@ -478,35 +480,31 @@
                 </page>
 
                 <page string="Ganado">
-                    <group invisible="stage_name != 'Ganado'">                        
+                    <!--group invisible="stage_name != 'Ganado'">                        
                         <group string="Conceptos">
-                            <field name="doctoconcept_nombre" string="Nombre" options="{'no_create':True, 'no_edit':True}"/>
-                            <!--field name="doctoconcept_inicio" string="Fila de inicio"/-->
+                            <field name="doctoconcept_inicio" string="Fila de inicio"/>
                         </group>
                         <group string="Matriz">
                             <field name="doctomatriz_id" string="Tipo" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                             <field name="doctomatriz_nombre" string="Nombre" options="{'no_create':True, 'no_edit':True}"/>
-                            <!--field name="doctomatriz_inicio" string="Fila de inicio"/-->
+                            <field name="doctomatriz_inicio" string="Fila de inicio"/>
                         </group>
-                        <!--group string="Basicos">
+                        <group string="Basicos">
                             <group>
                                 <field name="doctobasicos_id" string="Tipo" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                 <field name="doctobasicos_nombre" string="Nombre" options="{'no_create':True, 'no_edit':True}"/>
                                 <field name="doctobasicos_inicio" string="Fila de inicio"/>
                             </group>
-                        </group-->
+                        </group>
                     </group>
                     <group invisible="stage_name != 'Ganado'">
                         <div class="oe_button_box">
-                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_concept" string="Cargar" type="object" confirm="Se reemplazará el contenido de conceptos por el del documento, ¿continuar?"/>
-                            <button class="oe_stat_button" icon="fa-upload" name="action_genera_partidas" string="Partidas" type="object" invisible="not concept_ids"/>
-                            <button class="oe_stat_button" icon="fa-upload" name="action_genera_concept" string="Conceptos" type="object" invisible="not concept_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
-                            <!--button class="oe_stat_button" icon="fa-upload" name="action_cargar_combo" string="Cargar Matriz" type="object" invisible="combo_ids"/>
+                            <button class="oe_stat_button" icon="fa-upload" name="action_cargar_combo" string="Cargar Matriz" type="object" invisible="combo_ids"/>
                             <button class="oe_stat_button" icon="fa-upload" name="action_cargar_basicos" string="Cargar Basicos" type="object" invisible="basico_ids"/>
                             <button class="oe_stat_button" icon="fa-upload" name="action_generar_basicos" string="Generar Basicos" type="object" invisible="not basico_ids"/>
-                            <button class="oe_stat_button" icon="fa-upload" name="action_generar_combo" string="Generar Matriz" type="object" invisible="not combo_ids"/-->
+                            <button class="oe_stat_button" icon="fa-upload" name="action_generar_combo" string="Generar Matriz" type="object" invisible="not combo_ids"/>
                         </div>
-                    </group>
+                    </group-->
                     <notebook>
                         <page string="Información">
                             <field name="contrato_documento_name" invisible="1"/>
@@ -542,7 +540,7 @@
                                 </group>
                             </group>
                         </page>
-                        <page string="Conceptos de Obra">
+                        <!--page string="Conceptos de Obra">
                             <group>
                                 <group string="Partidas presupuestales">
                                     <field name="budget_ids" nolabel="1" widget="one2many_list">                        
@@ -570,7 +568,7 @@
                                     </field>
                                 </group>
                             </group>
-                        </page>
+                        </page-->
                         <!--page string="Matriz">
                             <group>
                                 <field name="combo_ids" nolabel="1" widget="one2many_list">                        

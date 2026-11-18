@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+from .seguridad import NIVEL_2, NIVEL_3, exigir_nivel
 
 
 class GestionObraContrato(models.Model):
@@ -23,7 +24,8 @@ class GestionObraContrato(models.Model):
     porcentaje_retencion = fields.Float(string='% Retención Garantía', default=5.0, tracking=True)
     expediente_completo = fields.Boolean(related='partner_id.expediente_completo', string='Expediente Validado')
     expediente_digital = fields.One2many(related='partner_id.expediente_digital', string='Expediente digital')
-    state = fields.Selection([('draft', 'Borrador'), ('in_approval', 'En Aprobación Operaciones'), ('active', 'Activo / Firmado'),
+    # T0120: N3 emite y solicita el Vo.Bo.; N2 o N1 lo otorgan. Sin Vo.Bo. el contrato no se firma ni pasa a estimaciones.
+    state = fields.Selection([('draft', 'Borrador'), ('in_approval', 'En espera de Vo.Bo. de Dirección'), ('active', 'Activo / Firmado'),
         ('done', 'Finiquitado'), ('cancel', 'Cancelado')], string='Estatus', default='draft', required=True, tracking=True,
         group_expand='_group_expand_states')
 
@@ -60,8 +62,10 @@ class GestionObraContrato(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        if vals.get('state') == 'active' and not self.env.su and not self.env.user.has_group('gestion_obras.group_activar_contrato'):
-            raise UserError(_('No tiene permiso para activar contratos.'))
+        if vals.get('state') == 'in_approval':
+            exigir_nivel(self.env, NIVEL_3, 'solicitar el Vo.Bo. de Dirección')
+        if vals.get('state') == 'active':
+            exigir_nivel(self.env, NIVEL_2, 'otorgar el Vo.Bo. de Dirección al contrato')
         return super().write(vals)
 
     def unlink(self):
@@ -72,7 +76,7 @@ class GestionObraContrato(models.Model):
     def action_solicitar_aprobacion(self):
         for rec in self:
             if rec.state != 'draft':
-                raise UserError(_('Solo se puede solicitar aprobación de un contrato en Borrador.'))
+                raise UserError(_('Solo se puede solicitar el Vo.Bo. de un contrato en Borrador.'))
             if not rec.partner_id.expediente_completo:
                 raise ValidationError(_('No se puede enviar a aprobación. El expediente digital del contratista está incompleto.'))
             rec.state = 'in_approval'
@@ -80,7 +84,7 @@ class GestionObraContrato(models.Model):
     def action_activar_contrato(self):
         for rec in self:
             if rec.state != 'in_approval':
-                raise UserError(_('Solo se puede activar un contrato En Aprobación.'))
+                raise UserError(_('Solo se otorga el Vo.Bo. a un contrato En espera de Vo.Bo. de Dirección.'))
             rec.state = 'active'
 
     def action_finiquitar(self):
@@ -92,7 +96,7 @@ class GestionObraContrato(models.Model):
     def action_cancelar(self):
         for rec in self:
             if rec.state not in ('draft', 'in_approval'):
-                raise UserError(_('Solo se puede cancelar un contrato en Borrador o En Aprobación.'))
+                raise UserError(_('Solo se puede cancelar un contrato en Borrador o En espera de Vo.Bo.'))
             rec.state = 'cancel'
 
     def action_borrador(self):

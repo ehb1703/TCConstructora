@@ -395,6 +395,7 @@ class CrmLead(models.Model):
                 raise UserError(_('Debe haber al menos dos revisiones hechas por personas distintas para continuar.'))
 
 
+    #Esta funcion se sobreescribe en gestion_obras/models/crm_presupuesto
     def action_advance_stage(self):
         if self.stage_name == 'Inscripción/Compra de bases':
             if self.bases_pay:

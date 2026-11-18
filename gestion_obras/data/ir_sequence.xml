@@ -16,5 +16,14 @@
             <field name="padding">4</field>
             <field name="company_id" eval="False"></field>
         </record>
+
+        <record id="seq_gestion_obra_presupueston" model="ir.sequence">
+            <field name="name">Presupuesto Base</field>
+            <field name="code">gestion.obra.presupuesto.base</field>
+            <field name="prefix">PB</field>
+            <field name="suffix">/%(year)s</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"></field>
+        </record>
     </data>
 </odoo>
