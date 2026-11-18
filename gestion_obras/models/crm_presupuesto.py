@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 import logging
+import base64
+import io
+import openpyxl
 
 _logger = logging.getLogger(__name__)
 
@@ -92,9 +95,34 @@ class crmLeadPresupuesto(models.Model):
         if old_stage_name == 'Junta de Fallo' and self.fallo_ganado:
             return self.action_set_won_rainbowman()
 
+    def _get_presupuesto_base_from_group(self, grupo):
+        emails = set()
+        group = self.env.ref(grupo, raise_if_not_found=False)
+        if group:
+            for user in group.users.filtered(lambda u: u.active and u.partner_id and u.partner_id.email):
+                emails.add(user.partner_id.email.strip())
+        return sorted(e for e in emails if '@' in e)
+
+
     def generate_presupuesto(self):
-        _logger.warning('Aqui 94........')
-        raise ValidationError('Estoy haciendo pruebas')
+        name = self.env['ir.sequence'].next_by_code('gestion.obra.presupuesto.base')
+        presupuesto = self.env['gestion.obra.presupuesto.base'].create({'lead_id': self.id, 'name': name})
+        correos_list = self._get_presupuesto_base_from_group('gestion_obras.group_tc_budget_control')
+        template = self.env.ref('gestion_obras.mail_tmpl_presupuesto_base', raise_if_not_found=False)
+
+        if not correos_list:
+            raise UserError(_('''No hay usuarios configurados con permiso para autorizar (o no tienen correo).
+                    Agregue usuarios al grupo “Puede autorizar convocatorias”.'''))
+        if not template:
+            raise UserError(_('No se encontró la plantilla de correo para solicitud de bases.'))
+
+        try:
+            correos = ', '.join(correos_list)
+            email_values = {'model': 'gestion.obra.presupuesto.base', 'email_to': correos}
+            template.send_mail(presupuesto.id, force_send=True, email_values=email_values)
+            self._post_html(_('Se envió correo a: ') + correos)
+        except Exception:
+            self._post_html(_('Error al enviar el correo'))
 
 
 class gestionPresupuestoBase(models.Model):
@@ -103,13 +131,14 @@ class gestionPresupuestoBase(models.Model):
     _description = 'Presupuesto Base'
 
     lead_id = fields.Many2one('crm.lead', string='Oportunidad', required=True, readonly=True)
-    #name = fields.Char(string='Nombre', compute='_compute_name', readonly=True)
+    name = fields.Char(string='Nombre', readonly=True)
     presupuesto = fields.Float(string='Prespuesto')
     concept_ids = fields.One2many('crm.concept.line', 'base_id', string='Conceptos de trabajo')
     budget_ids = fields.One2many('crm.budget.line', 'base_id', string='Partidas presupestales')
     partida_ids = fields.One2many('crm.budget.total', 'base_id', string='Todas las partidas')
+    line_ids = fields.One2many('gestion.obra.presupuesto.base.line', 'base_id', string='Líneas')
     state = fields.Selection(selection=[('draft','Borrador'), ('authorized','Autorizado'), ('win','Ganado'), ('cancel','Cancelado')],
-        string='Estatus', default='activo', tracking=True)
+        string='Estatus', default='draft', tracking=True)
 
     def action_cargar_concept(self):
         for record in self:
@@ -140,6 +169,10 @@ class gestionPresupuestoBase(models.Model):
                 else:
                     if c == 2:
                         c += 1
+                        if not row[0]:
+                            raise ValidationError('El formato del archivo no coincide.')
+                        if not record.lead_id.empresa_concursante_id:
+                            raise ValidationError('La Empresa concursante no esta capturada en la oportunidad.')
                         if record.lead_id.empresa_concursante_id.name.upper() != row[0].upper():
                             raise ValidationError('La Empresa concursante no coincide con la empresa del archivo.')
                         if record.lead_id.nombre_interno.upper() != row[1].upper():
@@ -156,19 +189,20 @@ class gestionPresupuestoBase(models.Model):
                     if row[12] == row[13] == row[14] == row[15] == None:
                         _logger.warning('No se guarda la información')
                     else:
-                        registro = {'col1': row[12], 'col2': row[13], 'col3': row[14], 'col4': row[15], 'col5': row[16], 'col6': row[17], 'col8': row[colpart]}
+                        registro = {'col1': row[12], 'col2': row[13], 'col3': row[14], 'col4': row[15], 'col5': row[16], 'col6': row[17], 'col8': row[colpart],
+                            'lead_id': record.lead_id.id}
                         registros.append((0, 0, registro))
 
                         registro = {'level1': row[2], 'desc1': row[3], 'level2': row[4], 'desc2': row[5], 'level3': row[6], 'desc3': row[7], 'level4': row[8], 
-                            'desc4': row[9], 'level5': row[10], 'desc5': row[11]}
+                            'desc4': row[9], 'level5': row[10], 'desc5': row[11], 'lead_id': record.lead_id.id}
                         partidas.append((0, 0, registro))
 
-            record.write({'concept_ids': registros, 'partida_ids': partidas})
+            record.write({'concept_ids': registros, 'partida_ids': partidas })
             
             self.env.cr.execute('DELETE FROM crm_budget_line WHERE base_id = ' + str(record.id) + ''';
-                INSERT INTO crm_budget_line (no_char, parent, col1, col2, create_date, write_date, base_id, create_uid, write_uid) 
-                    SELECT *, NOW(), NOW(), ''' + str(record.id) + ', ' + str(self.env.user.id) + ', ' + str(self.env.user.id) + 
-                    ' FROM (SELECT 1, NULL, level1, desc1 FROM crm_budget_total WHERE lead_id = ''' + str(record.id) + 
+                INSERT INTO crm_budget_line (no_char, parent, col1, col2, create_date, write_date, base_id, lead_id, create_uid, write_uid) 
+                    SELECT *, NOW(), NOW(), ''' + str(record.id) + ', ' + str(record.lead_id.id) + ', ' + str(self.env.user.id) + ', ' + str(self.env.user.id) + 
+                    ' FROM (SELECT 1, NULL, level1, desc1 FROM crm_budget_total WHERE base_id = ''' + str(record.id) + 
                     ' GROUP BY 1, 2, 3, 4 UNION ALL SELECT 2, level1, level2, desc2 FROM crm_budget_total WHERE base_id = ' + str(record.id) + 
                     ' GROUP BY 1, 2, 3, 4 UNION ALL SELECT 3, level2, level3, desc3 FROM crm_budget_total WHERE base_id = ' + str(record.id) + 
                     ' GROUP BY 1, 2, 3, 4 UNION ALL SELECT 4, level3, level4, desc4 FROM crm_budget_total WHERE base_id = ' + str(record.id) + 
@@ -181,8 +215,13 @@ class gestionPresupuestoBase(models.Model):
         if count == 0:
             raise UserError('Las partidas fueron cargadas correctamente, favor de continuar con la carga de conceptos')
         else:
-            self.env.cr.execute('SELECT carga_partidas(' + str(self.id) + ', ' + str(self.env.user.id) + ', ' + str(self.empresa_concursante_id.id) + ')')
+            self.env.cr.execute('SELECT carga_partidas(' + str(self.lead_id.id) + ', ' + str(self.env.user.id) + ', ' + 
+                str(self.lead_id.empresa_concursante_id.id) + ')')
             partidas = self.env.cr.dictfetchall()
+            lead_id = self.env['crm.budget.line'].search([('lead_id','=',self.lead_id.id)])
+            for lead in lead_id:
+                lead.write({'base_id': self.id})
+
 
     def action_genera_concept(self):
         count = len(self.budget_ids.filtered(lambda u: not u.budget_id))
@@ -190,10 +229,6 @@ class gestionPresupuestoBase(models.Model):
             raise UserError('Las partidas no han sido cargadas, favor de realizar la carga')
 
         iva = self.env['account.tax'].search([('amount','=',16), ('type_tax_use','=','sale')])
-        # Cuando el archivo NO trae partidas presupuestales (no son necesarias en esta obra), los
-        # conceptos se generan igual: se crea/enlaza el product.template con budget_id vacío. Con
-        # partidas cargadas el comportamiento es idéntico al anterior (sin regresión).
-        sin_partidas = not self.budget_ids
         partida = 0
         encabezados_sin_match = []
         conceptos_huerfanos = 0
@@ -202,15 +237,9 @@ class gestionPresupuestoBase(models.Model):
             if partida_id:
                 partida = partida_id.budget_id.id
 
-            if sin_partidas:
-                budget_val = False
-            else:
-                budget_val = partida
-            
+            budget_val = partida
             concept_id = self.env['product.template'].search([('budget_id','=',budget_val), ('default_code','=',rec.col1)])
             if concept_id:
-                """ El producto ya existía (p.ej. de una carga previa): normalizarlo como servicio de obra para que al confirmar la OV genere su tarea. 
-                Sin esto, un producto con service_tracking distinto deja el concepto fuera de la obra. """
                 norm = {}
                 if concept_id.service_tracking != 'task_in_project':
                     norm['service_tracking'] = 'task_in_project'
@@ -241,6 +270,32 @@ class gestionPresupuestoBase(models.Model):
                 rec.write({'account_ex': True})
 
 
+    def action_cargar_presupuesto(self):
+        count = len(self.concept_ids.filtered(lambda u: not u.concept_ex))
+        if count != 1:
+            raise ValidationError('Existen conceptos sin cargar, revise la información.')
+
+        count = len(self.concept_ids.filtered(lambda u: not u.account_ex))
+        if count != 1:
+            raise ValidationError('Existen conceptos sin información contable, revise la información.')
+
+        registros = []
+        total = 0
+        for rec in self.concept_ids:
+            price = rec.col6.replace(',','').replace('$','')
+            total += price
+            registro = {'budget_id': rec.concept_id.budget_id.id, 'concept_id': rec.concept_id.id, 'uom_id': rec.concept_id.uom_id.id, 
+                'cantidad': rec.col4.replace(',',''), 'price_unit': rec.col5.replace(',','').replace('$',''), 'price': price}
+            registros.append((0, 0, registro))
+
+        if self.lead_id.origen_id.name == 'Público':
+            state = 'authorized'
+        else:
+            state = 'win'
+
+        self.write({'line_ids': registros, 'state': state, 'presupuesto': total})
+
+
 class crmConceptLine(models.Model):
     _inherit = 'crm.concept.line'
     
@@ -257,3 +312,17 @@ class crmBudgetLine(models.Model):
     _inherit = 'crm.budget.line'
     
     base_id = fields.Many2one(comodel_name='gestion.obra.presupuesto.base', string='Presupuesto Base', readonly=True)
+
+
+class gestionPresupuestoBaseLine(models.Model):
+    _name = 'gestion.obra.presupuesto.base.line'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _description = 'Líneas Presupuesto Base'
+
+    base_id = fields.Many2one(comodel_name='gestion.obra.presupuesto.base', string='Presupuesto Base', readonly=True)
+    budget_id = fields.Many2one(comodel_name='product.budget.item', string='Partida')
+    concept_id = fields.Many2one('product.template', string='Conceptos', tracking=True)
+    uom_id = fields.Many2one('uom.uom', string='UDM')
+    cantidad = fields.Float(string='Cantidad')
+    price_unit = fields.Float(string='Precio unitario')
+    price = fields.Float(string='Precio')

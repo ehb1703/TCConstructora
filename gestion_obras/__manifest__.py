@@ -24,6 +24,7 @@ Submódulos de esta versión:
         'data/ir_sequence.xml',
         'data/tipos_contratista_data.xml',
         'data/kontrol_analitica_data.xml',
+        'data/mail_template_gestion.xml',
         'views/gestion_obra_contrato_views.xml',
         'views/gestion_obra_presupuesto_views.xml',
         'views/crm_presupuesto_views.xml',
