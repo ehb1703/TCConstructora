@@ -73,6 +73,17 @@ class HrEmployeeOcultarEnPantalla(models.Model):
     def hierarchy_read(self, domain, fields, parent_field, child_field=None, order=None):
         return super().hierarchy_read(self._dominio_pantalla(domain), fields, parent_field, child_field=child_field, order=order)
 
+    # Contadores del panel lateral (Empresa / Departamento) en Empleados y Organigrama
+    @api.model
+    def search_panel_select_range(self, field_name, **kwargs):
+        kwargs['search_domain'] = self._dominio_pantalla(kwargs.get('search_domain'))
+        return super().search_panel_select_range(field_name, **kwargs)
+
+    @api.model
+    def search_panel_select_multi_range(self, field_name, **kwargs):
+        kwargs['search_domain'] = self._dominio_pantalla(kwargs.get('search_domain'))
+        return super().search_panel_select_multi_range(field_name, **kwargs)
+
 
 class HrEmployeePublicOcultarEnPantalla(models.Model):
     # Versión de empleados que ven quienes no son de RRHH (gerentes, ausencias, etc.): se le agrega el tipo de personal
@@ -100,3 +111,14 @@ class HrEmployeePublicOcultarEnPantalla(models.Model):
     @api.model
     def hierarchy_read(self, domain, fields, parent_field, child_field=None, order=None):
         return super().hierarchy_read(self._dominio_pantalla(domain), fields, parent_field, child_field=child_field, order=order)
+
+    # Contadores del panel lateral (Empresa / Departamento) en Empleados y Organigrama
+    @api.model
+    def search_panel_select_range(self, field_name, **kwargs):
+        kwargs['search_domain'] = self._dominio_pantalla(kwargs.get('search_domain'))
+        return super().search_panel_select_range(field_name, **kwargs)
+
+    @api.model
+    def search_panel_select_multi_range(self, field_name, **kwargs):
+        kwargs['search_domain'] = self._dominio_pantalla(kwargs.get('search_domain'))
+        return super().search_panel_select_multi_range(field_name, **kwargs)
