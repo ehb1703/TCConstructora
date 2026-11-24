@@ -37,7 +37,9 @@ class CrmLeadCatalogo(models.Model):
         si no col5 (formato de la explosión de insumos: Código, Concepto, Nacional, Extranjero, Unidad, Cantidad, Costo, Importe).
         El renglón de referencia es el encabezado cuando se guardó; si no, el primer renglón, como hace el proceso original."""
         self.ensure_one()
-        lineas = self.input_ids.sorted('id')
+        # En pantalla (onchange) hay renglones sin guardar (NewId) que no se pueden comparar por id: los guardados van primero por su id
+        # y los nuevos después, en el orden en que se capturaron
+        lineas = self.input_ids.sorted(lambda l: (not l._origin.id, l._origin.id or 0))
         referencia = lineas.filtered('es_encabezado')[:1] or lineas[:1]
         unidad = 'col3' if (referencia.col3 or '').strip().upper() == 'UNIDAD' else 'col5'
         return referencia.filtered('es_encabezado'), unidad
