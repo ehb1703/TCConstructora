@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="seq_catalogo_insumo_clave" model="ir.sequence">
+        <field name="name">Clave de insumo del catálogo TC</field>
+        <field name="code">catalogo.insumo.clave</field>
+        <field name="padding">5</field>
+        <field name="implementation">no_gap</field>
+        <field name="number_next">1</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>
