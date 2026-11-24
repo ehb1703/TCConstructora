@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wizard_reporte_asistencias_destajistas" model="ir.ui.view">
+        <field name="name">wizard.reporte.asistencias.destajistas</field>
+        <field name="model">wizard.reporte.asistencias</field>
+        <field name="inherit_id" ref="hr_extra.view_wizard_reporte_asistencias_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='fecha_fin']" position="after">
+                <field name="filtro_personal" widget="radio" options="{'horizontal': true}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_reporte_asistencias_destajistas" model="ir.actions.act_window">
+        <field name="name">Reporte de asistencias</field>
+        <field name="res_model">wizard.reporte.asistencias</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_filtro_personal': 'destajistas'}</field>
+    </record>
+</odoo>

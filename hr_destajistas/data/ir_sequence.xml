@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="seq_destajista" model="ir.sequence">
+        <field name="name">Número de destajista (checadores)</field>
+        <field name="code">hr.destajista</field>
+        <field name="prefix">D</field>
+        <field name="padding">4</field>
+        <field name="number_next">1</field>
+        <field name="implementation">no_gap</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

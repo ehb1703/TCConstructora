@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- El grupo Destajistas consulta a todo el personal (para elegir residentes) pero solo modifica destajistas -->
+    <record id="rule_hr_employee_destajistas_lectura" model="ir.rule">
+        <field name="name">Destajistas: consultar personal</field>
+        <field name="model_id" ref="hr.model_hr_employee"/>
+        <field name="groups" eval="[(4, ref('group_destajistas'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    <record id="rule_hr_employee_destajistas_escritura" model="ir.rule">
+        <field name="name">Destajistas: modificar solo destajistas</field>
+        <field name="model_id" ref="hr.model_hr_employee"/>
+        <field name="groups" eval="[(4, ref('group_destajistas'))]"/>
+        <field name="domain_force">[('tipo_personal', '=', 'destajista')]</field>
+        <field name="perm_read" eval="False"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    <record id="rule_hr_employee_obra_destajistas" model="ir.rule">
+        <field name="name">Destajistas: obras solo de destajistas</field>
+        <field name="model_id" ref="hr_extra.model_hr_employee_obra"/>
+        <field name="groups" eval="[(4, ref('group_destajistas'))]"/>
+        <field name="domain_force">[('employee_id.tipo_personal', '=', 'destajista')]</field>
+    </record>
+    <!-- Las reglas de un grupo se suman a las de los demás grupos del usuario: sin estas, quien tenga RRHH y además Destajistas
+         (p. ej. el administrador) quedaría limitado a modificar solo destajistas. RRHH conserva su acceso completo. -->
+    <record id="rule_hr_employee_rrhh_completo" model="ir.rule">
+        <field name="name">RRHH: acceso completo a empleados (junto al grupo Destajistas)</field>
+        <field name="model_id" ref="hr.model_hr_employee"/>
+        <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_hr_employee_obra_rrhh_completo" model="ir.rule">
+        <field name="name">RRHH: acceso completo a obras de empleados (junto al grupo Destajistas)</field>
+        <field name="model_id" ref="hr_extra.model_hr_employee_obra"/>
+        <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+</odoo>

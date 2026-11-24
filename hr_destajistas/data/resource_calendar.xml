@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="calendario_destajo_08_18" model="resource.calendar">
+        <field name="name">Destajo 08:00 a 18:00 (obra / Abastos turno 1)</field>
+        <field name="company_id" eval="False"/>
+        <field name="hours_per_day">10</field>
+        <field name="attendance_ids" eval="[(5, 0, 0),
+            (0, 0, {'name': 'Lunes', 'dayofweek': '0', 'hour_from': 8, 'hour_to': 18, 'day_period': 'morning'}),
+            (0, 0, {'name': 'Martes', 'dayofweek': '1', 'hour_from': 8, 'hour_to': 18, 'day_period': 'morning'}),
+            (0, 0, {'name': 'Miércoles', 'dayofweek': '2', 'hour_from': 8, 'hour_to': 18, 'day_period': 'morning'}),
+            (0, 0, {'name': 'Jueves', 'dayofweek': '3', 'hour_from': 8, 'hour_to': 18, 'day_period': 'morning'}),
+            (0, 0, {'name': 'Viernes', 'dayofweek': '4', 'hour_from': 8, 'hour_to': 18, 'day_period': 'morning'}),
+            (0, 0, {'name': 'Sábado', 'dayofweek': '5', 'hour_from': 8, 'hour_to': 18, 'day_period': 'morning'})
+        ]"/>
+    </record>
+    <record id="calendario_destajo_12_22" model="resource.calendar">
+        <field name="name">Destajo 12:00 a 22:00 (Abastos turno 2)</field>
+        <field name="company_id" eval="False"/>
+        <field name="hours_per_day">10</field>
+        <field name="attendance_ids" eval="[(5, 0, 0),
+            (0, 0, {'name': 'Lunes', 'dayofweek': '0', 'hour_from': 12, 'hour_to': 22, 'day_period': 'morning'}),
+            (0, 0, {'name': 'Martes', 'dayofweek': '1', 'hour_from': 12, 'hour_to': 22, 'day_period': 'morning'}),
+            (0, 0, {'name': 'Miércoles', 'dayofweek': '2', 'hour_from': 12, 'hour_to': 22, 'day_period': 'morning'}),
+            (0, 0, {'name': 'Jueves', 'dayofweek': '3', 'hour_from': 12, 'hour_to': 22, 'day_period': 'morning'}),
+            (0, 0, {'name': 'Viernes', 'dayofweek': '4', 'hour_from': 12, 'hour_to': 22, 'day_period': 'morning'}),
+            (0, 0, {'name': 'Sábado', 'dayofweek': '5', 'hour_from': 12, 'hour_to': 22, 'day_period': 'morning'})
+        ]"/>
+    </record>
+</odoo>
