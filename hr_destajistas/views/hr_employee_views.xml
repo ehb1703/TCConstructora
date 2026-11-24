@@ -102,7 +102,7 @@
         <field name="res_model">hr.employee</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('tipo_personal', '=', 'destajista')]</field>
-        <field name="context">{'default_tipo_personal': 'destajista', 'active_test': False, 'search_default_activos': 1}</field>
+        <field name="context">{'default_tipo_personal': 'destajista', 'active_test': False, 'search_default_activos': 1, 'mostrar_destajistas': True}</field>
         <field name="search_view_id" ref="view_destajista_search"/>
         <field name="view_ids" eval="[(5, 0, 0), (0, 0, {'view_mode': 'list', 'view_id': ref('view_destajista_list')}),
                                       (0, 0, {'view_mode': 'form', 'view_id': ref('view_destajista_form')})]"/>
@@ -116,22 +116,6 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='work_email']" position="before">
                 <field name="tipo_personal" readonly="1" invisible="tipo_personal == 'empleado'"/>
-            </xpath>
-        </field>
-    </record>
-
-    <record id="view_employee_filter_tipo_personal" model="ir.ui.view">
-        <field name="name">hr.employee.search.tipo.personal</field>
-        <field name="model">hr.employee</field>
-        <field name="inherit_id" ref="hr.view_employee_filter"/>
-        <field name="arch" type="xml">
-            <xpath expr="//filter[@name='inactive']" position="after">
-                <separator/>
-                <filter name="solo_empleados" string="Empleados" domain="[('tipo_personal', '=', 'empleado')]"/>
-                <filter name="solo_destajistas" string="Destajistas" domain="[('tipo_personal', '=', 'destajista')]"/>
-            </xpath>
-            <xpath expr="//group" position="inside">
-                <filter name="por_tipo_personal" string="Tipo de personal" context="{'group_by': 'tipo_personal'}"/>
             </xpath>
         </field>
     </record>

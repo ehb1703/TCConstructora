@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import api, fields, models
+from odoo.osv import expression
+
+from .hr_employee import TIPOS_PERSONAL
 
 SIN_DESTAJISTAS = [('tipo_personal', '!=', 'destajista')]
 
@@ -38,3 +41,62 @@ class RequisitionDestajoConsulta(models.Model):
     destajo_periodo_fin = fields.Date(string='Periodo final', related='req_id.ffinal')
     destajo_tipo = fields.Char(string='Tipo de destajo', related='destajo_id.nombre')
 
+
+
+# Toda pantalla de Odoo que busca, lista o deja elegir empleados (listas, kanban, organigrama, "Buscar más…" y las listas de
+# selección de cualquier aplicación) excluye destajistas, salvo que pida verlos con el contexto 'mostrar_destajistas': solo el
+# módulo Destajistas y el filtro del reporte de asistencias lo hacen. No afecta búsquedas internas (API de checadores,
+# procesamiento de checadas, cálculos), que usan search().
+
+
+class HrEmployeeOcultarEnPantalla(models.Model):
+    _inherit = 'hr.employee'
+
+    def _dominio_pantalla(self, domain):
+        if self.env.context.get('mostrar_destajistas'):
+            return domain or []
+        return expression.AND([domain or [], SIN_DESTAJISTAS])
+
+    @api.model
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        return super().name_search(name=name, args=self._dominio_pantalla(args), operator=operator, limit=limit)
+
+    @api.model
+    def web_search_read(self, domain, specification, offset=0, limit=None, order=None, count_limit=None):
+        return super().web_search_read(self._dominio_pantalla(domain), specification, offset=offset, limit=limit, order=order, count_limit=count_limit)
+
+    @api.model
+    def web_read_group(self, domain, fields, groupby, limit=None, offset=0, orderby=False, lazy=True):
+        return super().web_read_group(self._dominio_pantalla(domain), fields, groupby, limit=limit, offset=offset, orderby=orderby, lazy=lazy)
+
+    @api.model
+    def hierarchy_read(self, domain, fields, parent_field, child_field=None, order=None):
+        return super().hierarchy_read(self._dominio_pantalla(domain), fields, parent_field, child_field=child_field, order=order)
+
+
+class HrEmployeePublicOcultarEnPantalla(models.Model):
+    # Versión de empleados que ven quienes no son de RRHH (gerentes, ausencias, etc.): se le agrega el tipo de personal
+    _inherit = 'hr.employee.public'
+
+    tipo_personal = fields.Selection(TIPOS_PERSONAL, string='Tipo de personal', readonly=True)
+
+    def _dominio_pantalla(self, domain):
+        if self.env.context.get('mostrar_destajistas'):
+            return domain or []
+        return expression.AND([domain or [], SIN_DESTAJISTAS])
+
+    @api.model
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        return super().name_search(name=name, args=self._dominio_pantalla(args), operator=operator, limit=limit)
+
+    @api.model
+    def web_search_read(self, domain, specification, offset=0, limit=None, order=None, count_limit=None):
+        return super().web_search_read(self._dominio_pantalla(domain), specification, offset=offset, limit=limit, order=order, count_limit=count_limit)
+
+    @api.model
+    def web_read_group(self, domain, fields, groupby, limit=None, offset=0, orderby=False, lazy=True):
+        return super().web_read_group(self._dominio_pantalla(domain), fields, groupby, limit=limit, offset=offset, orderby=orderby, lazy=lazy)
+
+    @api.model
+    def hierarchy_read(self, domain, fields, parent_field, child_field=None, order=None):
+        return super().hierarchy_read(self._dominio_pantalla(domain), fields, parent_field, child_field=child_field, order=order)
