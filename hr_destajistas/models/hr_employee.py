@@ -69,6 +69,10 @@ class HrEmployeeDestajista(models.Model):
         if destajistas and len(destajistas) != len(vals_list):
             return self.create(destajistas) | self.create([v for v in vals_list if v.get('tipo_personal') != 'destajista'])
         if destajistas:
+            # Tipo de empleado "Contratista": Odoo solo lleva historial de contratos para Empleado/Estudiante/Becario, así los
+            # destajistas no salen en la advertencia "Empleados sin contratos en curso" ni en la plantilla laboral de Nómina
+            for v in destajistas:
+                v.setdefault('employee_type', 'contractor')
             # hr_extra numera con 'numemployee'; con este contexto la secuencia entrega la serie D0001
             registros = super(HrEmployeeDestajista, self.with_context(alta_destajista=True)).create(vals_list)
             for emp in registros.sudo().filtered(lambda e: not e.registration_number):
@@ -118,6 +122,27 @@ class HrEmployeeDestajista(models.Model):
             return super()._search(domain, offset=offset, limit=limit, order=order)
         dominio = list(domain) + ['|', ('tipo_personal', '=', 'destajista')] + extra
         return super(HrEmployeeDestajista, self.with_context(special_display=True))._search(dominio, offset=offset, limit=limit, order=order)
+
+    destajo_asistencias_count = fields.Integer(string='Asistencias', compute='_compute_destajo_consultas')
+    destajo_pagos_count = fields.Integer(string='Pagos de destajo', compute='_compute_destajo_consultas')
+
+    def _compute_destajo_consultas(self):
+        for emp in self:
+            emp.destajo_asistencias_count = self.env['hr.attendance'].sudo().search_count([('employee_id', '=', emp.id)])
+            emp.destajo_pagos_count = self.env['requisition.destajo'].sudo().search_count(
+                [('partner_id', '=', emp.sudo().work_contact_id.id)]) if emp.sudo().work_contact_id else 0
+
+    def action_destajo_asistencias(self):
+        self.ensure_one()
+        accion = self.env['ir.actions.act_window']._for_xml_id('hr_destajistas.action_destajistas_asistencias')
+        accion['domain'] = [('employee_id', '=', self.id)]
+        return accion
+
+    def action_destajo_pagos(self):
+        self.ensure_one()
+        accion = self.env['ir.actions.act_window']._for_xml_id('hr_destajistas.action_destajistas_pagos')
+        accion['domain'] = [('partner_id', '=', self.sudo().work_contact_id.id)]
+        return accion
 
     def get_employee_data_for_api(self):
         datos = super().get_employee_data_for_api()

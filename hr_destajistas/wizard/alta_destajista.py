@@ -13,10 +13,10 @@ class HrDestajistaAlta(models.TransientModel):
     _name = 'hr.destajista.alta'
     _description = 'Alta rápida de destajista'
 
-    # Solo contactos que ya se pagan como destajistas en Requisiciones → Destajos y que aún no están ligados a un empleado o destajista
+    # Solo contactos con la casilla "Es destajista" (Contactos) que aún no están ligados a un empleado o destajista
     contacto_id = fields.Many2one('res.partner', string='Contacto existente',
         domain=[('es_destajista', '=', True), ('is_company', '=', False), ('employee_ids', '=', False)],
-        help='Destajistas que ya se pagan en Requisiciones → Destajos: elija su contacto para usar los mismos datos y cuenta bancaria.')
+        help='Contactos marcados como "Es destajista" en Contactos: elija el suyo para usar los mismos datos y cuenta bancaria.')
     nombre = fields.Char(string='Nombre(s)')
     apaterno = fields.Char(string='Apellido paterno')
     amaterno = fields.Char(string='Apellido materno')
@@ -99,8 +99,10 @@ class HrDestajistaAlta(models.TransientModel):
         contacto = self.contacto_id.sudo()
         nombre_completo = ' '.join(p.strip().upper() for p in (self.nombre, self.apaterno, self.amaterno) if p and p.strip())
         if not contacto:
-            contacto = env['res.partner'].create({'name': nombre_completo, 'nombre': (self.nombre or '').strip().upper(),
+            contacto = env['res.partner'].create({'name': nombre_completo, 'nombre': (self.nombre or '').strip().upper(), 'es_destajista': True,
                                                    'apaterno': (self.apaterno or '').strip().upper(), 'amaterno': (self.amaterno or '').strip().upper()})
+        elif not contacto.es_destajista:
+            contacto.es_destajista = True
         cuenta = self.cuenta_id.sudo()
         if not cuenta:
             numero = self.numero_cuenta.strip()

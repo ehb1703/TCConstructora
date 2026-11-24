@@ -5,3 +5,4 @@ from . import hr_contract
 from . import ctrol_asistencias
 from . import reporte_asistencias
 from . import res_partner
+from . import ocultar_destajistas

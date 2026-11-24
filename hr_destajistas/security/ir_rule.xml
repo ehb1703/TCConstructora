@@ -41,4 +41,40 @@
         <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
         <field name="domain_force">[(1, '=', 1)]</field>
     </record>
+    <!-- Consultas del módulo: asistencias y pagos de destajo solo de destajistas -->
+    <record id="rule_hr_attendance_destajistas" model="ir.rule">
+        <field name="name">Destajistas: asistencias solo de destajistas</field>
+        <field name="model_id" ref="hr_attendance.model_hr_attendance"/>
+        <field name="groups" eval="[(4, ref('group_destajistas'))]"/>
+        <field name="domain_force">[('employee_id.tipo_personal', '=', 'destajista')]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    <!-- En asistencias no hace falta complemento: todo usuario interno ya tiene la regla "sus propias asistencias" u otra más amplia,
+         y las reglas de grupo se suman, así que esta solo amplía. -->
+    <record id="rule_requisition_destajo_destajistas" model="ir.rule">
+        <field name="name">Destajistas: pagos de destajo solo de contactos destajistas</field>
+        <field name="model_id" ref="requisition_residents.model_requisition_destajo"/>
+        <field name="groups" eval="[(4, ref('group_destajistas'))]"/>
+        <field name="domain_force">[('partner_id.es_destajista', '=', True)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    <!-- requisition.destajo no tenía reglas: sin este complemento, quien capture o administre Requisiciones y además
+         tenga Destajistas solo vería destajos de destajistas -->
+    <record id="rule_requisition_destajo_requisiciones_completo" model="ir.rule">
+        <field name="name">Requisiciones: lectura completa de destajos (junto al grupo Destajistas)</field>
+        <field name="model_id" ref="requisition_residents.model_requisition_destajo"/>
+        <field name="groups" eval="[(4, ref('requisition_residents.group_requisition_admin')), (4, ref('requisition_residents.group_requisition_capture')),
+                                    (4, ref('requisition_residents.group_encargado'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
 </odoo>
