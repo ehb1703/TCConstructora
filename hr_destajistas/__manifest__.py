@@ -28,6 +28,7 @@ Destajistas TC (T0134)
         'views/hr_employee_views.xml',
         'views/consultas_views.xml',
     ],
+    'assets': {'web.assets_backend': ['hr_destajistas/static/src/js/ocultar_cog_menu.js']},
     'uninstall_hook': 'uninstall_hook',
     'license': 'LGPL-3',
     'installable': True,

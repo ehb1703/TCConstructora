@@ -61,14 +61,78 @@
         </field>
     </record>
 
-    <!-- Destajistas → Asistencias -->
+    <!-- Destajistas → Asistencias: vistas propias de solo consulta. La lista estándar de Asistencias (js_class attendance_list_view)
+         muestra la ayuda del quiosco y "Cargar datos de muestra", que no aplican aquí. -->
+    <record id="view_destajistas_asistencias_list" model="ir.ui.view">
+        <field name="name">hr.attendance.destajistas.list</field>
+        <field name="model">hr.attendance</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Asistencias de destajistas" create="0" edit="0" delete="0" default_order="check_in desc">
+                <field name="employee_id" string="Destajista"/>
+                <field name="project_id"/>
+                <field name="check_in" string="Entrada"/>
+                <field name="check_out" string="Salida"/>
+                <field name="worked_hours" string="Horas trabajadas" widget="float_time" sum="Total"/>
+                <field name="checkout_notes" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_destajistas_asistencias_form" model="ir.ui.view">
+        <field name="name">hr.attendance.destajistas.form</field>
+        <field name="model">hr.attendance</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <form string="Asistencia de destajista" create="0" edit="0" delete="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="employee_id" string="Destajista" readonly="1"/>
+                            <field name="project_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="check_in" string="Entrada" readonly="1"/>
+                            <field name="check_out" string="Salida" readonly="1"/>
+                            <field name="worked_hours" string="Horas trabajadas" widget="float_time" readonly="1"/>
+                            <field name="checkout_notes" readonly="1" invisible="not checkout_notes"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_destajistas_asistencias_search" model="ir.ui.view">
+        <field name="name">hr.attendance.destajistas.search</field>
+        <field name="model">hr.attendance</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <search string="Asistencias de destajistas">
+                <field name="employee_id" string="Destajista"/>
+                <field name="project_id"/>
+                <filter name="hoy" string="Hoy" domain="[('check_in', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="sin_salida" string="Sin salida" domain="[('check_out', '=', False)]"/>
+                <filter name="fecha" string="Fecha de entrada" date="check_in"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="por_destajista" string="Destajista" context="{'group_by': 'employee_id'}"/>
+                    <filter name="por_obra" string="Obra" context="{'group_by': 'project_id'}"/>
+                    <filter name="por_dia" string="Día" context="{'group_by': 'check_in:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="action_destajistas_asistencias" model="ir.actions.act_window">
         <field name="name">Asistencias de destajistas</field>
         <field name="res_model">hr.attendance</field>
-        <field name="view_mode">list,pivot,form</field>
+        <field name="view_mode">list,form</field>
         <field name="domain">[('employee_id.tipo_personal', '=', 'destajista')]</field>
-        <field name="context">{'create': False}</field>
-        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Aún no hay asistencias de destajistas</p>
+        <field name="context">{'create': False, 'mostrar_destajistas': True}</field>
+        <field name="search_view_id" ref="view_destajistas_asistencias_search"/>
+        <field name="view_ids" eval="[(5, 0, 0), (0, 0, {'view_mode': 'list', 'view_id': ref('view_destajistas_asistencias_list')}),
+                                      (0, 0, {'view_mode': 'form', 'view_id': ref('view_destajistas_asistencias_form')})]"/>
+        <field name="help" type="html"><p class="o_view_nocontent_empty_folder">Aún no hay asistencias de destajistas</p>
             <p>Se registran solas cuando el destajista checa en el reloj de la obra con su número D.</p></field>
     </record>
 
@@ -117,10 +181,10 @@
         <field name="res_model">requisition.destajo</field>
         <field name="view_mode">list</field>
         <field name="domain">[('partner_id.es_destajista', '=', True)]</field>
-        <field name="context">{'create': False, 'search_default_por_destajista': 1}</field>
+        <field name="context">{'create': False, 'search_default_por_destajista': 1, 'mostrar_destajistas': True}</field>
         <field name="search_view_id" ref="view_destajistas_pagos_search"/>
         <field name="view_ids" eval="[(5, 0, 0), (0, 0, {'view_mode': 'list', 'view_id': ref('view_destajistas_pagos_list')})]"/>
-        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Aún no hay pagos de destajo</p>
+        <field name="help" type="html"><p class="o_view_nocontent_empty_folder">Aún no hay pagos de destajo</p>
             <p>Aquí se ven los destajos capturados en Requisiciones de los contactos marcados como "Es destajista".</p></field>
     </record>
 

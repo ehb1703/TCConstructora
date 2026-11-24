@@ -52,6 +52,22 @@ class RequisitionDestajoConsulta(models.Model):
 class HrEmployeeOcultarEnPantalla(models.Model):
     _inherit = 'hr.employee'
 
+    @api.model
+    def get_views(self, views, options=None):
+        # En el módulo Destajistas el engrane no ofrece acciones ni reportes que otras aplicaciones ligan a Empleado
+        # (imprimir insignia o currículum, solicitud de firma, enlace de documentos de RR. HH., borrar con hojas de horas)
+        res = super().get_views(views, options)
+        # El navegador no manda el contexto de la acción al pedir las vistas: se reconoce por la acción o por las vistas propias
+        propias = {v.id for v in (self.env.ref('hr_destajistas.view_destajista_list', raise_if_not_found=False),
+                                  self.env.ref('hr_destajistas.view_destajista_form', raise_if_not_found=False)) if v}
+        accion = self.env.ref('hr_destajistas.action_destajistas', raise_if_not_found=False)
+        if self.env.context.get('mostrar_destajistas') or (accion and (options or {}).get('action_id') == accion.id) \
+                or propias & {v[0] for v in views if v and v[0]}:
+            for vista in res.get('views', {}).values():
+                if 'toolbar' in vista:
+                    vista['toolbar'] = {}
+        return res
+
     def _dominio_pantalla(self, domain):
         if self.env.context.get('mostrar_destajistas'):
             return domain or []

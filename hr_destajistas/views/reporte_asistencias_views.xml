@@ -10,8 +10,16 @@
             </xpath>
             <!-- El filtro de personas del reporte sí ofrece destajistas: solo los que correspondan al filtro elegido -->
             <xpath expr="//field[@name='employee_ids']" position="attributes">
+                <attribute name="string">Persona</attribute>
                 <attribute name="context">{'special_display': True, 'mostrar_destajistas': True}</attribute>
                 <attribute name="domain">[('tipo_personal', '=', 'destajista')] if filtro_personal == 'destajistas' else ([('tipo_personal', '!=', 'destajista')] if filtro_personal == 'empleados' else [])</attribute>
+            </xpath>
+            <!-- Departamento y puesto no aplican a destajistas -->
+            <xpath expr="//field[@name='department_ids']" position="attributes">
+                <attribute name="invisible">filtro_personal == 'destajistas'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='job_ids']" position="attributes">
+                <attribute name="invisible">filtro_personal == 'destajistas'</attribute>
             </xpath>
         </field>
     </record>
