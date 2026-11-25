@@ -58,15 +58,12 @@ class CrmRevertStageWizard(models.TransientModel):
             lead.fallo_ganado = False
 
         if self.target_stage_id.name == 'Propuesta Económica':
-            presupuesto = self.env['gestion.obra.presupuesto.base'].search([('lead_id','=',lead.id), ('state','!=','cancel')])
-            presupuesto.write({'state': 'cancel'})
+            for rec in lead.base_ids.filtered(lambda d: d.state != 'cancel'):
+                rec.cancelar_presupuesto()
         
         lead.write({'stage_id': self.target_stage_id.id, 'stage_previous': old_stage.name})
-
         self.env['crm.revert.log'].sudo().create({'lead_id': lead.id, 'user_id': self.env.user.id, 'old_stage_id': old_stage.id, 
             'new_stage_id': self.target_stage_id.id, 'reason_id': self.reason_id.id or False, 'reason_text': (self.reason_text or '').strip() or False,})
-
-        # Mensaje al chatter (HTML renderizable)
         reason_lines = []
         if self.reason_id:
             reason_lines.append(html_escape(self.reason_id.name))

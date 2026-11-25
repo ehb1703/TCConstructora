@@ -25,7 +25,7 @@ GRUPOS_ANTERIORES = {'group_aprobacion_tecnica': 'group_tc_budget_control', 'gro
 
 
 def asignar_matriz_autorizaciones(env):
-    """Asigna los usuarios a su nivel. Solo agrega: nunca quita a nadie de un grupo."""
+    # Asigna los usuarios a su nivel. Solo agrega: nunca quita a nadie de un grupo.
     Users = env['res.users'].with_context(active_test=False)
     for xmlid, quien in USUARIOS_MATRIZ.items():
         grupo = env.ref(f'gestion_obras.{xmlid}')
@@ -46,18 +46,17 @@ def post_init_hook(env):
     asignar_matriz_autorizaciones(env)
 
 
-def adoptar_kontrol(env):
-    """T0110: deja los planes N1-N5 y la obligatoriedad de N1 a nombre de gestion_obras sin duplicar nada."""
+"""def adoptar_kontrol(env):
+    # T0110: deja los planes N1-N5 y la obligatoriedad de N1 a nombre de gestion_obras sin duplicar nada.
     cr = env.cr
     # 1) Lo que ya instalaron analytic_kontrol o project_extra (versiones anteriores de T0110) cambia de dueño
     nombres = list(PLANES) + [f'regla_n1_{d}' for d in DOMINIOS] + ['cuenta_hospital_n1', 'cuenta_hospital_n2_f1', 'cuenta_hospital_n3_a21',
         'field_project_task__frente_account_id', 'field_project_task__partida_account_id', 'view_task_form_partida_analitica', 'view_task_list_partida_analitica']
-    cr.execute("""UPDATE ir_model_data SET module = 'gestion_obras'
+    cr.execute('''UPDATE ir_model_data SET module = 'gestion_obras'
                    WHERE module IN ('project_extra', 'analytic_kontrol') AND name = ANY(%s)
-                     AND name NOT IN (SELECT name FROM ir_model_data WHERE module = 'gestion_obras')""", (nombres,))
+                     AND name NOT IN (SELECT name FROM ir_model_data WHERE module = 'gestion_obras')''', (nombres,))
     env.registry.clear_cache()  # los xml_id cambiaron por SQL: que env.ref no use lo que tenía en caché
-    # 2) El plan 'Project' pasa a ser N1 OBRA en todos los idiomas (conserva sus cuentas y movimientos).
-    #    Va aquí y no en XML: su xml_id es noupdate en analytic y un -u no lo reescribe.
+    # 2) El plan 'Project' pasa a ser N1 OBRA en todos los idiomas (conserva sus cuentas y movimientos). Va aquí y no en XML: su xml_id es noupdate en analytic y un -u no lo reescribe.
     n1 = env.ref('analytic.analytic_plan_projects')
     for lang in env['res.lang'].search([]).mapped('code'):
         n1.with_context(lang=lang).write({'name': 'N1 OBRA', 'description': 'Proyecto / Obra'})
@@ -67,11 +66,11 @@ def adoptar_kontrol(env):
     adoptar += [(f'regla_n1_{d}', env['account.analytic.applicability'].search([('analytic_plan_id', '=', n1.id), ('business_domain', '=', d)], order='id', limit=1)) for d in DOMINIOS]
     for xmlid, registro in adoptar:
         if registro and not env.ref(f'gestion_obras.{xmlid}', raise_if_not_found=False):
-            IMD.create({'module': 'gestion_obras', 'name': xmlid, 'model': registro._name, 'res_id': registro.id, 'noupdate': True})
+            IMD.create({'module': 'gestion_obras', 'name': xmlid, 'model': registro._name, 'res_id': registro.id, 'noupdate': True}) """
 
 
 def pre_init_hook(env):
-    """Adopta los documentos y tipos de contratista capturados a mano con el mismo nombre, para no duplicarlos al instalar."""
+    #Adopta los documentos y tipos de contratista capturados a mano con el mismo nombre, para no duplicarlos al instalar.
     adoptar_kontrol(env)
     IMD = env['ir.model.data']
 

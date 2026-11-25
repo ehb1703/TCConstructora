@@ -31,10 +31,10 @@ Submódulos de esta versión:
         'views/gestion_obra_modificacion_views.xml',
         'views/project_task_views.xml',
         'views/pagos_views.xml',
+        'report/gestion_report.xml',
+        'report/report_contract_template.xml',
     ],
-    'demo': [
-        'data/kontrol_analitica_demo.xml',
-    ],
+    'demo': ['data/kontrol_analitica_demo.xml',],
     'pre_init_hook': 'pre_init_hook',
     'post_init_hook': 'post_init_hook',
     'license': 'LGPL-3',

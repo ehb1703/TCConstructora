@@ -112,13 +112,11 @@
                         <field name="nombre_interno"/>
                     </group>
                 </group>
-            </xpath>
-
-            <xpath expr="//sheet/notebook" position="before">
                 <div class="alert alert-success" role="alert" invisible="not obra_creada">
                     <strong>✓ Obra CREADA</strong> - <field name="obra_creada_name" readonly="1" class="oe_inline"/>
                 </div>
             </xpath>
+
             <xpath expr="//sheet/notebook" position="inside">
                 <page string="1ras. Etapas" invisible="stage_name == 'Nuevas Convocatorias'">
                     <group>
@@ -369,9 +367,6 @@
                             <div class="alert alert-warning" role="alert" invisible="pe_presupuesto_autorizado or pe_presupuesto_subtotal == 0 or not pe_presupuesto_revisado">
                                 <strong>Pendiente de autorización</strong> - Use el botón "Autorizar" en la parte superior para autorizar el presupuesto.
                             </div>
-                            <group string="Presupuesto" invisible="not pe_presupuesto_autorizado">
-                                <field name="doctoconcept_nombre" string="Presupuesto autorizado (plantilla)" options="{'no_create':True, 'no_edit':True}"/>
-                            </group>
                             <group string="Documentos Requeridos">
                                 <field name="pe_doc_line_ids" nolabel="1">
                                     <list editable="bottom" delete="0" create="0">
@@ -410,6 +405,44 @@
                             <div class="alert alert-success" role="alert" invisible="not pe_autorizado">
                                 <strong>✓ Propuesta Económica AUTORIZADA</strong> - No se pueden añadir más líneas de revisión.
                             </div>
+                        </page>
+
+                        <page string="Carga de Presupuesto" name="not pe_presupuesto_autorizado">
+                            <group string="Presupuesto">
+                                <field name="doctoconcept_nombre" string="Presupuesto autorizado (plantilla)" options="{'no_create':True, 'no_edit':True}"/>
+                                <div class="oe_button_box">
+                                    <button class="oe_stat_button" icon="fa-upload" name="action_cargar_concept" string="Cargar" type="object" confirm="Se reemplazará el contenido de conceptos por el del documento, ¿continuar?"/>
+                                    <button class="oe_stat_button" icon="fa-upload" name="action_genera_partidas" string="Partidas" type="object" invisible="not concept_ids"/>
+                                    <button class="oe_stat_button" icon="fa-upload" name="action_genera_concept" string="Conceptos" type="object" invisible="not concept_ids" confirm="Se generarán los conceptos faltantes, es necesario complementar la información contable, ¿continuar?"/>
+                                </div>
+                            </group>
+                            <group>
+                                <group string="Partidas presupuestales">
+                                    <field name="budget_ids" nolabel="1" widget="one2many_list">                        
+                                        <list delete="0" create="0" edit="0" context="{'default_lead_id': id}">
+                                            <field name="col1"/>
+                                            <field name="col2"/>
+                                            <field name="budget_id"/>
+                                        </list>
+                                        <form><p>Información no disponible a través de esta vista</p></form>
+                                    </field>
+                                </group>
+                                <group string="Conceptos de trabajo">
+                                    <field name="concept_ids" nolabel="1" widget="one2many_list">                        
+                                        <list delete="0" create="0" edit="0" context="{'default_lead_id': id}">
+                                            <field name="col1"/>
+                                            <field name="col2"/>
+                                            <field name="col3"/>
+                                            <field name="col4"/>
+                                            <field name="col5"/>
+                                            <field name="concept_ex"/>
+                                            <field name="account_ex"/>
+                                            <field name="combo_ex"/>
+                                        </list>
+                                        <form><p>Información no disponible a través de esta vista</p></form>
+                                    </field>
+                                </group>
+                            </group>
                         </page>
                     </notebook>
                 </page>
@@ -540,35 +573,6 @@
                                 </group>
                             </group>
                         </page>
-                        <!--page string="Conceptos de Obra">
-                            <group>
-                                <group string="Partidas presupuestales">
-                                    <field name="budget_ids" nolabel="1" widget="one2many_list">                        
-                                        <list delete="0" create="0" edit="0" context="{'default_lead_id': id}">
-                                            <field name="col1"/>
-                                            <field name="col2"/>
-                                            <field name="budget_id"/>
-                                        </list>
-                                        <form><p>Información no disponible a través de esta vista</p></form>
-                                    </field>
-                                </group>
-                                <group string="Conceptos de trabajo">
-                                    <field name="concept_ids" nolabel="1" widget="one2many_list">                        
-                                        <list delete="0" create="0" edit="0" context="{'default_lead_id': id}">
-                                            <field name="col1"/>
-                                            <field name="col2"/>
-                                            <field name="col3"/>
-                                            <field name="col4"/>
-                                            <field name="col5"/>
-                                            <field name="concept_ex"/>
-                                            <field name="account_ex"/>
-                                            <field name="combo_ex"/>
-                                        </list>
-                                        <form><p>Información no disponible a través de esta vista</p></form>
-                                    </field>
-                                </group>
-                            </group>
-                        </page-->
                         <!--page string="Matriz">
                             <group>
                                 <field name="combo_ids" nolabel="1" widget="one2many_list">                        

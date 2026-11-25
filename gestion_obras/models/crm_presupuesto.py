@@ -5,13 +5,16 @@ import logging
 import base64
 import io
 import openpyxl
+import json
 
 _logger = logging.getLogger(__name__)
+
 
 class crmLeadPresupuesto(models.Model):
     _inherit = 'crm.lead'
 
     base_ids = fields.One2many('gestion.obra.presupuesto.base', 'lead_id', string='Presupuesto Base')
+    analytic_id = fields.Many2one('account.analytic.account', string='Analítica', readonly=True)
 
     #models_crm
     def action_advance_stage(self):
@@ -28,6 +31,8 @@ class crmLeadPresupuesto(models.Model):
                 raise ValidationError('Falta agregar el % de anticipo')
             if self.bases_anticipo_porcentaje > 100:
                 raise ValidationError('% de anticipo no valido')
+
+            self.generate_preoperativo()
 
         if self.stage_name == 'Visita de Obra':
             if not self.visita_acta:
@@ -63,6 +68,15 @@ class crmLeadPresupuesto(models.Model):
                                     'Capture el Subtotal, marque como Revisado y luego Autorice.')
             if not self.doctoconcept_nombre:
                 raise ValidationError('La plantilla del documento de presupuesto debe de ser capturada.')
+
+            count = len(self.concept_ids.filtered(lambda u: not u.concept_ex))
+            if count != 0:
+                raise ValidationError('Existen conceptos sin cargar, revise la información.')
+
+            """count = len(self.concept_ids.filtered(lambda u: not u.account_ex))
+            if count != 1:
+                raise ValidationError('Existen conceptos sin información contable, revise la información.')"""
+
             self.generate_presupuesto()
 
         if self.stage_name == 'Junta de Apertura de Propuestas':
@@ -92,7 +106,18 @@ class crmLeadPresupuesto(models.Model):
         self.stage_previous = self.stage_id.name
         old_stage_name = self.stage_name
         self.stage_id = new_stage.id
+        if new_stage.name == 'Inscripción/Compra de bases':
+            if not self.analytic_id:
+                plan = self.env['account.analytic.plan'].search([], order='id asc', limit=1)
+                analitica = self.env['account.analytic.account'].create({'name': self.nombre_interno or self.name, 'plan_id': plan.id})
+                self.write({'analytic_id': analitica.id})
+
         if old_stage_name == 'Junta de Fallo' and self.fallo_ganado:
+            if self.origen_id.name == 'Público':
+                for rec in self.base_ids:
+                    if rec.state != 'authorized':
+                        raise ValidationError('No existe presupuesto autorizado para la obra, favor de consultar con el área correspondiente.')
+            
             return self.action_set_won_rainbowman()
 
     def _get_presupuesto_base_from_group(self, grupo):
@@ -107,18 +132,98 @@ class crmLeadPresupuesto(models.Model):
     def generate_presupuesto(self):
         name = self.env['ir.sequence'].next_by_code('gestion.obra.presupuesto.base')
         presupuesto = self.env['gestion.obra.presupuesto.base'].create({'lead_id': self.id, 'name': name})
+        for rec in self.concept_ids:
+            rec.write({'base_id': presupuesto.id})
         correos_list = self._get_presupuesto_base_from_group('gestion_obras.group_tc_budget_control')
         template = self.env.ref('gestion_obras.mail_tmpl_presupuesto_base', raise_if_not_found=False)
 
         if not correos_list:
-            raise UserError(_('''No hay usuarios configurados con permiso para autorizar (o no tienen correo).
-                    Agregue usuarios al grupo “Puede autorizar convocatorias”.'''))
+            raise ValidationError(_('No hay usuarios configurados con permiso para autorizar (o no tienen correo).'))
         if not template:
-            raise UserError(_('No se encontró la plantilla de correo para solicitud de bases.'))
+            raise ValidationError(_('No se encontró la plantilla de correo para solicitud de bases.'))
 
         try:
             correos = ', '.join(correos_list)
             email_values = {'model': 'gestion.obra.presupuesto.base', 'email_to': correos}
+            template.send_mail(presupuesto.id, force_send=True, email_values=email_values)
+            self._post_html(_('Se envió correo a: ') + correos)
+        except Exception:
+            self._post_html(_('Error al enviar el correo'))
+
+        presupuesto.action_cargar_presupuesto()
+
+
+    def get_orden_default_values(self, lead=False):
+        if not self.partner_id.id:
+            raise ValidationError('No se ha capturado información de contacto')
+
+        if not self.origen_id.product_id.id:
+            raise ValidationError('Falta configurar el concepto a pagar')
+
+        if not self.env.user.has_group('project_extra.group_conv_authorizer'):
+            raise ValidationError('Solo usuarios autorizadores pueden aprobar la compra de bases.')
+
+        if not self.bases_pay:
+            raise ValidationError('La licitación no necesita orden de compra')
+
+        if not self.bases_cost or self.bases_cost == 0.00:
+            raise ValidationError('Capturar el costo de la requisición.')
+
+        if self.oc_ids.filtered(lambda u: u.state != 'cancel' and u.type_purchase == 'bases'):
+            raise ValidationError('Ya existe Orden de pago ligada.')
+
+        self.ensure_one()
+        sequence = self.env['ir.sequence'].next_by_code('purchase.order')
+        price = self.bases_cost
+        
+        orders = []
+        order_lines = []
+        taxes = []
+        fpos = self.env['account.fiscal.position'].with_company(self.company_id)._get_fiscal_position(self.partner_id)
+        taxes = self.origen_id.product_id.supplier_taxes_id._filter_taxes_by_company(self.company_id)
+
+        name = self.origen_id.product_id.name
+        if self.no_licitacion:
+            name += ' ' + self.no_licitacion
+        origin = 'Base - ' + self.name
+
+        distribution = {self.analytic_id.id: 100}
+
+        order_lines.append((0, 0, {
+            'name': name, 'product_uom': self.origen_id.product_id.uom_po_id.id, 'product_id': self.origen_id.product_id.id, 'company_id': self.company_id.id,
+            'partner_id': self.partner_id.id, 'currency_id': self.origen_id.product_id.currency_id.id, 'state': 'purchase', 'product_qty': 1, 
+            'price_unit': price, 'taxes_id': fpos.map_tax(taxes), 'analytic_distribution': distribution},))
+        values = {'lead_id': self.id, 'name': sequence, 'partner_id': self.partner_id.id, 'company_id': self.company_id.id, 'origin': origin,
+            'currency_id': self.origen_id.product_id.currency_id.id, 'user_id': self.env.uid, 'state': 'purchase', 'invoice_status': 'no', 
+            'type_purchase': 'bases', 'order_line': order_lines}
+        orders.append(values)
+        return orders
+
+
+    def generate_preoperativo(self):
+        name = self.env['ir.sequence'].next_by_code('gestion.obra.presupuesto.preoperativo')
+        presupuesto = self.env['gestion.obra.presupuesto.preoperativo'].create({'lead_id': self.id, 'name': name, 'analytic_id': self.analytic_id.id, 
+            'date_start': self.bases_fecha_inicio_trabajos, 'date_expiration': self.bases_fecha_terminacion_trabajos})
+        lista = []
+        for rec in self.oc_ids.filtered(lambda u: u.type_purchase == 'bases'):
+            for line in rec.order_line:
+                registro = {'preoperativo_id': presupuesto.id, 'product_id': line.product_id.id, 'analytic_id': self.analytic_id.id, 
+                    'name': line.product_id.name, 'amount_budgeted': line.price_total_cc}
+                lista.append((0, 0, registro))
+
+        presupuesto.write({'line_ids': lista})
+        
+        correos_list = self._get_presupuesto_base_from_group('gestion_obras.group_tc_budget_control')
+        template = self.env.ref('gestion_obras.mail_tmpl_presupuesto_preoperativo', raise_if_not_found=False)
+
+        if not correos_list:
+            raise ValidationError(_('No hay usuarios configurados con permiso para autorizar (o no tienen correo).'))
+        if not template:
+            raise ValidationError(_('No se encontró la plantilla de correo para solicitud de bases.'))
+
+        try:
+            correos = ', '.join(correos_list)
+            email_values = {'model': 'gestion.obra.presupuesto.preoperativo', 'email_to': correos}
             template.send_mail(presupuesto.id, force_send=True, email_values=email_values)
             self._post_html(_('Se envió correo a: ') + correos)
         except Exception:
@@ -136,153 +241,16 @@ class gestionPresupuestoBase(models.Model):
     concept_ids = fields.One2many('crm.concept.line', 'base_id', string='Conceptos de trabajo')
     budget_ids = fields.One2many('crm.budget.line', 'base_id', string='Partidas presupestales')
     partida_ids = fields.One2many('crm.budget.total', 'base_id', string='Todas las partidas')
+    baseprep_ids = fields.One2many('gestion.obra.presupuesto.base.partidas', 'base_id', string='Partidas Presupuesto Base')
     line_ids = fields.One2many('gestion.obra.presupuesto.base.line', 'base_id', string='Líneas')
-    state = fields.Selection(selection=[('draft','Borrador'), ('authorized','Autorizado'), ('win','Ganado'), ('cancel','Cancelado')],
+    state = fields.Selection(selection=[('draft','Borrador'), ('authorized','Generado'), ('win','Autorizado'), ('cancel','Cancelado')],
         string='Estatus', default='draft', tracking=True)
 
-    def action_cargar_concept(self):
-        for record in self:
-            docto = self.env['documents.document'].search([('id','=',self.lead_id.doctoconcept_nombre.id)])
-            if not docto:
-                raise ValidationError('El documento no se encuentra cargado en CRM, favor de revisar con el área correspondiente.')
-
-            if docto.file_extension in ['xlsx', 'xls', 'xlsm']:
-                record.__leer_carga_concept(docto)
-            else:
-                raise ValidationError('Seleccione un archivo tipo xlsx, xls, xlsm')
-
-
-    def __leer_carga_concept(self, docto):
-        for record in self:
-            attachment = docto.attachment_id.sudo()
-            decoded_data = base64.b64decode(attachment.datas)
-            workbook = openpyxl.load_workbook(filename=io.BytesIO(decoded_data), data_only=True)
-            sheet = workbook.active
-            c = 1
-            colpart = 2
-            registros = [(5, 0, 0)]
-            partidas = [(5, 0, 0)]
-            for row in sheet.iter_rows(values_only=True):
-                row = tuple(c.strip() if isinstance(c, str) else c for c in row)
-                if c == 1:
-                    c += 1
-                else:
-                    if c == 2:
-                        c += 1
-                        if not row[0]:
-                            raise ValidationError('El formato del archivo no coincide.')
-                        if not record.lead_id.empresa_concursante_id:
-                            raise ValidationError('La Empresa concursante no esta capturada en la oportunidad.')
-                        if record.lead_id.empresa_concursante_id.name.upper() != row[0].upper():
-                            raise ValidationError('La Empresa concursante no coincide con la empresa del archivo.')
-                        if record.lead_id.nombre_interno.upper() != row[1].upper():
-                            raise ValidationError('La oportunidad no coincide con el archivo. ')
-                        if row[4] != None and row[6] == row[8] == row[10] == None:
-                            colpart = 4
-                        if row[6] != None and row[8] == row[10] == None:
-                            colpart = 6
-                        if row[8] != None and row[10] == None:
-                            colpart = 8
-                        if row[10] != None:
-                            colpart = 10
-                    
-                    if row[12] == row[13] == row[14] == row[15] == None:
-                        _logger.warning('No se guarda la información')
-                    else:
-                        registro = {'col1': row[12], 'col2': row[13], 'col3': row[14], 'col4': row[15], 'col5': row[16], 'col6': row[17], 'col8': row[colpart],
-                            'lead_id': record.lead_id.id}
-                        registros.append((0, 0, registro))
-
-                        registro = {'level1': row[2], 'desc1': row[3], 'level2': row[4], 'desc2': row[5], 'level3': row[6], 'desc3': row[7], 'level4': row[8], 
-                            'desc4': row[9], 'level5': row[10], 'desc5': row[11], 'lead_id': record.lead_id.id}
-                        partidas.append((0, 0, registro))
-
-            record.write({'concept_ids': registros, 'partida_ids': partidas })
-            
-            self.env.cr.execute('DELETE FROM crm_budget_line WHERE base_id = ' + str(record.id) + ''';
-                INSERT INTO crm_budget_line (no_char, parent, col1, col2, create_date, write_date, base_id, lead_id, create_uid, write_uid) 
-                    SELECT *, NOW(), NOW(), ''' + str(record.id) + ', ' + str(record.lead_id.id) + ', ' + str(self.env.user.id) + ', ' + str(self.env.user.id) + 
-                    ' FROM (SELECT 1, NULL, level1, desc1 FROM crm_budget_total WHERE base_id = ''' + str(record.id) + 
-                    ' GROUP BY 1, 2, 3, 4 UNION ALL SELECT 2, level1, level2, desc2 FROM crm_budget_total WHERE base_id = ' + str(record.id) + 
-                    ' GROUP BY 1, 2, 3, 4 UNION ALL SELECT 3, level2, level3, desc3 FROM crm_budget_total WHERE base_id = ' + str(record.id) + 
-                    ' GROUP BY 1, 2, 3, 4 UNION ALL SELECT 4, level3, level4, desc4 FROM crm_budget_total WHERE base_id = ' + str(record.id) + 
-                    ' GROUP BY 1, 2, 3, 4 UNION ALL SELECT 5, level4, level5, desc5 FROM crm_budget_total WHERE base_id = ' + str(record.id) + 
-                    ' GROUP BY 1, 2, 3, 4) as t1 WHERE level1 IS NOT NULL ORDER BY 1, 2, 3; ')
-
-
-    def action_genera_partidas(self):
-        count = len(self.budget_ids.filtered(lambda u: not u.budget_id))
-        if count == 0:
-            raise UserError('Las partidas fueron cargadas correctamente, favor de continuar con la carga de conceptos')
-        else:
-            self.env.cr.execute('SELECT carga_partidas(' + str(self.lead_id.id) + ', ' + str(self.env.user.id) + ', ' + 
-                str(self.lead_id.empresa_concursante_id.id) + ')')
-            partidas = self.env.cr.dictfetchall()
-            lead_id = self.env['crm.budget.line'].search([('lead_id','=',self.lead_id.id)])
-            for lead in lead_id:
-                lead.write({'base_id': self.id})
-
-
-    def action_genera_concept(self):
-        count = len(self.budget_ids.filtered(lambda u: not u.budget_id))
-        if count != 0:
-            raise UserError('Las partidas no han sido cargadas, favor de realizar la carga')
-
-        iva = self.env['account.tax'].search([('amount','=',16), ('type_tax_use','=','sale')])
-        partida = 0
-        encabezados_sin_match = []
-        conceptos_huerfanos = 0
-        for rec in self.concept_ids.filtered(lambda u: not u.concept_ex):
-            partida_id = self.env['crm.budget.line'].search([('lead_id','=',rec.lead_id.id), ('col1','=',rec.col8)])
-            if partida_id:
-                partida = partida_id.budget_id.id
-
-            budget_val = partida
-            concept_id = self.env['product.template'].search([('budget_id','=',budget_val), ('default_code','=',rec.col1)])
-            if concept_id:
-                norm = {}
-                if concept_id.service_tracking != 'task_in_project':
-                    norm['service_tracking'] = 'task_in_project'
-                if not concept_id.sale_ok:
-                    norm['sale_ok'] = True
-                if norm:
-                    concept_id.write(norm)
-                if concept_id.property_account_income_id:
-                    rec.write({'concept_ex': True, 'concept_id': concept_id.id, 'account_ex': True})
-                else:
-                    rec.write({'concept_ex': True, 'concept_id': concept_id.id})
-            else:
-                statement = ('''SELECT cil.col1 code, cil.col2 name, uu.id uom, pc.id cat, REPLACE(cil.col4, ',', '') qty,
-                        (CASE WHEN cil.col5 = '' THEN '0.0' ELSE REPLACE(cil.col5, ',', '') END)::float importe
-                    FROM crm_concept_line cil JOIN uom_uom uu ON lower(cil.col3) = lower(uu.name->>'en_US') JOIN product_category pc ON pc.NAME = 'All'
-                    WHERE cil.id = ''' + str(rec.id))
-                self.env.cr.execute(statement)
-                info = self.env.cr.dictfetchall()
-                if info:
-                    insumo = self.env['product.template'].create({'categ_id': info[0]['cat'], 'uom_id': info[0]['uom'], 'uom_po_id': info[0]['uom'],
-                        'type': 'service', 'default_code': info[0]['code'], 'name': info[0]['name'], 'purchase_ok': False, 'sale_ok': True,
-                        'taxes_id': [(6, 0, iva.ids)], 'standard_price': info[0]['importe'], 'list_price': info[0]['importe'],
-                        'service_tracking': 'task_in_project', 'active': True, 'budget_id': budget_val})
-                    rec.write({'concept_ex': True, 'concept_id': insumo.id})
-
-        for rec in self.concept_ids.filtered(lambda u: u.concept_ex):
-            if rec.concept_id.property_account_income_id:
-                rec.write({'account_ex': True})
-
-
     def action_cargar_presupuesto(self):
-        count = len(self.concept_ids.filtered(lambda u: not u.concept_ex))
-        if count != 1:
-            raise ValidationError('Existen conceptos sin cargar, revise la información.')
-
-        count = len(self.concept_ids.filtered(lambda u: not u.account_ex))
-        if count != 1:
-            raise ValidationError('Existen conceptos sin información contable, revise la información.')
-
         registros = []
         total = 0
         for rec in self.concept_ids:
-            price = rec.col6.replace(',','').replace('$','')
+            price = float(rec.col6.replace(',','').replace('$',''))
             total += price
             registro = {'budget_id': rec.concept_id.budget_id.id, 'concept_id': rec.concept_id.id, 'uom_id': rec.concept_id.uom_id.id, 
                 'cantidad': rec.col4.replace(',',''), 'price_unit': rec.col5.replace(',','').replace('$',''), 'price': price}
@@ -294,6 +262,25 @@ class gestionPresupuestoBase(models.Model):
             state = 'win'
 
         self.write({'line_ids': registros, 'state': state, 'presupuesto': total})
+        self.env.cr.execute('SELECT budget_id, sum(price) price FROM gestion_obra_presupuesto_base_line WHERE base_id = ' + str(self.id) + ' GROUP BY 1')
+        lineas = self.env.cr.dictfetchall()
+        lista = []
+        for x in lineas:
+            lista.append((0, 0, {'base_id': self.id, 'budget_id': x['budget_id'], 'price': x['price']}))
+        self.write({'baseprep_ids': lista})
+
+
+    def cancelar_presupuesto(self):
+        for rec in self.concept_ids:
+            rec.write({'lead_id': False})
+        for rec in self.budget_ids:
+            rec.write({'lead_id': False})
+        for rec in self.partida_ids:
+            rec.write({'lead_id': False})
+        self.write({'state': 'cancel'})
+
+        if self.state in ['authorized', 'win']:
+            self.env.cr.execute('DELETE FROM product_budget_item_line WHERE lead_id = ' + str(self.lead_id.id))
 
 
 class crmConceptLine(models.Model):
@@ -326,3 +313,175 @@ class gestionPresupuestoBaseLine(models.Model):
     cantidad = fields.Float(string='Cantidad')
     price_unit = fields.Float(string='Precio unitario')
     price = fields.Float(string='Precio')
+
+
+class gestionPresupuestoBasePartidas(models.Model):
+    _name = 'gestion.obra.presupuesto.base.partidas'
+    _description = 'Líneas Partidas Presupuesto Base'
+
+    base_id = fields.Many2one(comodel_name='gestion.obra.presupuesto.base', string='Presupuesto Base', readonly=True)
+    budget_id = fields.Many2one(comodel_name='product.budget.item', string='Partida')
+    price = fields.Float(string='Precio')
+    name_lead = fields.Char(string='Nombre de la partida', compute='_compute_name_lead')
+
+    @api.depends('base_id.lead_id', 'budget_id.line_ids.lead_id', 'budget_id.line_ids.name')
+    def _compute_name_lead(self):
+        for record in self:
+            nombre = False
+            if record.base_id.lead_id and record.budget_id:
+                linea = record.budget_id.line_ids.filtered(lambda l: l.lead_id == record.base_id.lead_id and l.item_id == record.budget_id)[:1]
+                nombre = linea.name if linea else False
+
+            record.name_lead = nombre
+
+
+class gestionPresupuestoPreoperativo(models.Model):
+    _name = 'gestion.obra.presupuesto.preoperativo'
+    _description = 'Presupuesto Preoperativo'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+
+    name = fields.Char(string='Folio Preoperativo', required=True, copy=False, readonly=True, default=lambda self: _('Nuevo'))
+    lead_id = fields.Many2one('crm.lead', string='Oportunidad', tracking=True)
+    project_id = fields.Many2one('project.project', string='Proyecto / Obra', tracking=True)
+    company_id = fields.Many2one('res.company', string='Compañía', required=True, default=lambda self: self.env.company)
+    user_id = fields.Many2one('res.users', string='Responsable / Residente', default=lambda self: self.env.user, tracking=True)
+    date_start = fields.Date(string='Fecha de Apertura', default=fields.Date.today, required=True)
+    date_expiration = fields.Date(string='Fecha Límite', required=True)
+    currency_id = fields.Many2one('res.currency', string='Moneda', default=lambda self: self.env.company.currency_id)
+    line_ids = fields.One2many('gestion.obra.presupuesto.preoperativo.line', 'preoperativo_id', string='Líneas Directas')
+    indirect_ids = fields.One2many('gestion.obra.presupuesto.preoperativo.indirecto', 'preoperativo_id', string='Líneas Indirectas')
+    gastos = fields.Float(string='Gastos autorizados')
+    amount_total_budget = fields.Float(string='Monto Total Presupuestado', compute='_compute_totals', store=True)
+    amount_total_available = fields.Float(string='Saldo Total Disponible', compute='_compute_totals', store=True)
+    """amount_total_committed = fields.Float(string='Monto Total Comprometido', compute='_compute_totals', store=True)
+    amount_total_incurred = fields.Float(string='Monto Total Incurrido', compute='_compute_totals', store=True) """
+    analytic_id = fields.Many2one('account.analytic.account', string='Analítica', readonly=True)
+    state = fields.Selection([('draft', 'Borrador'), ('approved', 'Autorizado'), ('transferring', 'En Traslado'), ('reconciled', 'Conciliado / Cerrado'),
+        ('cancel', 'Cancelado')], 
+        string='Estatus', default='draft', tracking=True)
+
+    _sql_constraints = [('leadprep_uniq','unique(lead_id)','Solo debe de exister un presupuesto preoperativo por oportunidad.')]
+
+    @api.onchange('lead_id')
+    def onchange_name(self):
+        if self.lead_id:
+            project = self.env['project.project'].search([('lead_id', '=', self.lead_id.id)])
+            self.project_id = project
+            self.analytic_id = project.account_id
+
+    @api.depends('gastos', 'line_ids.amount_budgeted') #, 'line_ids.amount_committed', 'line_ids.amount_incurred'
+    def _compute_totals(self):
+        for rec in self:
+            rec.amount_total_budget = sum(rec.line_ids.mapped('amount_budgeted')) + sum(rec.indirect_ids.mapped('amount_budgeted'))
+            rec.amount_total_available = rec.gastos - rec.amount_total_budget
+
+    def action_approve(self):
+        self.write({'state': 'approved'})
+
+    def action_open_transfer_wizard(self):
+        return {
+            'name': _('Asistente de Traslado y Compensación'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'presupuesto.preoperativo.transfer.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_preoperative_budget_id': self.id}}
+
+
+class gestionPresupuestoPreoperativoLine(models.Model):
+    _name = 'gestion.obra.presupuesto.preoperativo.line'
+    _description = 'Línea de Partida Preoperativa'
+
+    @api.depends('preoperativo_id')
+    def _compute_domain_budget(self):
+        lista = []
+        for record in self:
+            if record.preoperativo_id.lead_id.base_ids:
+                for rec in record.preoperativo_id.lead_id.base_ids.filtered(lambda u: u.state == 'win'):
+                    base = rec
+
+                if base:
+                    self.env.cr.execute('SELECT budget_id FROM gestion_obra_presupuesto_base_line WHERE base_id = ' + str(base.id) + ' GROUP BY 1')
+                    lineas = self.env.cr.dictfetchall()
+                    for x in lineas:
+                        lista.append(x['budget_id'])
+            record.budget_domain = json.dumps([('id', 'in', lista)])
+
+    preoperativo_id = fields.Many2one('gestion.obra.presupuesto.preoperativo', string='Presupuesto Preoperativo', ondelete='cascade')
+    currency_id = fields.Many2one(related='preoperativo_id.currency_id')
+    #category_id = fields.Many2one('product.category', string='Categoría de Insumo Global')
+    product_id = fields.Many2one('product.product', string='Producto / Insumo Global', required=True)
+    analytic_id = fields.Many2one(related='preoperativo_id.analytic_id') 
+    budget_id = fields.Many2one(comodel_name='product.budget.item', string='Partida')
+    budget_domain = fields.Char(readonly=True, store=False, compute=_compute_domain_budget)
+    name = fields.Char(string='Descripción de Trabajos Iniciales', required=True)
+    amount_budgeted = fields.Float(string='Monto Presupuestado Autorizado', required=True)
+    # Revisar que se necesita para importes se ne
+    """amount_committed = fields.Float(string='Monto Comprometido (OC)', compute='_compute_amounts', store=True)
+    amount_incurred = fields.Float(string='Monto Real Incurrido', compute='_compute_amounts', store=True)
+    amount_available = fields.Float(string='Saldo Disponible Remanente', compute='_compute_amounts', store=True) """
+    is_transferred = fields.Boolean(string='Partida Trasladada / Conciliada', default=False)
+
+    """@api.onchange('amount_budgeted')
+    def _compute_amounts(self):
+        for line in self:
+            committed = 0.0
+            incurred = 0.0
+            if line.analytic_id:
+                _logger.warning('Aqui 321..........')
+                po_lines = self.env['purchase.order.line'].search([('analytic_distribution', 'like', str(line.analytic_id.id)), 
+                    ('order_id.state', 'in', ['purchase', 'done'])])
+                committed = sum(po_lines.mapped('price_subtotal'))
+            line.amount_committed = committed
+            _logger.warning('Aqui 326..........')
+            line.amount_incurred = incurred            
+            line.amount_available = line.amount_budgeted - line.amount_committed """
+
+
+class gestionPresupuestoPreoperativoIndirectos(models.Model):
+    _name = 'gestion.obra.presupuesto.preoperativo.indirecto'
+    _description = 'Línea de Partida Preoperativa'
+
+    @api.depends('preoperativo_id')
+    def _compute_domain_budget(self):
+        lista = []
+        for record in self:
+            if record.preoperativo_id.lead_id.base_ids:
+                for rec in record.preoperativo_id.lead_id.base_ids.filtered(lambda u: u.state == 'win'):
+                    base = rec
+
+                if base:
+                    self.env.cr.execute('SELECT budget_id FROM gestion_obra_presupuesto_base_line WHERE base_id = ' + str(base.id) + ' GROUP BY 1')
+                    lineas = self.env.cr.dictfetchall()
+                    for x in lineas:
+                        lista.append(x['budget_id'])
+            record.budget_domain = json.dumps([('id', 'in', lista)])
+
+    preoperativo_id = fields.Many2one('gestion.obra.presupuesto.preoperativo', string='Presupuesto Preoperativo', ondelete='cascade')
+    currency_id = fields.Many2one(related='preoperativo_id.currency_id')
+    product_id = fields.Many2one('product.product', string='Producto / Insumo Global', required=True)
+    analytic_id = fields.Many2one(related='preoperativo_id.analytic_id') 
+    budget_id = fields.Many2one(comodel_name='product.budget.item', string='Partida')
+    budget_domain = fields.Char(readonly=True, store=False, compute=_compute_domain_budget)
+    name = fields.Char(string='Descripción de Trabajos Iniciales', required=True)
+    amount_budgeted = fields.Float(string='Monto Presupuestado Autorizado', required=True)
+    # Revisar que se necesita para importes se ne
+    """amount_committed = fields.Float(string='Monto Comprometido (OC)', compute='_compute_amounts', store=True)
+    amount_incurred = fields.Float(string='Monto Real Incurrido', compute='_compute_amounts', store=True)
+    amount_available = fields.Float(string='Saldo Disponible Remanente', compute='_compute_amounts', store=True) """
+    is_transferred = fields.Boolean(string='Partida Trasladada / Conciliada', default=False)
+
+    """@api.onchange('amount_budgeted')
+    def _compute_amounts(self):
+        for line in self:
+            committed = 0.0
+            incurred = 0.0
+            if line.analytic_id:
+                _logger.warning('Aqui 321..........')
+                po_lines = self.env['purchase.order.line'].search([('analytic_distribution', 'like', str(line.analytic_id.id)), 
+                    ('order_id.state', 'in', ['purchase', 'done'])])
+                committed = sum(po_lines.mapped('price_subtotal'))
+            line.amount_committed = committed
+            _logger.warning('Aqui 326..........')
+            line.amount_incurred = incurred            
+            line.amount_available = line.amount_budgeted - line.amount_committed """
