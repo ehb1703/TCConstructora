@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_catalogo_equivalencia_list" model="ir.ui.view">
+        <field name="name">catalogo.equivalencia.list</field>
+        <field name="model">catalogo.equivalencia</field>
+        <field name="arch" type="xml">
+            <list string="Equivalencias" decoration-warning="estado == 'pendiente'">
+                <field name="fuente"/>
+                <field name="codigo_externo"/>
+                <field name="descripcion_externa"/>
+                <field name="unidad_externa" optional="show"/>
+                <field name="product_tmpl_id"/>
+                <field name="clave_insumo_tc" width="150px"/>
+                <field name="estado" widget="badge"/>
+                <field name="lead_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_catalogo_equivalencia_form" model="ir.ui.view">
+        <field name="name">catalogo.equivalencia.form</field>
+        <field name="model">catalogo.equivalencia</field>
+        <field name="arch" type="xml">
+            <form string="Equivalencia">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="fuente"/>
+                            <field name="codigo_externo"/>
+                            <field name="descripcion_externa"/>
+                            <field name="unidad_externa"/>
+                        </group>
+                        <group>
+                            <field name="product_tmpl_id" options="{'no_create': True}"/>
+                            <field name="clave_insumo_tc"/>
+                            <field name="estado"/>
+                            <field name="lead_id" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_catalogo_equivalencia_search" model="ir.ui.view">
+        <field name="name">catalogo.equivalencia.search</field>
+        <field name="model">catalogo.equivalencia</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="codigo_externo"/>
+                <field name="descripcion_externa"/>
+                <field name="product_tmpl_id"/>
+                <field name="fuente"/>
+                <filter name="pendientes" string="Pendientes de revisión" domain="[('estado', '=', 'pendiente')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="por_fuente" string="Fuente" context="{'group_by': 'fuente'}"/>
+                    <filter name="por_insumo" string="Insumo" context="{'group_by': 'product_tmpl_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_catalogo_equivalencia" model="ir.actions.act_window">
+        <field name="name">Equivalencias de insumos</field>
+        <field name="res_model">catalogo.equivalencia</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_catalogo_categoria_familia_list" model="ir.ui.view">
+        <field name="name">catalogo.categoria.familia.list</field>
+        <field name="model">catalogo.categoria.familia</field>
+        <field name="arch" type="xml">
+            <list string="Combinaciones permitidas" editable="bottom">
+                <field name="categoria_id"/>
+                <field name="familia_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_catalogo_categoria_familia" model="ir.actions.act_window">
+        <field name="name">Categorías y familias permitidas</field>
+        <field name="res_model">catalogo.categoria.familia</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="view_product_template_catalogo_list" model="ir.ui.view">
+        <field name="name">product.template.catalogo.tc.list</field>
+        <field name="model">product.template</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Insumos del catálogo" create="0">
+                <header>
+                    <button name="action_nuevo_insumo" type="object" string="Nuevo insumo" class="btn-primary" display="always" groups="catalogo_tc.group_admin_catalogo"/>
+                    <button name="action_importar_insumos" type="object" string="Importar insumos" class="btn-secondary" display="always" groups="catalogo_tc.group_admin_catalogo"/>
+                </header>
+                <field name="clave_insumo_tc" width="160px"/>
+                <field name="name"/>
+                <field name="uom_id"/>
+                <field name="tipo_insumo_id" optional="show"/>
+                <field name="categoria_insumo_id" optional="show"/>
+                <field name="familia_insumo_id" optional="show"/>
+                <field name="equivalencia_count" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_catalogo_insumos" model="ir.actions.act_window">
+        <field name="name">Insumos del catálogo</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_product_template_catalogo_list"/>
+        <field name="domain">[('clave_insumo', '!=', False)]</field>
+    </record>
+
+    <!-- Aplicación propia: el catálogo lo consultan Compras y los analistas del CRM, no solo los administradores de Compras -->
+    <menuitem id="menu_catalogo_tc_root" name="Catálogo de Insumos" sequence="45" web_icon="catalogo_tc,static/description/icon.png"
+              groups="catalogo_tc.group_admin_catalogo,purchase.group_purchase_user,sales_team.group_sale_salesman"/>
+    <menuitem id="menu_catalogo_insumos" name="Insumos" parent="menu_catalogo_tc_root" action="action_catalogo_insumos" sequence="5"/>
+    <menuitem id="menu_catalogo_equivalencia" name="Equivalencias" parent="menu_catalogo_tc_root" action="action_catalogo_equivalencia" sequence="10"/>
+    <menuitem id="menu_catalogo_importar" name="Importar insumos" parent="menu_catalogo_tc_root" action="action_catalogo_importar_wizard"
+              sequence="15" groups="catalogo_tc.group_admin_catalogo"/>
+    <menuitem id="menu_catalogo_importar_compras" name="Importar insumos" parent="purchase.menu_purchase_products" action="action_catalogo_importar_wizard"
+              sequence="22" groups="catalogo_tc.group_admin_catalogo"/>
+    <menuitem id="menu_catalogo_categoria_familia" name="Categorías y familias permitidas" parent="menu_catalogo_tc_root"
+              action="action_catalogo_categoria_familia" sequence="20" groups="catalogo_tc.group_admin_catalogo"/>
+
+    <record id="view_product_template_catalogo_pestana" model="ir.ui.view">
+        <field name="name">product.template.catalogo.tc.pestana</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Equivalencias" name="equivalencias_catalogo" invisible="not clave_insumo">
+                    <p class="text-muted">Códigos con los que cada obra identifica este insumo. Se agregan solos al conciliar licitaciones.</p>
+                    <field name="equivalencia_ids" readonly="1">
+                        <list>
+                            <field name="fuente"/>
+                            <field name="codigo_externo"/>
+                            <field name="descripcion_externa"/>
+                            <field name="unidad_externa"/>
+                            <field name="estado" widget="badge"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_tipo_insumo_catalogo_form" model="ir.ui.view">
+        <field name="name">product.tipo.insumo.catalogo.form</field>
+        <field name="model">product.tipo.insumo</field>
+        <field name="inherit_id" ref="project_extra.view_tipo_insumo_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='fecha_creacion']" position="after">
+                <field name="cuenta_gasto_id" options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Los insumos se dan de alta solo desde el catálogo: en las compras ya no se crean productos al vuelo -->
+    <record id="view_purchase_order_catalogo_form" model="ir.ui.view">
+        <field name="name">purchase.order.catalogo.tc.form</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/list/field[@name='product_id']" position="attributes">
+                <attribute name="options">{'no_create': True}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form//field[@name='product_id']" position="attributes">
+                <attribute name="options">{'no_create': True}</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Compras > Productos > Insumos (lista nativa de productos de compra): el catálogo TC se maneja desde aquí -->
+    <record id="view_product_template_catalogo_busqueda" model="ir.ui.view">
+        <field name="name">product.template.catalogo.tc.busqueda</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="equivalencia_ids" string="Código de obra" filter_domain="[('equivalencia_ids.codigo_externo', 'ilike', self)]"/>
+            </xpath>
+            <xpath expr="//filter[@name='filter_to_purchase']" position="after">
+                <separator/>
+                <filter name="catalogo_tc" string="Catálogo TC (con clave)" domain="[('clave_insumo', '!=', False)]"/>
+                <filter name="sin_clave_tc" string="De compra sin Clave TC" domain="[('purchase_ok', '=', True), ('clave_insumo', '=', False)]"/>
+            </xpath>
+            <xpath expr="//group" position="inside">
+                <filter name="por_tipo_insumo" string="Tipo de insumo" context="{'group_by': 'tipo_insumo_id'}"/>
+                <filter name="por_categoria_insumo" string="Categoría de insumo" context="{'group_by': 'categoria_insumo_id'}"/>
+                <filter name="por_familia_insumo" string="Familia de insumo" context="{'group_by': 'familia_insumo_id'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_template_catalogo_lista_compras" model="ir.ui.view">
+        <field name="name">product.template.catalogo.tc.lista.compras</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <header>
+                    <button name="action_nuevo_insumo" type="object" string="Nuevo insumo" class="btn-primary" display="always"
+                            groups="catalogo_tc.group_admin_catalogo" invisible="not context.get('purchase_product_template')"/>
+                    <button name="action_importar_insumos" type="object" string="Importar insumos" class="btn-secondary" display="always"
+                            groups="catalogo_tc.group_admin_catalogo" invisible="not context.get('purchase_product_template')"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_template_catalogo_form" model="ir.ui.view">
+        <field name="name">product.template.catalogo.tc.form</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_ver_equivalencias" type="object" class="oe_stat_button" icon="fa-exchange" invisible="not clave_insumo">
+                    <field name="equivalencia_count" widget="statinfo" string="Equivalencias"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

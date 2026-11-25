@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_catalogo_importar_wizard_form" model="ir.ui.view">
+        <field name="name">catalogo.importar.wizard.form</field>
+        <field name="model">catalogo.importar.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Importar insumos">
+                <field name="estado" invisible="1"/>
+                <div class="alert alert-info" role="alert">
+                    Solo se acepta la <b>plantilla oficial</b>. Descárguela, llene la hoja INSUMOS y súbala aquí.
+                    Primero <b>Validar</b> (no guarda nada); si no hay errores, <b>Importar</b>.
+                </div>
+                <group>
+                    <field name="archivo_nombre" invisible="1"/>
+                    <field name="archivo" filename="archivo_nombre"/>
+                </group>
+                <field name="resultado" invisible="not resultado" nolabel="1"/>
+                <footer>
+                    <button name="action_descargar_plantilla" string="Descargar plantilla" type="object" class="btn-secondary"/>
+                    <button name="action_validar" string="Validar" type="object" class="btn-secondary" invisible="estado == 'importado'"/>
+                    <button name="action_importar" string="Importar" type="object" class="btn-primary" invisible="estado != 'validado'"
+                            confirm="Se darán de alta y actualizarán los insumos del archivo en el catálogo. ¿Continuar?"/>
+                    <button string="Cerrar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_catalogo_importar_wizard" model="ir.actions.act_window">
+        <field name="name">Importar insumos</field>
+        <field name="res_model">catalogo.importar.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

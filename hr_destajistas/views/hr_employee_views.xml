@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_destajista_list" model="ir.ui.view">
+        <field name="name">hr.employee.destajista.list</field>
+        <field name="model">hr.employee</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Destajistas" create="0">
+                <header>
+                    <button name="%(hr_destajistas.action_destajista_alta)d" type="action" string="Nuevo destajista" class="btn-primary" display="always"/>
+                </header>
+                <field name="destajo_numero"/>
+                <field name="name" string="Nombre"/>
+                <field name="destajo_curp" optional="show"/>
+                <field name="destajo_nss" optional="show"/>
+                <field name="destajo_cuenta_id" optional="show"/>
+                <field name="destajo_obra_id"/>
+                <field name="destajo_residente_id"/>
+                <field name="resource_calendar_id" string="Horario" optional="show"/>
+                <field name="destajo_obra_direccion" optional="hide"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_destajista_form" model="ir.ui.view">
+        <field name="name">hr.employee.destajista.form</field>
+        <field name="model">hr.employee</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <form string="Destajista" create="0" delete="0">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_destajo_asistencias" type="object" class="oe_stat_button" icon="fa-clock-o">
+                            <field name="destajo_asistencias_count" widget="statinfo" string="Asistencias"/>
+                        </button>
+                        <button name="action_destajo_pagos" type="object" class="oe_stat_button" icon="fa-money">
+                            <field name="destajo_pagos_count" widget="statinfo" string="Pagos de destajo"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="image_1920" widget="image" class="oe_avatar" options="{'preview_image': 'image_128'}"/>
+                    <div class="oe_title">
+                        <label for="name" string="Destajista"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                        <field name="tipo_personal" widget="badge" readonly="1"/>
+                    </div>
+                    <group>
+                        <group string="Datos del destajista">
+                            <field name="destajo_numero" readonly="1"/>
+                            <field name="destajo_curp" required="1"/>
+                            <field name="destajo_nss" required="1"/>
+                            <field name="work_contact_id" invisible="1"/>
+                            <field name="destajo_cuenta_id" required="1" domain="[('partner_id', '=', work_contact_id)]" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Obra">
+                            <field name="destajo_obra_id"/>
+                            <field name="destajo_obra_direccion"/>
+                            <field name="destajo_residente_id" required="1" options="{'no_create': True}"/>
+                            <field name="resource_calendar_id" string="Horario" options="{'no_create': True}"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Obras asignadas" name="obras">
+                            <field name="obra_ids">
+                                <list editable="bottom">
+                                    <field name="project_id"/>
+                                    <field name="fecha_inicio"/>
+                                    <field name="fecha_fin"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_destajista_search" model="ir.ui.view">
+        <field name="name">hr.employee.destajista.search</field>
+        <field name="model">hr.employee</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <search string="Destajistas">
+                <field name="name"/>
+                <field name="destajo_obra_id"/>
+                <field name="destajo_residente_id"/>
+                <filter name="activos" string="Activos" domain="[('active', '=', True)]"/>
+                <filter name="archivados" string="Archivados" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="por_obra" string="Obra" context="{'group_by': 'destajo_obra_id'}"/>
+                    <filter name="por_residente" string="Residente" context="{'group_by': 'destajo_residente_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_destajistas" model="ir.actions.act_window">
+        <field name="name">Destajistas</field>
+        <field name="res_model">hr.employee</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('tipo_personal', '=', 'destajista')]</field>
+        <field name="context">{'default_tipo_personal': 'destajista', 'active_test': False, 'search_default_activos': 1, 'mostrar_destajistas': True}</field>
+        <field name="search_view_id" ref="view_destajista_search"/>
+        <field name="view_ids" eval="[(5, 0, 0), (0, 0, {'view_mode': 'list', 'view_id': ref('view_destajista_list')}),
+                                      (0, 0, {'view_mode': 'form', 'view_id': ref('view_destajista_form')})]"/>
+    </record>
+
+    <!-- En la ficha de empleado (RRHH) se ve el tipo de personal -->
+    <record id="view_employee_form_tipo_personal" model="ir.ui.view">
+        <field name="name">hr.employee.form.tipo.personal</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='work_email']" position="before">
+                <field name="tipo_personal" readonly="1" invisible="tipo_personal == 'empleado'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <menuitem id="menu_destajistas_root" name="Destajistas" sequence="72" web_icon="hr_destajistas,static/description/icon.png"
+              groups="hr_destajistas.group_destajistas,hr.group_hr_user"/>
+    <menuitem id="menu_destajistas" name="Destajistas" parent="menu_destajistas_root" action="action_destajistas" sequence="10"/>
+    <menuitem id="menu_destajistas_reporte" name="Reporte de asistencias" parent="menu_destajistas_root" action="action_reporte_asistencias_destajistas" sequence="30"/>
+</odoo>

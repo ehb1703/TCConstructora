@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_destajistas" model="ir.module.category">
+        <field name="name">Destajistas</field>
+        <field name="sequence">60</field>
+    </record>
+    <record id="group_destajistas" model="res.groups">
+        <field name="name">Destajistas</field>
+        <field name="category_id" ref="module_category_destajistas"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+        <field name="comment">Da de alta, consulta, edita y exporta a los destajistas de obra (Administración, responsable del cálculo y pago de destajos).</field>
+    </record>
+</odoo>

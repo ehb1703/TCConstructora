@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Contactos: casilla "Es destajista" junto a Es proveedor / Es cliente -->
+    <record id="view_partner_es_destajista" model="ir.ui.view">
+        <field name="name">res.partner.form.es.destajista</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="contact_extra.view_contacts_curp_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='is_customer']/.." position="after">
+                <span class="d-inline-flex" invisible="is_company">
+                    <field name="es_destajista"/>
+                    <label for="es_destajista"/>
+                </span>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Asistencias y Nómina no muestran destajistas (se consultan solo en el módulo Destajistas).
+         Se conserva el dominio original de cada acción; el uninstall_hook lo restaura al desinstalar. -->
+    <record id="hr.open_view_employee_list_my" model="ir.actions.act_window">
+        <field name="domain">[('company_id', 'in', allowed_company_ids), ('tipo_personal', '!=', 'destajista')]</field>
+    </record>
+    <record id="hr_attendance.hr_attendance_action" model="ir.actions.act_window">
+        <field name="domain">[('employee_id.tipo_personal', '!=', 'destajista')]</field>
+    </record>
+    <record id="hr_attendance.hr_attendance_management_action" model="ir.actions.act_window">
+        <field name="domain">[('check_out', '!=', False), ('employee_id.tipo_personal', '!=', 'destajista')]</field>
+    </record>
+    <record id="hr_attendance.hr_attendance_reporting" model="ir.actions.act_window">
+        <field name="domain">[('employee_id.tipo_personal', '!=', 'destajista')]</field>
+    </record>
+    <record id="hr_work_entry.hr_work_entry_action" model="ir.actions.act_window">
+        <field name="domain">[('employee_id.tipo_personal', '!=', 'destajista')]</field>
+    </record>
+    <record id="hr_payroll.hr_payslip_action_view_to_pay" model="ir.actions.act_window">
+        <field name="domain">[('state', '=', 'done'), ('employee_id.tipo_personal', '!=', 'destajista')]</field>
+    </record>
+    <record id="hr_payroll.action_view_hr_payslip_month_form" model="ir.actions.act_window">
+        <field name="domain">[('employee_id.tipo_personal', '!=', 'destajista')]</field>
+    </record>
+    <record id="hr_payroll.hr_work_entry_report_action" model="ir.actions.act_window">
+        <field name="domain">[('company_id', 'in', allowed_company_ids), ('employee_id.tipo_personal', '!=', 'destajista')]</field>
+    </record>
+    <record id="hr_contract.action_hr_contract" model="ir.actions.act_window">
+        <field name="domain">[('employee_id', '!=', False), ('employee_id.tipo_personal', '!=', 'destajista')]</field>
+    </record>
+    <record id="hr_payroll_holidays.hr_leave_work_entry_action" model="ir.actions.act_window">
+        <field name="domain">[('employee_id.tipo_personal', '!=', 'destajista')]</field>
+    </record>
+
+    <!-- Formulario de asistencia: hr_extra pone el dominio del empleado en la vista; se le agrega el tipo de personal -->
+    <record id="hr_attendance_view_form_sin_destajistas" model="ir.ui.view">
+        <field name="name">hr.attendance.form.sin.destajistas</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.hr_attendance_view_form"/>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='employee_id']" position="attributes">
+                <attribute name="domain">[('finiquito', '=', False), ('tipo_personal', '!=', 'destajista')]</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Destajistas → Asistencias: vistas propias de solo consulta. La lista estándar de Asistencias (js_class attendance_list_view)
+         muestra la ayuda del quiosco y "Cargar datos de muestra", que no aplican aquí. -->
+    <record id="view_destajistas_asistencias_list" model="ir.ui.view">
+        <field name="name">hr.attendance.destajistas.list</field>
+        <field name="model">hr.attendance</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Asistencias de destajistas" create="0" edit="0" delete="0" default_order="check_in desc">
+                <field name="employee_id" string="Destajista"/>
+                <field name="project_id"/>
+                <field name="check_in" string="Entrada"/>
+                <field name="check_out" string="Salida"/>
+                <field name="worked_hours" string="Horas trabajadas" widget="float_time" sum="Total"/>
+                <field name="checkout_notes" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_destajistas_asistencias_form" model="ir.ui.view">
+        <field name="name">hr.attendance.destajistas.form</field>
+        <field name="model">hr.attendance</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <form string="Asistencia de destajista" create="0" edit="0" delete="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="employee_id" string="Destajista" readonly="1"/>
+                            <field name="project_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="check_in" string="Entrada" readonly="1"/>
+                            <field name="check_out" string="Salida" readonly="1"/>
+                            <field name="worked_hours" string="Horas trabajadas" widget="float_time" readonly="1"/>
+                            <field name="checkout_notes" readonly="1" invisible="not checkout_notes"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_destajistas_asistencias_search" model="ir.ui.view">
+        <field name="name">hr.attendance.destajistas.search</field>
+        <field name="model">hr.attendance</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <search string="Asistencias de destajistas">
+                <field name="employee_id" string="Destajista"/>
+                <field name="project_id"/>
+                <filter name="hoy" string="Hoy" domain="[('check_in', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="sin_salida" string="Sin salida" domain="[('check_out', '=', False)]"/>
+                <filter name="fecha" string="Fecha de entrada" date="check_in"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="por_destajista" string="Destajista" context="{'group_by': 'employee_id'}"/>
+                    <filter name="por_obra" string="Obra" context="{'group_by': 'project_id'}"/>
+                    <filter name="por_dia" string="Día" context="{'group_by': 'check_in:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_destajistas_asistencias" model="ir.actions.act_window">
+        <field name="name">Asistencias de destajistas</field>
+        <field name="res_model">hr.attendance</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('employee_id.tipo_personal', '=', 'destajista')]</field>
+        <field name="context">{'create': False, 'mostrar_destajistas': True}</field>
+        <field name="search_view_id" ref="view_destajistas_asistencias_search"/>
+        <field name="view_ids" eval="[(5, 0, 0), (0, 0, {'view_mode': 'list', 'view_id': ref('view_destajistas_asistencias_list')}),
+                                      (0, 0, {'view_mode': 'form', 'view_id': ref('view_destajistas_asistencias_form')})]"/>
+        <field name="help" type="html"><p class="o_view_nocontent_empty_folder">Aún no hay asistencias de destajistas</p>
+            <p>Se registran solas cuando el destajista checa en el reloj de la obra con su número D.</p></field>
+    </record>
+
+    <!-- Destajistas → Pagos de destajo (solo consulta, desde Requisiciones → Destajos) -->
+    <record id="view_destajistas_pagos_list" model="ir.ui.view">
+        <field name="name">requisition.destajo.pagos.destajistas.list</field>
+        <field name="model">requisition.destajo</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Pagos de destajo" create="0" edit="0" delete="0">
+                <field name="partner_id" string="Destajista"/>
+                <field name="destajo_requisicion"/>
+                <field name="destajo_obra"/>
+                <field name="destajo_periodo_inicio"/>
+                <field name="destajo_periodo_fin"/>
+                <field name="destajo_tipo" optional="show"/>
+                <field name="account_id" optional="show"/>
+                <field name="type_pay" optional="show"/>
+                <field name="amount_total" sum="Total"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_destajistas_pagos_search" model="ir.ui.view">
+        <field name="name">requisition.destajo.pagos.destajistas.search</field>
+        <field name="model">requisition.destajo</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <search string="Pagos de destajo">
+                <field name="partner_id" string="Destajista"/>
+                <field name="destajo_obra"/>
+                <field name="destajo_requisicion"/>
+                <filter name="aprobados" string="Aprobados" domain="[('state', '=', 'aprobado')]"/>
+                <filter name="sin_borrador" string="Sin borradores" domain="[('state', '!=', 'draft')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="por_destajista" string="Destajista" context="{'group_by': 'partner_id'}"/>
+                    <filter name="por_estado" string="Estatus" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_destajistas_pagos" model="ir.actions.act_window">
+        <field name="name">Pagos de destajo</field>
+        <field name="res_model">requisition.destajo</field>
+        <field name="view_mode">list</field>
+        <field name="domain">[('partner_id.es_destajista', '=', True)]</field>
+        <field name="context">{'create': False, 'search_default_por_destajista': 1, 'mostrar_destajistas': True}</field>
+        <field name="search_view_id" ref="view_destajistas_pagos_search"/>
+        <field name="view_ids" eval="[(5, 0, 0), (0, 0, {'view_mode': 'list', 'view_id': ref('view_destajistas_pagos_list')})]"/>
+        <field name="help" type="html"><p class="o_view_nocontent_empty_folder">Aún no hay pagos de destajo</p>
+            <p>Aquí se ven los destajos capturados en Requisiciones de los contactos marcados como "Es destajista".</p></field>
+    </record>
+
+    <menuitem id="menu_destajistas_asistencias" name="Asistencias" parent="menu_destajistas_root" action="action_destajistas_asistencias" sequence="20"/>
+    <menuitem id="menu_destajistas_pagos" name="Pagos de destajo" parent="menu_destajistas_root" action="action_destajistas_pagos" sequence="25"/>
+</odoo>

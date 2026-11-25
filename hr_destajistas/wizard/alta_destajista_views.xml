@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_destajista_alta_form" model="ir.ui.view">
+        <field name="name">hr.destajista.alta.form</field>
+        <field name="model">hr.destajista.alta</field>
+        <field name="arch" type="xml">
+            <form string="Nuevo destajista">
+                <field name="aviso" invisible="not aviso" nolabel="1"/>
+                <group>
+                    <group string="Persona">
+                        <field name="contacto_id" options="{'no_create': True}"/>
+                        <field name="nombre" required="not contacto_id"/>
+                        <field name="apaterno" required="not contacto_id"/>
+                        <field name="amaterno"/>
+                        <field name="curp" required="1"/>
+                        <field name="nss" required="1"/>
+                    </group>
+                    <group string="Fotografía">
+                        <field name="foto" widget="image" required="1" nolabel="1" options="{'size': [180, 180]}"/>
+                    </group>
+                    <group string="Cuenta bancaria">
+                        <field name="cuenta_id" invisible="not contacto_id" options="{'no_create': True}"/>
+                        <field name="banco_id" invisible="cuenta_id" required="not cuenta_id" options="{'no_create': True}"/>
+                        <field name="numero_cuenta" invisible="cuenta_id" required="not cuenta_id"/>
+                    </group>
+                    <group string="Obra">
+                        <field name="obra_id" required="1" options="{'no_create': True}"/>
+                        <field name="obra_direccion"/>
+                        <field name="residente_id" required="1" options="{'no_create': True}"/>
+                        <field name="horario_id" options="{'no_create': True}"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_crear" string="Dar de alta" type="object" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_destajista_alta" model="ir.actions.act_window">
+        <field name="name">Nuevo destajista</field>
+        <field name="res_model">hr.destajista.alta</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>
