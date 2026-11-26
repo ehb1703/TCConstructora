@@ -16,7 +16,8 @@ Submódulos de esta versión:
 - Matriz jerárquica de autorizaciones: niveles 1 a 4, candados de aprobación y ordenación exclusiva de pagos.
     """,
     'category': 'Gestión de Obras',
-    'depends': ['base', 'mail', 'account', 'analytic', 'purchase', 'hr_timesheet', 'sale_timesheet', 'stock_analytic', 'account_batch_payment', 'project_extra'],
+    'depends': ['base', 'mail', 'account', 'analytic', 'purchase', 'hr_timesheet', 'sale_timesheet', 'stock_analytic', 'account_batch_payment', 'project_extra',
+        'catalogo_tc'],
     'data': [
         'security/res_groups.xml',
         'security/ir.model.access.csv',
@@ -33,6 +34,7 @@ Submódulos de esta versión:
         'views/pagos_views.xml',
         'report/gestion_report.xml',
         'report/report_contract_template.xml',
+        'wizard/preoperative_transfer_wizard_views.xml',
     ],
     'demo': ['data/kontrol_analitica_demo.xml',],
     'pre_init_hook': 'pre_init_hook',

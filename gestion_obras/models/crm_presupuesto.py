@@ -27,10 +27,13 @@ class crmLeadPresupuesto(models.Model):
             else:
                 if not self.bases_doc:
                     raise ValidationError('Falta cargar las Bases correspondientes')
+            
             if not self.bases_abstinencia_anticipo and self.bases_anticipo_porcentaje == 0:
                 raise ValidationError('Falta agregar el % de anticipo')
             if self.bases_anticipo_porcentaje > 100:
                 raise ValidationError('% de anticipo no valido')
+            if not self.bases_fecha_inicio_trabajos or not self.bases_fecha_terminacion_trabajos:
+                raise ValidationError('Falta agregar el periodo en el que se llevaran a cabo los trabajos.')
 
             self.generate_preoperativo()
 
@@ -46,14 +49,19 @@ class crmLeadPresupuesto(models.Model):
 
         if self.stage_name == 'Cotización de insumos y trabajos especiales':
             if not self.no_cotizar_insumos:
-                if not self.input_ids:
+                if not self.input_catalogo_ids:
                     raise ValidationError('Falta cargar información de los conceptos de trabajo y/o insumos. '
                                         'Si no es requerido cotizar, marque la casilla "No se necesita cotizar insumos".')
 
                 count = len(self.oc_ids.filtered(lambda u: u.type_purchase == 'ins'))
-                if self.input_ids and count == 0:
+                if self.input_catalogo_ids and count == 0:
                     raise ValidationError('No se han creado cotizaciones de insumos. '
                                         'Si no es requerido cotizar, marque la casilla "No se necesita cotizar insumos".')
+
+            if self.input_catalogo_ids:
+                count = len(self.input_catalogo_ids.filtered(lambda u: not u.input_ex))
+                if count > 0:
+                    raise ValidationError('Existen insumos pendientes de cargar. Favor de revisar la información.')
 
         if self.stage_name == 'Propuesta Técnica':
             self.check_doctos('tecnica')

@@ -32,7 +32,7 @@
                         groups="gestion_obras.group_tc_director_operativo"/>
                     <button name="action_aprobar_base" string="Aprobar y Congelar Base" type="object" class="oe_highlight" invisible="state != 'op_approved'"
                         groups="gestion_obras.group_tc_director_general"
-                        confirm="Al aprobar, las partidas del presupuesto base quedan congeladas: solo se podrán ajustar con Aditivas, Deductivas u Órdenes de Cambio. ¿Continuar?"/>
+                        confirm="Al aprobar, las partidas del presupuesto base quedan congeladas: solo se podrán ajustar con Aditivas, Deductivas u Conceptos Extraordinarios. ¿Continuar?"/>
                     <button name="action_regresar_borrador" string="Regresar a Borrador" type="object" invisible="state not in ('in_revision', 'op_approved')"
                         groups="gestion_obras.group_tc_director_operativo"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,in_revision,op_approved,approved"/>
@@ -48,11 +48,17 @@
                     </div>
                     <group>
                         <group>
-                            <field name="obra_id" readonly="state == 'approved'" options="{'no_create': True}"/>
+                            <field name="obra_domain" invisible="1"/>
+                            <field name="block_id" readonly="state == 'approved'" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                            <field name="obra_id" readonly="state == 'approved'" options="{'no_open':True, 'no_create':True, 'no_edit':True}" domain="obra_domain"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="state == 'approved'"/>
+                            
                             <field name="fecha_congelamiento" invisible="not fecha_congelamiento"/>
                         </group>
                         <group>
-                            <field name="company_id" groups="base.group_multi_company" readonly="state == 'approved'"/>
+                            <field name="base_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}" force_save="1"/>
+                            <field name="preoperativo_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}" force_save="1"/>
+                            <field name="analytic_id" readonly="1" options="{'no_open':True, 'no_create':True, 'no_edit':True}" force_save="1"/>
                             <field name="currency_id" invisible="1"/>
                         </group>
                     </group>
@@ -85,8 +91,10 @@
                             <field name="partida_ids" readonly="state == 'approved'">
                                 <list editable="bottom" decoration-info="es_extraordinario">
                                     <field name="sequence" widget="handle"/>
-                                    <field name="name"/>
-                                    <field name="product_id" optional="show" options="{'no_create': True}"/>
+                                    <!--field name="budget_domain" column_invisible="1" domain="budget_domain"/-->
+                                    <field name="budget_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="concept_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                                    <field name="product_id" optional="show" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                                     <field name="default_code" optional="hide"/>
                                     <field name="es_extraordinario" optional="hide"/>
                                     <field name="currency_id" column_invisible="1"/>
@@ -95,6 +103,10 @@
                                     <field name="monto_total_partida" sum="Base"/>
                                     <field name="monto_modificaciones" sum="Modificaciones"/>
                                     <field name="monto_control" sum="Control"/>
+                                    <field name="indirecto"/>
+                                    <field name="financiamiento"/>
+                                    <field name="utilidad"/>
+                                    <field name="adicionales"/>
                                 </list>
                             </field>
                         </page>

@@ -19,8 +19,8 @@ class GestionObraModificacion(models.Model):
         domain="[('state', '=', 'approved')]")
     obra_id = fields.Many2one(related='presupuesto_id.obra_id', string='Obra', store=True)
     currency_id = fields.Many2one(related='presupuesto_id.currency_id', string='Moneda')
-    tipo_movimiento = fields.Selection([('aditiva', 'Aditiva (Incremento)'), ('deductiva', 'Deductiva (Reducción)'),
-        ('orden_cambio', 'Traspaso entre Partidas'), ('extraordinario', 'Concepto Extraordinario')], string='Tipo de Movimiento', required=True, tracking=True)
+    tipo_movimiento = fields.Selection([('aditiva', 'Aditiva'), ('deductiva', 'Deductiva'), ('extraordinario', 'Concepto Extraordinario')], 
+        string='Tipo de Movimiento', required=True, tracking=True)
     linea_ids = fields.One2many('gestion.obra.modificacion.linea', 'modificacion_id', string='Desglose', copy=True)
     monto_total_afectacion = fields.Monetary(string='Impacto Financiero Total ($)', compute='_compute_monto_total', store=True,
         help='Aditivas, deductivas y extraordinarios: suma del desglose. Traspasos: monto reasignado (el total global no cambia).')

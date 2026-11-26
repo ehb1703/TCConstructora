@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- La pestaña Insumos de project_extra está desactivada en la versión actual: esta la sustituye (carga, conciliación y cotizaciones) -->
+    <record id="view_crm_lead_catalogo_insumos_form" model="ir.ui.view">
+        <field name="name">crm.lead.catalogo.insumos.form</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook/page[@name='primeras']" position="after">
+                <page string="Insumos" name="insumos_catalogo" invisible="origen_name != 'Público'">
+                    <group>
+                        <group>
+                            <field name="input_filename" invisible="1"/>
+                            <field name="input_file" filename="input_filename" string="Explosión de insumos"/>
+                            <field name="fuente_catalogo"/>
+                        </group>
+                        <group>
+                            <field name="insumos_pendientes"/>
+                            <field name="no_cotizar_insumos" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <div class="d-flex gap-2 mb-2">
+                        <button name="action_cargar_insumos" string="Cargar archivo" type="object" class="btn-secondary" invisible="not input_file or input_ids"/>
+                        <button name="action_genera_insumos" string="Conciliar insumos" type="object" class="btn-primary" invisible="not input_ids"
+                                confirm="Se buscará cada insumo en el catálogo único. Lo que no se reconozca queda pendiente de confirmar o de dar de alta. ¿Continuar?"/>
+                        <button name="action_confirmar_sugerencias" string="Confirmar sugerencias" type="object" class="btn-secondary" invisible="insumos_pendientes == 0"/>
+                        <button name="action_genera_cotizaciones" string="Cotizaciones" type="object" class="btn-secondary" invisible="not input_ids or no_cotizar_insumos"/>
+                        <button name="action_unlink_insumos" string="Eliminar detalle" type="object" class="btn-link" invisible="not input_ids"
+                                confirm="¿Está seguro que desea eliminar los registros cargados?"/>
+                    </div>
+                    <field name="input_ids" invisible="1"/>
+                    <field name="input_catalogo_ids" readonly="1">
+                        <list decoration-success="conciliacion in ('auto', 'confirmado')" decoration-warning="conciliacion == 'sugerido'"
+                              decoration-danger="conciliacion in ('conflicto', 'nuevo')">
+                            <field name="col1" string="Código" width="120px"/>
+                            <field name="col2" string="Descripción" class="text-wrap"/>
+                            <field name="unidad_obra" optional="show" width="70px"/>
+                            <field name="conciliacion" widget="badge" width="110px"/>
+                            <field name="input_id" string="Insumo del catálogo" width="260px" class="text-wrap"/>
+                            <field name="sugerencia_id" width="260px" class="text-wrap" invisible="conciliacion in ('auto', 'confirmado')"/>
+                            <field name="motivo_conciliacion" optional="hide"/>
+                            <field name="account_ex" optional="hide"/>
+                            <field name="tipinsumo_ex" optional="hide"/>
+                            <button name="action_confirmar_sugerencia" type="object" icon="fa-check" title="Confirmar sugerencia" invisible="conciliacion not in ('sugerido', 'conflicto')"/>
+                            <button name="action_rechazar_sugerencia" type="object" icon="fa-times" title="No es ese insumo" invisible="conciliacion != 'sugerido'"/>
+                            <button name="action_alta_insumo" type="object" icon="fa-plus" title="Alta o elegir insumo" invisible="conciliacion not in ('nuevo', 'conflicto', 'sugerido')"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -228,6 +228,15 @@ class CrmLead(models.Model):
             if not record.nombre_interno:
                 record.nombre_interno = record.name
 
+    @api.onchange('fecha_firma')
+    def _contrato_firmado(self):
+        for record in self:
+            if record.fecha_firma:
+                record.contrato_firmado = True
+            record.origen_name = record.origen_id.name if record.origen_id else False
+            if not record.nombre_interno:
+                record.nombre_interno = record.name
+    
     @api.depends('nombre_interno')
     def _compute_obra_creada(self):
         for record in self:
@@ -410,6 +419,8 @@ class CrmLead(models.Model):
                 raise ValidationError('Falta agregar el % de anticipo')
             if self.bases_anticipo_porcentaje > 100:
                 raise ValidationError('% de anticipo no valido')
+            if not self.bases_fecha_inicio_trabajos or not self.bases_fecha_terminacion_trabajos:
+                raise ValidationError('Falta agregar el periodo en el que se llevaran a cabo los trabajos.')
 
         if self.stage_name == 'Visita de Obra':
             if not self.visita_acta:
@@ -431,6 +442,11 @@ class CrmLead(models.Model):
                 if self.input_ids and count == 0:
                     raise ValidationError('No se han creado cotizaciones de insumos. '
                                         'Si no es requerido cotizar, marque la casilla "No se necesita cotizar insumos".')
+
+            if self.input_ids:
+                count = len(self.oc_ids.filtered(lambda u: not u.input_ex))
+                if count == 0:
+                    raise ValidationError('Existen insumos pendientes de cargar. Favor de revisar la información.')
 
         if self.stage_name == 'Propuesta Técnica':
             self.check_doctos('tecnica')
@@ -491,6 +507,7 @@ class CrmLead(models.Model):
         oc_new = self._create_oc_async(oc_vals=oc_vals_2)
         return oc_new
 
+    # Se sobreescribe en gestion_obra
     def get_orden_default_values(self, lead=False):
         if not self.partner_id.id:
             raise UserError('No se ha capturado información de contacto')
@@ -1100,7 +1117,7 @@ class CrmLead(models.Model):
                         c += 1
                         if record.empresa_concursante_id.name.upper() != row[0].upper():
                             raise ValidationError('La Empresa concursante no coincide con la empresa del archivo.')
-                        if record.nombre_interno.upper() != row[1].upper():
+                        if record.nombre_interno.upper().strip() != row[1].upper().strip():
                             raise ValidationError('La oportunidad no coincide con el archivo. ')
                         if row[4] != None and row[6] == row[8] == row[10] == None:
                             colpart = 4
@@ -1525,9 +1542,10 @@ class CrmLead(models.Model):
 
     def action_genera_ordenventa(self):
         self.ensure_one()
+        if not self.fecha_firma:
+            raise UserError(_('Falta capturar la fecha de firma del contrato.'))
         if self.fecha_firma > self.fecha_limite_firma:
             raise UserError(_('La fecha de firma no puede ser mayor a la fecha límite de firma.'))
-
         if self.importe_contratado <= 0:
             raise UserError(_('Falta capturar el Importe Contratado.'))
 
