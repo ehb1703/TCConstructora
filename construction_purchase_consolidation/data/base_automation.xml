@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Reglas de la especificación T0135 configuradas como Acciones Automatizadas (base.automation) con su Acción de Servidor,
+         según la "Guía de Configuración en la Interfaz de Odoo 18" del documento. Código de los scripts del documento; única
+         adaptación técnica: Odoo no permite "import" en este código y expone UserError (no ValidationError). -->
+
+    <!-- 1. Validación de Requisición en Sitio (Residente de Obra). Al crear y actualizar; dominio state in draft / in_approval -->
+    <record id="automatizacion_1_validacion_sitio" model="base.automation">
+        <field name="name">T0135 - 1. Validación de Requisición en Sitio (Residente de Obra)</field>
+        <field name="model_id" ref="requisition_residents.model_requisition_materials_line"/>
+        <field name="trigger">on_create_or_write</field>
+        <field name="filter_domain">[('state', 'in', ['draft', 'in_approval'])]</field>
+    </record>
+    <record id="accion_1_validacion_sitio" model="ir.actions.server">
+        <field name="name">T0135 - 1. Validación de Requisición en Sitio (Residente de Obra)</field>
+        <field name="model_id" ref="requisition_residents.model_requisition_materials_line"/>
+        <field name="base_automation_id" ref="automatizacion_1_validacion_sitio"/>
+        <field name="usage">base_automation</field>
+        <field name="state">code</field>
+        <field name="code">
+for rec in records:
+    # 1. Validar vinculación obligatoria de Proyecto y Frente/Contrato
+    if not rec.x_proyecto_id:
+        raise UserError("Es obligatorio seleccionar el 'Proyecto Global' para registrar la requisición.")
+
+    if not rec.x_frente_id:
+        raise UserError("Es obligatorio asignar el 'Bloque / Frente / Contrato' de destino.")
+
+    # 2. Validar motivo obligatorio para insumos extraordinarios
+    if rec.x_tipo_requerimiento == 'extraordinario':
+        if not rec.x_motivo_extraordinario or len(rec.x_motivo_extraordinario.strip()) &lt; 15:
+            raise UserError(
+                "Para requerimientos extraordinarios, es obligatorio proporcionar una justificación detallada "
+                "en el campo 'Motivo Extraordinario' (mínimo 15 caracteres)."
+            )
+        </field>
+    </record>
+
+    <!-- 2. Control de Precios Límite en Órdenes de Compra (Procuración). Al actualizar el estado a "to approve" o al confirmar -->
+    <record id="automatizacion_2_precio_limite" model="base.automation">
+        <field name="name">T0135 - 2. Control de Precios Límite en Órdenes de Compra (Procuración)</field>
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="trigger">on_create_or_write</field>
+        <field name="trigger_field_ids" eval="[(6, 0, [ref('purchase.field_purchase_order__state')])]"/>
+        <field name="filter_domain">[('state', 'in', ['to approve', 'purchase'])]</field>
+    </record>
+    <record id="accion_2_precio_limite" model="ir.actions.server">
+        <field name="name">T0135 - 2. Control de Precios Límite en Órdenes de Compra (Procuración)</field>
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="base_automation_id" ref="automatizacion_2_precio_limite"/>
+        <field name="usage">base_automation</field>
+        <field name="state">code</field>
+        <field name="code">
+for order in records:
+    # Identificar si el usuario actual pertenece al perfil de Control de Costos o Administrador
+    is_cost_manager = env.user.has_group('project.group_project_manager') or env.user.has_group('base.group_system')
+
+    for line in order.order_line:
+        # Obtener el precio tope autorizado del insumo en la cuenta analítica o catálogo base
+        precio_limite = line.product_id.x_precio_limite_frente or line.product_id.standard_price
+
+        if line.price_unit &gt; precio_limite and not is_cost_manager:
+            raise UserError(
+                f"El precio unitario del insumo '{line.product_id.display_name}' (${line.price_unit:,.2f}) "
+                f"supera el precio tope autorizado (${precio_limite:,.2f}) para este frente.\n\n"
+                f"Esta orden requiere la revisión y autorización expresa del área de Control de Costos."
+            )
+        </field>
+    </record>
+
+    <!-- 3. Aprobación de Insumos Extraordinarios (Dictamen Técnico / Orden de Cambio). Al cambiar el estado a approved -->
+    <record id="automatizacion_3_extraordinarios" model="base.automation">
+        <field name="name">T0135 - 3. Aprobación de Insumos Extraordinarios (Dictamen Técnico / Orden de Cambio)</field>
+        <field name="model_id" ref="requisition_residents.model_requisition_materials"/>
+        <field name="trigger">on_create_or_write</field>
+        <field name="trigger_field_ids" eval="[(6, 0, [ref('requisition_residents.field_requisition_materials__state')])]"/>
+        <field name="filter_pre_domain">[('state', '!=', 'approved')]</field>
+        <field name="filter_domain">[('state', '=', 'approved')]</field>
+    </record>
+    <record id="accion_3_extraordinarios" model="ir.actions.server">
+        <field name="name">T0135 - 3. Aprobación de Insumos Extraordinarios (Dictamen Técnico / Orden de Cambio)</field>
+        <field name="model_id" ref="requisition_residents.model_requisition_materials"/>
+        <field name="base_automation_id" ref="automatizacion_3_extraordinarios"/>
+        <field name="usage">base_automation</field>
+        <field name="state">code</field>
+        <field name="code">
+for rec in records:
+    if rec.x_tipo_requerimiento == 'extraordinario':
+        # Verificar si existen archivos adjuntos en el registro
+        adjuntos = env['ir.attachment'].search([
+            ('res_model', '=', rec._name),
+            ('res_id', '=', rec.id)
+        ])
+
+        # Exigir vínculo con Orden de Cambio o al menos un documento adjunto
+        if not rec.x_orden_cambio_id and not adjuntos:
+            raise UserError(
+                f"No se puede autorizar la requisición extraordinaria '{rec.name}'.\n\n"
+                f"Es obligatorio vincular un folio de Orden de Cambio o adjuntar el Dictamen Técnico firmado."
+            )
+        </field>
+    </record>
+
+    <!-- 4. Conciliación Tridireccional de Facturas de Proveedor (3-Way Matching). Al publicar la factura; move_type in_invoice -->
+    <record id="automatizacion_4_three_way" model="base.automation">
+        <field name="name">T0135 - 4. Conciliación Tridireccional de Facturas de Proveedor (3-Way Matching)</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="trigger">on_create_or_write</field>
+        <field name="trigger_field_ids" eval="[(6, 0, [ref('account.field_account_move__state')])]"/>
+        <field name="filter_domain">[('move_type', '=', 'in_invoice'), ('state', '=', 'posted')]</field>
+    </record>
+    <record id="accion_4_three_way" model="ir.actions.server">
+        <field name="name">T0135 - 4. Conciliación Tridireccional de Facturas de Proveedor (3-Way Matching)</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="base_automation_id" ref="automatizacion_4_three_way"/>
+        <field name="usage">base_automation</field>
+        <field name="state">code</field>
+        <field name="code">
+for move in records:
+    for line in move.invoice_line_ids:
+        po_line = line.purchase_line_id
+        if po_line:
+            # 1. Validar que la cantidad facturada no supere lo recibido físicamente en obra
+            if line.quantity &gt; po_line.qty_received:
+                raise UserError(
+                    f"Discrepancia en 3-Way Matching para el insumo '{line.product_id.display_name}':\n"
+                    f"La cantidad a facturar ({line.quantity} {line.product_uom_id.name}) supera la cantidad "
+                    f"recibida en almacén de obra ({po_line.qty_received} {po_line.product_uom.name})."
+                )
+
+            # 2. Validar que el precio unitario facturado no exceda el precio negociado en la OC
+            if line.price_unit &gt; po_line.price_unit:
+                raise UserError(
+                    f"Discrepancia de precio para el insumo '{line.product_id.display_name}':\n"
+                    f"El precio unitario facturado (${line.price_unit:,.2f}) es mayor al precio negociado "
+                    f"en la Orden de Compra (${po_line.price_unit:,.2f})."
+                )
+        </field>
+    </record>
+
+    <!-- 5. Aprobación Ejecutiva por Umbral Financiero (> $100,000 MXN). "Al intentar confirmar la orden": el documento indica el estado
+         "to approve", pero en Odoo el Responsable de Compras confirma directo a "purchase" sin pasar por él; para que ninguna orden
+         del umbral se emita sin Dirección, la regla dispara al entrar a cualquiera de los dos estados. -->
+    <record id="automatizacion_5_umbral" model="base.automation">
+        <field name="name">T0135 - 5. Aprobación Ejecutiva por Umbral Financiero (> $100,000 MXN)</field>
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="trigger">on_create_or_write</field>
+        <field name="trigger_field_ids" eval="[(6, 0, [ref('purchase.field_purchase_order__state')])]"/>
+        <field name="filter_pre_domain">[('state', 'not in', ['to approve', 'purchase'])]</field>
+        <field name="filter_domain">[('state', 'in', ['to approve', 'purchase'])]</field>
+    </record>
+    <record id="accion_5_umbral" model="ir.actions.server">
+        <field name="name">T0135 - 5. Aprobación Ejecutiva por Umbral Financiero (> $100,000 MXN)</field>
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="base_automation_id" ref="automatizacion_5_umbral"/>
+        <field name="usage">base_automation</field>
+        <field name="state">code</field>
+        <field name="code">
+UMBRAL_FINANCIERO = 100000.0  # $100,000.00 MXN
+
+for order in records:
+    if order.amount_total &gt;= UMBRAL_FINANCIERO:
+        # Publicar notificación automática en el Chatter del documento
+        order.message_post(
+            body=f"⚠  **Alerta de Compra Mayorista**: Esta orden supera el umbral de "
+                 f"${UMBRAL_FINANCIERO:,.2f} MXN (Monto Total: ${order.amount_total:,.2f} MXN). "
+                 f"Requiere la firma/aprobación de Dirección Ejecutiva.",
+            subtype_xmlid="mail.mt_note"
+        )
+
+        # Bloquear confirmación si no cuenta con la casilla de validación ejecutiva
+        if not order.x_aprobado_direccion and not env.user.has_group('base.group_system'):
+            raise UserError(
+                f"La Orden de Compra '{order.name}' por un monto de ${order.amount_total:,.2f} MXN "
+                f"requiere la aprobación formal del perfil Dirección antes de emitirse al proveedor."
+            )
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Especificación, paso 3: vista de agrupamiento en Compras por Proyecto Global con los insumos pendientes de cotizar -->
+    <record id="view_requisicion_line_consolidar_list" model="ir.ui.view">
+        <field name="name">requisition.materials.line.consolidar.list</field>
+        <field name="model">requisition.materials.line</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Insumos por consolidar" create="0" edit="0" delete="0">
+                <header>
+                    <button name="action_crear_rfq" type="object" string="Crear Solicitud de Cotización (RFQ)" class="btn-primary"/>
+                </header>
+                <field name="x_proyecto_id"/>
+                <field name="req_id" string="Requisición"/>
+                <field name="x_frente_id"/>
+                <field name="product_id"/>
+                <field name="product_uom_id"/>
+                <field name="product_qty" sum="Total"/>
+                <field name="x_tipo_requerimiento" widget="badge" decoration-warning="x_tipo_requerimiento == 'extraordinario'"/>
+                <field name="x_motivo_extraordinario" optional="show"/>
+                <field name="urgencia" optional="show"/>
+                <field name="supplier_ids" widget="many2many_tags" string="Proveedor sugerido" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_requisicion_line_consolidar_search" model="ir.ui.view">
+        <field name="name">requisition.materials.line.consolidar.search</field>
+        <field name="model">requisition.materials.line</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <search string="Insumos por consolidar">
+                <field name="x_proyecto_id"/>
+                <field name="product_id"/>
+                <field name="x_frente_id"/>
+                <field name="req_id" string="Requisición"/>
+                <filter name="ordinarios" string="Ordinarios" domain="[('x_tipo_requerimiento', '=', 'ordinario')]"/>
+                <filter name="extraordinarios" string="Extraordinarios" domain="[('x_tipo_requerimiento', '=', 'extraordinario')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="por_proyecto" string="Proyecto Global" context="{'group_by': 'x_proyecto_id'}"/>
+                    <filter name="por_insumo" string="Insumo" context="{'group_by': 'product_id'}"/>
+                    <filter name="por_frente" string="Bloque / Frente / Contrato" context="{'group_by': 'x_frente_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_requisicion_line_consolidar" model="ir.actions.act_window">
+        <field name="name">Requisiciones por consolidar</field>
+        <field name="res_model">requisition.materials.line</field>
+        <field name="view_mode">list</field>
+        <field name="domain">[('x_pendiente_cotizar', '=', True)]</field>
+        <field name="context">{'search_default_por_proyecto': 1, 'search_default_por_insumo': 1}</field>
+        <field name="search_view_id" ref="view_requisicion_line_consolidar_search"/>
+        <field name="view_ids" eval="[(5, 0, 0), (0, 0, {'view_mode': 'list', 'view_id': ref('view_requisicion_line_consolidar_list')})]"/>
+        <field name="help" type="html"><p class="o_view_nocontent_empty_folder">No hay insumos pendientes de cotizar</p>
+            <p>Aquí aparecen los insumos de las requisiciones autorizadas por Costos y enviadas a Compras.</p></field>
+    </record>
+
+    <menuitem id="menu_requisicion_line_consolidar" name="Requisiciones por consolidar" parent="purchase.menu_procurement_management"
+              action="action_requisicion_line_consolidar" sequence="3" groups="purchase.group_purchase_user"/>
+
+    <!-- Orden de compra: Proyecto Global, aprobación de Dirección y el frente de cada línea -->
+    <record id="purchase_order_form_consolidacion" model="ir.ui.view">
+        <field name="name">purchase.order.form.consolidacion</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_ref']" position="after">
+                <field name="x_proyecto_id" invisible="not x_proyecto_id"/>
+                <field name="x_aprobado_direccion" groups="gestion_obras.group_tc_director_general,gestion_obras.group_tc_director_operativo,base.group_system"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='product_qty']" position="before">
+                <field name="x_requisicion_line_ids" column_invisible="1"/>
+                <field name="x_frente_id" optional="show" readonly="x_requisicion_line_ids"/>
+                <field name="x_tipo_requerimiento" optional="hide" readonly="1"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='product_qty']" position="attributes">
+                <attribute name="readonly">x_requisicion_line_ids</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Producto: precio tope por frente (Regla 2) -->
+    <record id="product_template_form_precio_limite" model="ir.ui.view">
+        <field name="name">product.template.form.precio.limite</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="purchase.view_product_supplier_inherit"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='purchase']" position="inside">
+                <field name="x_precio_limite_frente" groups="requisition_residents.group_costos,project.group_project_manager,base.group_system"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

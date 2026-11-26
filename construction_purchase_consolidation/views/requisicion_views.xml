@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Requisición de Materiales: flujo Borrador / En Autorización / Autorizado (por Costos) / Enviado a Compras
+         y campos del catálogo técnico en cada línea -->
+    <record id="view_requisition_materials_form_consolidacion" model="ir.ui.view">
+        <field name="name">requisition.materials.form.consolidacion</field>
+        <field name="model">requisition.materials</field>
+        <field name="inherit_id" ref="requisition_residents.view_requisition_materials_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_regresar_borrador']" position="attributes">
+                <attribute name="invisible">state not in ('in_approval', 'sent_purchase')</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_confirm']" position="replace">
+                <button string="Autorizar" name="action_autorizar" type="object" class="btn-primary" invisible="state != 'in_approval'"
+                        groups="requisition_residents.group_costos"/>
+                <button string="Rechazar" name="action_rechazar" type="object" invisible="state != 'in_approval'"
+                        groups="requisition_residents.group_costos"/>
+            </xpath>
+            <xpath expr="//field[@name='state']" position="attributes">
+                <attribute name="statusbar_visible">draft,in_approval,approved,sent_purchase</attribute>
+            </xpath>
+            <xpath expr="//field[@name='project_id']" position="attributes">
+                <attribute name="string">Proyecto Global</attribute>
+                <attribute name="required">1</attribute>
+                <attribute name="readonly">state != 'draft'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='project_id']" position="after">
+                <field name="x_tipo_requerimiento" readonly="1" widget="badge" decoration-warning="x_tipo_requerimiento == 'extraordinario'"/>
+                <field name="x_orden_cambio_id" invisible="x_tipo_requerimiento != 'extraordinario'" readonly="state == 'sent_purchase'"
+                       groups="requisition_residents.group_costos,gestion_obras.group_tc_budget_control" options="{'no_create': True}"/>
+            </xpath>
+            <xpath expr="//field[@name='line_ids']/list/field[@name='product_qty']" position="after">
+                <field name="x_frente_id" required="1" readonly="parent.state != 'draft'" options="{'no_create': True}"/>
+                <field name="x_tipo_requerimiento" readonly="parent.state != 'draft'"/>
+                <field name="x_motivo_tipo" required="x_tipo_requerimiento == 'extraordinario'"
+                       readonly="parent.state != 'draft' or x_tipo_requerimiento != 'extraordinario'"/>
+                <field name="x_motivo_extraordinario" required="x_tipo_requerimiento == 'extraordinario'" force_save="1"
+                       readonly="parent.state != 'draft' or x_motivo_tipo != 'otro'"/>
+            </xpath>
+            <xpath expr="//field[@name='oc_ids']" position="replace">
+                <field name="x_orden_ids" widget="many2many" readonly="1">
+                    <list string="Órdenes de compra" create="0" delete="0" edit="0">
+                        <field name="name"/>
+                        <field name="partner_id"/>
+                        <field name="type_purchase"/>
+                        <field name="amount_untaxed"/>
+                        <field name="amount_total"/>
+                        <field name="state"/>
+                    </list>
+                </field>
+            </xpath>
+        </field>
+    </record>
+</odoo>
