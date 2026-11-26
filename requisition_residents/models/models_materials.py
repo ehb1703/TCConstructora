@@ -171,6 +171,7 @@ class requisitionMaterialsLine(models.Model):
         domain="[('purchase_ok', '=', True)]")
     product_uom_id = fields.Many2one(related='product_id.uom_id', string='UdM')
     supplier_ids = fields.Many2many('res.partner', 'materials_supplier_rel', 'materials_id', 'supplier_id', string='Proveedor',  domain="[('is_supplier','=',True)]",)
+    motivo = fields.Char(string='Motivo', help='Qué motiva la necesidad de la adquisición.')
 
 
 class purchaseOrderInherit(models.Model):

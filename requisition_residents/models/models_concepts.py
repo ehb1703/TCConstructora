@@ -33,6 +33,7 @@ class requisitionMaterials(models.Model):
         string='Tipo de concepto', tracking=True)
     codigo = fields.Char(string='Codigo')
     description = fields.Char(string='Descripción')
+    motivo = fields.Char(string='Motivo', tracking=True, help='Qué motiva la necesidad de la adquisición.')
     project_id = fields.Many2one('project.project', string='Obra')
     project_domain = fields.Char(readonly=True, store=False, compute=_compute_domain_project)
     product_id = fields.Many2one('product.template', string='Concepto')
