@@ -46,6 +46,7 @@
                         <group>
                             <field name="codigo" required="state == 'costos'" readonly="state == 'aprobado'"/>
                             <field name="description" required="state == 'costos'" readonly="state == 'aprobado'"/>
+                            <field name="motivo" readonly="state == 'aprobado'"/>
                         </group>
                         <group>
                             <field name="uom_id" required="state == 'costos'" readonly="state == 'aprobado'" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
