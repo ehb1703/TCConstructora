@@ -15,7 +15,7 @@ class CatalogoMotor(models.AbstractModel):
 
     @api.model
     def normalizar(self, texto):
-        """Mayúsculas, sin acentos (conserva la Ñ), comillas rectas y espacios normalizados."""
+        # Mayúsculas, sin acentos (conserva la Ñ), comillas rectas y espacios normalizados.
         salida = []
         for ch in str(texto or '').upper():
             if ch == 'Ñ':
@@ -25,9 +25,10 @@ class CatalogoMotor(models.AbstractModel):
         texto = ''.join(salida).replace('”', '"').replace('“', '"').replace("''", '"').replace('´', "'").replace('’', "'")
         return ' '.join(texto.split())
 
+
     @api.model
     def firma(self, texto):
-        """Atributos que distinguen variantes: medidas (pulgadas a mm), calibres, potencias, grados y demás números."""
+        # Atributos que distinguen variantes: medidas (pulgadas a mm), calibres, potencias, grados y demás números.
         s = self.normalizar(texto).replace('CAL.', 'CAL ').replace('Ø', ' ').replace('NO.', '#')
         out = set()
         for pulg, mm in PULG_MM.items():
@@ -35,6 +36,7 @@ class CatalogoMotor(models.AbstractModel):
             if re.search(patron, s):
                 out.add('%dMM' % mm)
                 s = re.sub(patron, ' ', s)
+        
         for num, uni in re.findall(r'(\d+(?:\.\d+)?)\s?(MM|CM|KG|KV|HP|M2|M3|M|LT|TON)\b', s):
             valor = float(num)
             out.add('%dMM' % round(valor * 10 if uni == 'CM' else valor) if uni in ('MM', 'CM') else '%s%s' % (num, uni))
@@ -54,12 +56,12 @@ class CatalogoMotor(models.AbstractModel):
 
     @api.model
     def confirma(self, desc_a, desc_b):
-        """Dos descripciones son el mismo insumo si tienen los mismos atributos y comparten la mayoría de las palabras."""
+        # Dos descripciones son el mismo insumo si tienen los mismos atributos y comparten la mayoría de las palabras.
         return self.firma(desc_a) == self.firma(desc_b) and self.parecido(desc_a, desc_b) >= 0.5
 
     @api.model
     def memoria(self):
-        """Lo que el catálogo ya sabe: descripciones (de equivalencias y de productos) -> insumo, y código externo -> equivalencias."""
+        # Lo que el catálogo ya sabe: descripciones (de equivalencias y de productos) -> insumo, y código externo -> equivalencias.
         por_desc, por_codigo, candidatos = {}, {}, []
         for eq in self.env['catalogo.equivalencia'].search([('estado', '=', 'confirmada')]):
             clave = (eq.descripcion_norm, eq.unidad_norm)

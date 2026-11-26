@@ -57,16 +57,19 @@
                     <group>
                         <field name="expediente_completo" readonly="1"/>
                     </group>
-                    <field name="expediente_digital" nolabel="1">
-                        <list editable="bottom" create="0" delete="0" decoration-success="requerido and archivo" decoration-danger="requerido and not archivo">
-                            <field name="requerido" readonly="1"/>
-                            <field name="docto_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
-                            <field name="archivo" filename="archivo_nombre" widget="binary"/>
-                            <field name="archivo_nombre" column_invisible="1"/>
-                            <field name="fecha_documento"/>
-                            <field name="vigencia"/>
-                        </list>
-                    </field>
+                    <group string="Documentos Requeridos">
+                        <field name="expediente_digital" nolabel="1" colspan="2">
+                            <list editable="bottom" create="0" delete="0" decoration-success="requerido and generado" decoration-danger="requerido and not generado">
+                                <field name="requerido" readonly="1"/>
+                                <field name="docto_id" string="Documento" readonly="1" options="{'no_create': True, 'no_open': True}"/>
+                                <field name="archivo" filename="archivo_nombre" widget="binary"/>
+                                <field name="archivo_nombre" column_invisible="1"/>
+                                <field name="fecha_documento"/>
+                                <field name="vigencia"/>
+                                <field name="generado" string="¿Generado?"/>
+                            </list>
+                        </field>
+                    </group>
                 </page>
             </xpath>
         </field>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- T0110: frente y partida (subcuentas N2 y N3) de cada tarea -->
+    <record id="view_task_form_partida_analitica" model="ir.ui.view">
+        <field name="name">view.task.form.partida.analitica</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Contabilidad analítica" name="partida_analitica" groups="analytic.group_analytic_accounting">
+                    <group>
+                        <group>
+                            <field name="frente_account_id" options="{'no_create': True}"/>
+                            <field name="partida_account_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <div class="text-muted">Las horas registradas en esta tarea se cargan a la obra del proyecto y a este frente y partida.</div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_task_list_partida_analitica" model="ir.ui.view">
+        <field name="name">view.task.list.partida.analitica</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_tree2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='project_id']" position="after">
+                <field name="frente_account_id" optional="hide" groups="analytic.group_analytic_accounting"/>
+                <field name="partida_account_id" optional="hide" groups="analytic.group_analytic_accounting"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

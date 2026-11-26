@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <record id="action_gestion_obra_modificacion" model="ir.actions.act_window">
+        <field name="name">Aditivas, Deductivas y Órdenes de Cambio</field>
+        <field name="res_model">gestion.obra.modificacion</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
     <record id="view_gestion_obra_modificacion_list" model="ir.ui.view">
         <field name="name">view.gestion.obra.modificacion.list</field>
         <field name="model">gestion.obra.modificacion</field>
@@ -25,13 +31,16 @@
         <field name="arch" type="xml">
             <form string="Modificación presupuestal">
                 <header>
-                    <button name="action_enviar" string="Enviar a Aprobación" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_enviar" string="Enviar a Revisión Técnica" type="object" class="oe_highlight" invisible="state != 'draft'"
+                        groups="gestion_obras.group_tc_budget_control"/>
                     <button name="action_aprobar_tecnico" string="Aprobar (Técnica)" type="object" class="oe_highlight" invisible="state != 'pending_tech'"
-                        groups="gestion_obras.group_aprobacion_tecnica"/>
-                    <button name="action_aprobar_direccion" string="Autorizar y Aplicar (Dirección)" type="object" class="oe_highlight" invisible="state != 'pending_dir'"
-                        groups="gestion_obras.group_aprobacion_direccion"/>
-                    <button name="action_rechazar" string="Rechazar" type="object" invisible="state != 'pending_tech'" groups="gestion_obras.group_aprobacion_tecnica"/>
-                    <button name="action_rechazar" string="Rechazar" type="object" invisible="state != 'pending_dir'" groups="gestion_obras.group_aprobacion_direccion"/>
+                        groups="gestion_obras.group_tc_budget_control"/>
+                    <button name="action_aprobar_direccion" string="Autorizar y Aplicar (Dirección)" type="object" class="oe_highlight" invisible="state != 'pending_dir' or tipo_movimiento == 'extraordinario'"
+                        groups="gestion_obras.group_tc_director_operativo"/>
+                    <button name="action_aprobar_direccion" string="Autorizar Extraordinario (Director General)" type="object" class="oe_highlight"
+                        invisible="state != 'pending_dir' or tipo_movimiento != 'extraordinario'" groups="gestion_obras.group_tc_director_general"/>
+                    <button name="action_rechazar" string="Rechazar" type="object" invisible="state != 'pending_tech'" groups="gestion_obras.group_tc_budget_control"/>
+                    <button name="action_rechazar" string="Rechazar" type="object" invisible="state != 'pending_dir'" groups="gestion_obras.group_tc_director_operativo"/>
                     <button name="action_borrador" string="Regresar a Borrador" type="object" invisible="state != 'rejected'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,pending_tech,pending_dir,approved"/>
                 </header>
@@ -41,8 +50,8 @@
                     </div>
                     <group>
                         <group>
-                            <field name="presupuesto_id" readonly="state != 'draft'" options="{'no_create': True}"/>
-                            <field name="obra_id"/>
+                            <field name="presupuesto_id" readonly="state != 'draft'" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
+                            <field name="obra_id" options="{'no_open':True, 'no_create':True, 'no_edit':True}"/>
                             <field name="tipo_movimiento" readonly="state != 'draft'"/>
                             <field name="folio_bitacora" readonly="state not in ('draft', 'pending_tech', 'pending_dir')"/>
                         </group>
@@ -53,6 +62,9 @@
                             <field name="aprobo_tecnico_id" invisible="not aprobo_tecnico_id"/>
                             <field name="aprobo_direccion_id" invisible="not aprobo_direccion_id"/>
                         </group>
+                    </group>
+                    <group>
+                        <field name="justificacion" placeholder="Memoria descriptiva / justificación técnica" readonly="state != 'draft'"/>
                     </group>
                     <div class="alert alert-info mb-2" role="alert" invisible="tipo_movimiento != 'orden_cambio'">
                         Traspaso: capture en negativo la cantidad de la partida que cede saldo y en positivo la que lo recibe. El desglose debe sumar cero.
@@ -76,9 +88,6 @@
                                     <field name="monto_efecto" optional="show"/>
                                 </list>
                             </field>
-                        </page>
-                        <page name="justificacion" string="Justificación">
-                            <field name="justificacion" placeholder="Memoria descriptiva / justificación técnica" readonly="state != 'draft'"/>
                         </page>
                     </notebook>
                 </sheet>
@@ -112,12 +121,5 @@
         </field>
     </record>
 
-    <record id="action_gestion_obra_modificacion" model="ir.actions.act_window">
-        <field name="name">Aditivas, Deductivas y Órdenes de Cambio</field>
-        <field name="res_model">gestion.obra.modificacion</field>
-        <field name="view_mode">list,form</field>
-    </record>
-
-    <menuitem id="menu_gestion_obra_modificacion" name="Aditivas / Deductivas / Órdenes de Cambio" parent="menu_gestion_obras_root" action="action_gestion_obra_modificacion" sequence="30"/>
-
+    <menuitem id="menu_gestion_obra_modificacion" name="Modificaciones" parent="menu_presupuestos_gestion_obra" action="action_gestion_obra_modificacion" sequence="30"/>
 </odoo>

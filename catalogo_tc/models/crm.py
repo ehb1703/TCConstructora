@@ -33,22 +33,18 @@ class CrmLeadCatalogo(models.Model):
             lead.insumos_pendientes = len(lead.input_ids.filtered(lambda l: not l.es_encabezado and l.conciliacion not in ('auto', 'confirmado')))
 
     def _columnas_insumos(self):
-        """Columna de la unidad con la regla del proceso original: si el renglón de referencia trae 'UNIDAD' en col3 es col3,
-        si no col5 (formato de la explosión de insumos: Código, Concepto, Nacional, Extranjero, Unidad, Cantidad, Costo, Importe).
-        El renglón de referencia es el encabezado cuando se guardó; si no, el primer renglón, como hace el proceso original."""
+        """Columna de la unidad con la regla del proceso original: si el renglón de referencia trae 'UNIDAD' en col3 es col3, si no col5 (formato de la 
+        explosión de insumos: Código, Concepto, Nacional, Extranjero, Unidad, Cantidad, Costo, Importe). El renglón de referencia es el encabezado cuando se 
+        guardó; si no, el primer renglón, como hace el proceso original."""
         self.ensure_one()
-        # En pantalla (onchange) hay renglones sin guardar (NewId) que no se pueden comparar por id: los guardados van primero por su id
-        # y los nuevos después, en el orden en que se capturaron
+        """ En pantalla (onchange) hay renglones sin guardar (NewId) que no se pueden comparar por id: los guardados van primero por su id y los nuevos después, 
+        en el orden en que se capturaron """
         lineas = self.input_ids.sorted(lambda l: (not l._origin.id, l._origin.id or 0))
         referencia = lineas.filtered('es_encabezado')[:1] or lineas[:1]
         unidad = 'col3' if (referencia.col3 or '').strip().upper() == 'UNIDAD' else 'col5'
         return referencia.filtered('es_encabezado'), unidad
 
     def action_cargar_insumos(self):
-        """Carga la explosión de insumos desde el renglón de encabezado ('Código'). Lee el encabezado para saber dónde está el Importe,
-        así entran los dos formatos que usa TC: Materiales (Código, Concepto, Nacional, Extranjero, Unidad, Cantidad, Costo, Importe)
-        y Mano de obra / Equipo (Código, Concepto, Unidad, Cantidad, Costo, Importe). Guarda el encabezado como primer renglón para que
-        la detección de columnas del proceso original funcione con ambos. Sustituye la carga de project_extra, que hoy falla."""
         for record in self:
             if not record.input_file:
                 raise ValidationError(_('Seleccione un archivo para cargar.'))
@@ -75,7 +71,7 @@ class CrmLeadCatalogo(models.Model):
         return True
 
     def action_genera_insumos(self):
-        """Reemplaza la creación de un producto por cada código de obra: concilia cada insumo contra el catálogo único."""
+        # Reemplaza la creación de un producto por cada código de obra: concilia cada insumo contra el catálogo único.
         for lead in self:
             codigos = [l.col1 for l in lead.input_ids]
             repetidos = {c for c in codigos if c and codigos.count(c) > 1}
@@ -122,7 +118,7 @@ class CrmInputLineCatalogo(models.Model):
             linea.unidad_obra = linea[columnas[linea.lead_id.id]]
 
     def _ligar_insumo(self, producto, col_unidad=None):
-        """Liga el renglón al insumo del catálogo, aprende la equivalencia y deja las marcas que exige 'Cotizaciones'."""
+        # Liga el renglón al insumo del catálogo, aprende la equivalencia y deja las marcas que exige 'Cotizaciones'.
         Eq = self.env['catalogo.equivalencia'].sudo()
         motor = self.env['catalogo.motor']
         for linea in self:

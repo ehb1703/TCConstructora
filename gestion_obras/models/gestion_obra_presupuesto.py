@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+import json
+from .seguridad import NIVEL_1, NIVEL_2, NIVEL_4, exigir_nivel
 
 PARTIDA_EXTRAORDINARIOS = 'EXTRAORDINARIOS'
 CAMPOS_BASE_PARTIDA = {'presupuesto_id', 'name', 'es_extraordinario', 'product_id', 'cantidad_base', 'precio_unitario_base'}
@@ -12,11 +14,33 @@ class GestionObraPresupuesto(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'id desc'
 
+    @api.depends('block_id')
+    def _compute_domain_obra(self):
+        lista = []
+        for record in self:
+            if record.block_id:
+                for rec in record.block_id.project_ids:
+                    lista.append(rec.id)
+            else:
+                registro = self.env['project.project'].search([])
+                for rec in registro:
+                    lista.append(rec.id)
+
+            record.obra_domain = json.dumps([('id', 'in', lista)])
+
+
     name = fields.Char(string='Nombre Presupuesto', required=True, tracking=True)
-    obra_id = fields.Many2one('account.analytic.account', string='Obra / Proyecto', required=True, tracking=True)
+    block_id = fields.Many2one('project.blocks', string='Bloque')
+    obra_id = fields.Many2one('project.project', string='Obra / Proyecto', tracking=True)
+    obra_domain = fields.Char(readonly=True, store=False, compute=_compute_domain_obra)
+    base_id = fields.Many2one('gestion.obra.presupuesto.base', string='Prespuesto Base', compute='_compute_presupuestos', store=True)
+    preoperativo_id = fields.Many2one('gestion.obra.presupuesto.preoperativo', string='Presupuesto Preoperativo', compute='_compute_presupuestos', store=True)
+    analytic_id = fields.Many2one('account.analytic.account', string='Analitica', required=True, tracking=True, compute='_compute_presupuestos', store=True)
     company_id = fields.Many2one('res.company', string='Empresa', required=True, default=lambda self: self.env.company)
     currency_id = fields.Many2one(related='company_id.currency_id', string='Moneda')
-    state = fields.Selection([('draft', 'Borrador'), ('approved', 'Base Aprobada (Congelada)')], string='Estatus', default='draft', required=True, tracking=True)
+    # T0120: N4 captura y envía a revisión; N2 aprueba en lo operativo; N1 aprueba en definitiva y congela la base
+    state = fields.Selection([('draft', 'Borrador'), ('in_revision', 'En Revisión Técnica'), ('op_approved', 'Aprobación Operativa'),
+        ('approved', 'Base Aprobada (Congelada)')], string='Estatus', default='draft', required=True, tracking=True)
     fecha_congelamiento = fields.Datetime(string='Fecha de congelamiento', readonly=True, copy=False)
     partida_ids = fields.One2many('gestion.obra.partida', 'presupuesto_id', string='Partidas')
     modificacion_ids = fields.One2many('gestion.obra.modificacion', 'presupuesto_id', string='Órdenes de Cambio / Aditivas')
@@ -32,8 +56,17 @@ class GestionObraPresupuesto(models.Model):
 
     _sql_constraints = [('obra_uniq', 'unique(obra_id)', 'Ya existe un presupuesto para esta obra.')]
 
-    @api.depends('partida_ids.monto_total_partida', 'partida_ids.es_extraordinario', 'modificacion_ids.state',
-                 'modificacion_ids.tipo_movimiento', 'modificacion_ids.monto_total_afectacion')
+    @api.onchange('obra_id')
+    def _compute_presupuestos(self):
+        for rec in self:
+            if rec.obra_id:
+                lead = rec.obra_id.lead_id
+                rec.base_id = lead.base_ids.filtered(lambda m: m.state == 'win')
+                rec.preoperativo_id = self.env['gestion.obra.presupuesto.preoperativo'].search([('lead_id', '=', lead.id)])
+                rec.analytic_id = lead.analytic_id or rec.obra_id.account_id
+
+    @api.depends('partida_ids.monto_total_partida', 'partida_ids.es_extraordinario', 'modificacion_ids.state', 'modificacion_ids.tipo_movimiento', 
+        'modificacion_ids.monto_total_afectacion')
     def _compute_totales(self):
         for rec in self:
             aplicadas = rec.modificacion_ids.filtered(lambda m: m.state == 'approved')
@@ -64,9 +97,15 @@ class GestionObraPresupuesto(models.Model):
         for rec in self:
             rec.modificacion_count = len(rec.modificacion_ids)
 
+    # Nivel que exige cada estado destino: ni desde el kanban ni por código se salta la matriz de autorizaciones
+    NIVEL_POR_ESTADO = {'in_revision': (NIVEL_4, 'enviar el presupuesto a revisión técnica'), 'op_approved': (NIVEL_2, 'dar la aprobación operativa del presupuesto'),
+                        'approved': (NIVEL_1, 'aprobar y congelar el presupuesto base'), 'draft': (NIVEL_2, 'regresar el presupuesto a Borrador')}
+
     def write(self, vals):
         if {'obra_id', 'company_id'} & set(vals) and any(rec.state == 'approved' for rec in self):
             raise UserError(_('La obra de un presupuesto con la base congelada no se puede cambiar.'))
+        if vals.get('state') in self.NIVEL_POR_ESTADO and any(rec.state != vals['state'] for rec in self):
+            exigir_nivel(self.env, *self.NIVEL_POR_ESTADO[vals['state']])
         return super().write(vals)
 
     def unlink(self):
@@ -74,22 +113,43 @@ class GestionObraPresupuesto(models.Model):
             raise UserError(_('Un presupuesto con la base congelada no se puede eliminar.'))
         return super().unlink()
 
-    def action_aprobar_base(self):
+    def action_enviar_revision(self):
         for rec in self:
             if rec.state != 'draft':
-                raise UserError(_('El presupuesto ya tiene la base aprobada.'))
+                raise UserError(_('Solo se envía a revisión técnica un presupuesto en Borrador.'))
+            if not rec.partida_ids.filtered(lambda p: not p.es_extraordinario):
+                raise UserError(_('Capture al menos una partida antes de enviar el presupuesto a revisión.'))
+            rec.state = 'in_revision'
+
+    def action_aprobar_operativo(self):
+        for rec in self:
+            if rec.state != 'in_revision':
+                raise UserError(_('Solo se aprueba en lo operativo un presupuesto En Revisión Técnica.'))
+            rec.state = 'op_approved'
+
+    def action_aprobar_base(self):
+        for rec in self:
+            if rec.state != 'op_approved':
+                raise UserError(_('El presupuesto necesita la Aprobación Operativa (Nivel 2) antes de la aprobación definitiva.'))
             if not rec.partida_ids.filtered(lambda p: not p.es_extraordinario):
                 raise UserError(_('Capture al menos una partida antes de aprobar el presupuesto base.'))
             rec.write({'state': 'approved', 'fecha_congelamiento': fields.Datetime.now()})
-            rec._partida_extraordinarios()
+            #Por que se genera una partida extraordinaria
+            #rec._partida_extraordinarios()
+
+    def action_regresar_borrador(self):
+        for rec in self:
+            if rec.state not in ('in_revision', 'op_approved'):
+                raise UserError(_('Solo regresa a Borrador un presupuesto En Revisión o con Aprobación Operativa; la base congelada solo cambia con modificaciones.'))
+            rec.state = 'draft'
 
     def _partida_extraordinarios(self):
         # Partida obligatoria donde se alojan los conceptos e insumos no previstos. Se abre al congelar la base.
         self.ensure_one()
         partida = self.partida_ids.filtered(lambda p: p.es_extraordinario and p.name == PARTIDA_EXTRAORDINARIOS)[:1]
         if not partida:
-            partida = self.env['gestion.obra.partida'].with_context(gestion_obras_sistema=True).create({
-                'presupuesto_id': self.id, 'name': PARTIDA_EXTRAORDINARIOS, 'es_extraordinario': True, 'sequence': 9999})
+            partida = self.env['gestion.obra.partida'].with_context(gestion_obras_sistema=True).create({'presupuesto_id': self.id, 'es_extraordinario': True, 
+                'sequence': 9999})
         return partida
 
     def action_ver_modificaciones(self):
@@ -103,16 +163,37 @@ class GestionObraPartida(models.Model):
     _description = 'Partida Presupuestal e Insumos'
     _order = 'presupuesto_id, sequence, id'
 
+    @api.depends('presupuesto_id')
+    def _compute_domain_budget(self):
+        lista = []
+        for record in self:
+            if record.presupuesto_id.base_id:
+                for rec in record.presupuesto_id.base_id.filtered(lambda u: u.state == 'win'):
+                    base = rec
+
+                if base:
+                    self.env.cr.execute('SELECT budget_id FROM gestion_obra_presupuesto_base_line WHERE base_id = ' + str(base.id) + ' GROUP BY 1')
+                    lineas = self.env.cr.dictfetchall()
+                    for x in lineas:
+                        lista.append(x['budget_id'])
+            record.budget_domain = json.dumps([('id', 'in', lista)])
+
     presupuesto_id = fields.Many2one('gestion.obra.presupuesto', string='Presupuesto', required=True, ondelete='cascade')
     sequence = fields.Integer(string='Secuencia', default=10)
-    name = fields.Char(string='Nombre de Partida / Concepto', required=True)
+    budget_id = fields.Many2one(comodel_name='product.budget.item', string='Partida')
+    budget_domain = fields.Char(readonly=True, store=False, compute=_compute_domain_budget)
     es_extraordinario = fields.Boolean(string='Es Partida Extraordinario', default=False)
-    product_id = fields.Many2one('product.product', string='Insumo (Referencia Única)')
+    concept_id = fields.Many2one('product.template', string='Concepto', domain="[('sale_ok','=','True')]")
+    product_id = fields.Many2one('product.product', string='Insumo', domain="[('purchase_ok','=','True')]")
     default_code = fields.Char(related='product_id.default_code', string='Ref. Interna')
     currency_id = fields.Many2one(related='presupuesto_id.currency_id', string='Moneda')
     cantidad_base = fields.Float(string='Cantidad Base', digits='Product Unit of Measure')
     precio_unitario_base = fields.Monetary(string='P.U. Base')
     monto_total_partida = fields.Monetary(string='Monto Base', compute='_compute_monto', store=True)
+    indirecto = fields.Float(string='% Costos Indirectos')
+    financiamiento = fields.Float(string='% Costos de Financiamiento')
+    utilidad = fields.Float(string='% Utilidad')
+    adicionales = fields.Float(string='% Cargos adicionales')
     linea_ids = fields.One2many('gestion.obra.modificacion.linea', 'partida_id', string='Movimientos')
     monto_modificaciones = fields.Monetary(string='Modificaciones', compute='_compute_control', store=True,
         help='Efecto neto de las aditivas, deductivas, extraordinarios y traspasos autorizados sobre la partida.')
@@ -152,5 +233,5 @@ class GestionObraPartida(models.Model):
 
     def unlink(self):
         if any(p.presupuesto_id.state == 'approved' for p in self):
-            raise UserError(_('El presupuesto base está congelado: ninguna partida se puede eliminar. Registre una Deductiva u Orden de Cambio.'))
+            raise UserError(_('El presupuesto base está congelado: ninguna partida se puede eliminar. Registre una Aditiva, Deductiva u Concepto extraordinario.'))
         return super().unlink()
