@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Extra Proyectos',
-    'version': '1.5',
+    'version': '1.6',
     'summary': 'Extra de proyectos',
     'sequence': 151,
     'description': """

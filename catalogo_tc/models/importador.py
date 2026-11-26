@@ -126,14 +126,14 @@ class CatalogoImportador(models.AbstractModel):
 
     @api.model
     def _mismo_insumo(self, nombre_odoo, nombre_base):
-        """Mismo insumo: mismos atributos y mayoría de palabras en común, o nombres casi idénticos (erratas de captura)."""
+        # Mismo insumo: mismos atributos y mayoría de palabras en común, o nombres casi idénticos (erratas de captura).
         motor = self.env['catalogo.motor']
         a, b = motor.normalizar(nombre_odoo), motor.normalizar(nombre_base)
         return a == b or motor.confirma(a, b) or difflib.SequenceMatcher(None, a, b).ratio() >= 0.85
 
     @api.model
     def _referencias(self, producto):
-        """Dónde se usa el producto en el resto del sistema (todos los campos que apuntan a productos, sin contar el propio catálogo)."""
+        #Dónde se usa el producto en el resto del sistema (todos los campos que apuntan a productos, sin contar el propio catálogo).
         env = self.sudo().env
         variantes = producto.with_context(active_test=False).product_variant_ids
         usos = []

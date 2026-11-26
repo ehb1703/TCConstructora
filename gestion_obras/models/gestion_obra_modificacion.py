@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+from .seguridad import NIVEL_1, NIVEL_2, NIVEL_4, exigir_nivel
 
-GRUPO_TECNICO = 'gestion_obras.group_aprobacion_tecnica'
-GRUPO_DIRECCION = 'gestion_obras.group_aprobacion_direccion'
+# T0120: N4 registra y hace la revisión técnica; N2 da la aprobación final; los extraordinarios (variaciones críticas) solo N1
+GRUPO_TECNICO = NIVEL_4
+GRUPO_DIRECCION = NIVEL_2
 
 
 class GestionObraModificacion(models.Model):
@@ -17,8 +19,8 @@ class GestionObraModificacion(models.Model):
         domain="[('state', '=', 'approved')]")
     obra_id = fields.Many2one(related='presupuesto_id.obra_id', string='Obra', store=True)
     currency_id = fields.Many2one(related='presupuesto_id.currency_id', string='Moneda')
-    tipo_movimiento = fields.Selection([('aditiva', 'Aditiva (Incremento)'), ('deductiva', 'Deductiva (Reducción)'),
-        ('orden_cambio', 'Traspaso entre Partidas'), ('extraordinario', 'Concepto Extraordinario')], string='Tipo de Movimiento', required=True, tracking=True)
+    tipo_movimiento = fields.Selection([('aditiva', 'Aditiva'), ('deductiva', 'Deductiva'), ('extraordinario', 'Concepto Extraordinario')], 
+        string='Tipo de Movimiento', required=True, tracking=True)
     linea_ids = fields.One2many('gestion.obra.modificacion.linea', 'modificacion_id', string='Desglose', copy=True)
     monto_total_afectacion = fields.Monetary(string='Impacto Financiero Total ($)', compute='_compute_monto_total', store=True,
         help='Aditivas, deductivas y extraordinarios: suma del desglose. Traspasos: monto reasignado (el total global no cambia).')
@@ -51,10 +53,14 @@ class GestionObraModificacion(models.Model):
 
     def write(self, vals):
         if not self.env.su:
-            if vals.get('state') == 'pending_dir' and not self.env.user.has_group(GRUPO_TECNICO):
-                raise UserError(_('No tiene permiso de aprobación técnica.'))
-            if vals.get('state') == 'approved' and not self.env.user.has_group(GRUPO_DIRECCION):
-                raise UserError(_('No tiene permiso de aprobación de dirección.'))
+            if vals.get('state') == 'pending_tech':
+                exigir_nivel(self.env, NIVEL_4, 'enviar la modificación a revisión técnica')
+            if vals.get('state') == 'pending_dir':
+                exigir_nivel(self.env, GRUPO_TECNICO, 'dar la aprobación técnica')
+            if vals.get('state') == 'approved':
+                exigir_nivel(self.env, GRUPO_DIRECCION, 'dar la aprobación final')
+                if any(rec.tipo_movimiento == 'extraordinario' for rec in self):
+                    exigir_nivel(self.env, NIVEL_1, 'aprobar un extraordinario (variación crítica)')
             cerradas = self.filtered(lambda m: m.state in ('approved', 'rejected'))
             if cerradas and set(vals) - {'state', 'message_main_attachment_id'} and not self.env.context.get('gestion_obras_sistema'):
                 raise UserError(_('Una modificación autorizada o rechazada no se puede editar.'))

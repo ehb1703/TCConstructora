@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <record id="mail_tmpl_presupuesto_base" model="mail.template">
+            <field name="name">Presupuesto Base</field>
+            <field name="model_id" ref="model_gestion_obra_presupuesto_base"/>
+            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
+            <field name="email_to"></field>
+            <field name="subject">Presupuesto Base - {{object.name}}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+                    <p>Estimado/a,</p>
+                    <p>Se ha registrado una <b>solicitud de prespuesto base</b> para la convocatoria:</p>
+                    <ul>
+                        <li><b>Nombre: </b><t t-if="object.lead_id.name"><span t-out="object.lead_id.name or ''"/></t></li>
+                        <li><b>Zona geográfica: </b><t t-if="object.lead_id.nombre_interno"><t t-out="object.lead_id.nombre_interno"></t></t></li>
+                        <li><b>Dependencia emisora: </b><t t-if="object.lead_id.partner_emisor_id"><t t-out="object.lead_id.partner_emisor_id.name"></t></t></li>
+                    </ul>
+                    <table align="center">
+                        <tr>
+                            <td>
+                                <a t-att-href="'%s/web#id=%s&amp;model=gestion.obra.presupuesto.base&amp;view_type=form' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#6c757d; color:#fff; border-radius:4px; text-decoration:none;font-size:12px;">Ver</a>
+                            </td>
+                        </tr>
+                    </table>
+                    <p>Enviado automáticamente por el Sistema.</p>
+                </div>
+            </field>
+        </record>
+
+        <record id="mail_tmpl_presupuesto_preoperativo" model="mail.template">
+            <field name="name">Presupuesto Preoperativo</field>
+            <field name="model_id" ref="model_gestion_obra_presupuesto_preoperativo"/>
+            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
+            <field name="email_to"></field>
+            <field name="subject">Presupuesto Preoperativo - {{object.name}}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+                    <p>Estimado/a,</p>
+                    <p>Se ha registrado una <b>solicitud de prespuesto base</b> para la convocatoria:</p>
+                    <ul>
+                        <li><b>Nombre: </b><t t-if="object.lead_id.name"><span t-out="object.lead_id.name or ''"/></t></li>
+                        <li><b>Zona geográfica: </b><t t-if="object.lead_id.nombre_interno"><t t-out="object.lead_id.nombre_interno"></t></t></li>
+                        <li><b>Dependencia emisora: </b><t t-if="object.lead_id.partner_emisor_id"><t t-out="object.lead_id.partner_emisor_id.name"></t></t></li>
+                    </ul>
+                    <table align="center">
+                        <tr>
+                            <td>
+                                <a t-att-href="'%s/web#id=%s&amp;model=gestion.obra.presupuesto.preoperativo&amp;view_type=form' % (object.get_base_url(), object.id)" style="display:inline-block; padding:8px 14px; background:#6c757d; color:#fff; border-radius:4px; text-decoration:none;font-size:12px;">Ver</a>
+                            </td>
+                        </tr>
+                    </table>
+                    <p>Enviado automáticamente por el Sistema.</p>
+                </div>
+            </field>
+        </record>
+
+        <record id="mail_tmpl_expediente_subcontratista" model="mail.template">
+            <field name="name">Expediente Incompleto</field>
+            <field name="model_id" ref="model_gestion_obra_contrato"/>
+            <field name="email_from">Sistema &lt;no-reply@mi-empresa.com&gt;</field>
+            <field name="email_to"></field>
+            <field name="subject">Expediente Incompleto - {{object.partner_id.name}}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+                    <p>Estimado(a):</p>
+                    <p>Por medio del presente, me permito informarle que al realizar la revisión de la documentación proporcionada, hemos identificado que aún se encuentran pendientes algunos datos necesarios.
+                        Por lo anterior, agradeceríamos mucho su apoyo compartiéndonos la siguiente información:</p>
+                    <ul>
+                        <t t-foreach="object.expediente_digital" t-as="documento">
+                            <t t-if="not documento.generado">
+                                <li>
+                                    <t t-out="documento.docto_id.nombre_archivo"/>
+                                </li>
+                            </t>
+                        </t>
+                    </ul>                    
+                    <p>Agradecemos de antemano su atención y colaboración.
+                        Saludos cordiales.</p>
+                </div>
+            </field>
+        </record>
+
+    </data>
+</odoo>

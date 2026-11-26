@@ -25,10 +25,9 @@ MAX_ERRORES = 200
 class CatalogoPlantilla(models.AbstractModel):
     _inherit = 'catalogo.importador'
 
-    # ------------------------------------------------------------------ plantilla
     @api.model
     def generar_plantilla(self):
-        """Excel oficial para subir insumos, con las listas vigentes de Odoo (tipos, categorías, familias, combinaciones y unidades)."""
+        # Excel oficial para subir insumos, con las listas vigentes de Odoo (tipos, categorías, familias, combinaciones y unidades).
         env = self.sudo().env
         libro = openpyxl.Workbook()
         negrita, fondo = Font(bold=True, color='FFFFFF'), PatternFill('solid', fgColor='1E5A8A')
@@ -106,7 +105,7 @@ class CatalogoPlantilla(models.AbstractModel):
         libro.save(salida)
         return salida.getvalue()
 
-    # ------------------------------------------------------------------ lectura
+    
     @api.model
     def leer_plantilla(self, contenido_b64):
         try:
@@ -131,7 +130,7 @@ class CatalogoPlantilla(models.AbstractModel):
             raise UserError(_('La hoja INSUMOS no tiene renglones.'))
         return renglones
 
-    # ------------------------------------------------------------------ validación e importación
+    
     @api.model
     def _codigo(self, texto):
         m = CODIGO.match(texto or '')
@@ -139,7 +138,7 @@ class CatalogoPlantilla(models.AbstractModel):
 
     @api.model
     def importar_plantilla(self, contenido_b64, solo_validar=True):
-        """Valida TODO el archivo; si hay un solo error no escribe nada. Devuelve el reporte (errores por renglón o lo que se hizo)."""
+        # Valida TODO el archivo; si hay un solo error no escribe nada. Devuelve el reporte (errores por renglón o lo que se hizo).
         env = self.sudo().env
         motor = env['catalogo.motor']
         renglones = self.leer_plantilla(contenido_b64)

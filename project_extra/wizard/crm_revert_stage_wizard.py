@@ -50,6 +50,7 @@ class CrmRevertStageWizard(models.TransientModel):
         if lead.team_id and self.target_stage_id.team_id and lead.team_id != self.target_stage_id.team_id:
             raise UserError(_('La etapa destino no pertenece al equipo del lead.'))
 
+    #Se sobreescribe en gestion_obra
     def action_confirm(self):
         self.ensure_one()
         self._check_target_stage()

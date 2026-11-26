@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- T0120 Regla 1: Nivel 4 y Nivel 3 solo modifican presupuestos en Borrador o En Revisión.
+         Las reglas de grupo se suman: el Nivel 2 (y el 1, que lo hereda) tiene además la regla abierta y edita en cualquier estado. -->
+    <record id="rule_tc_presupuesto_n4_borrador" model="ir.rule">
+        <field name="name">TC: N4/N3 editan presupuestos solo en Borrador o En Revisión</field>
+        <field name="model_id" ref="model_gestion_obra_presupuesto"/>
+        <field name="domain_force">[('state', 'in', ('draft', 'in_revision'))]</field>
+        <field name="groups" eval="[(4, ref('group_tc_budget_control'))]"/>
+        <field name="perm_read" eval="False"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="rule_tc_presupuesto_n2_todos" model="ir.rule">
+        <field name="name">TC: N2/N1 editan presupuestos en cualquier estado</field>
+        <field name="model_id" ref="model_gestion_obra_presupuesto"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_tc_director_operativo'))]"/>
+        <field name="perm_read" eval="False"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="rule_tc_partida_n4_borrador" model="ir.rule">
+        <field name="name">TC: N4/N3 editan partidas solo de presupuestos en Borrador o En Revisión</field>
+        <field name="model_id" ref="model_gestion_obra_partida"/>
+        <field name="domain_force">[('presupuesto_id.state', 'in', ('draft', 'in_revision'))]</field>
+        <field name="groups" eval="[(4, ref('group_tc_budget_control'))]"/>
+        <field name="perm_read" eval="False"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="rule_tc_partida_n2_todos" model="ir.rule">
+        <field name="name">TC: N2/N1 editan partidas en cualquier estado</field>
+        <field name="model_id" ref="model_gestion_obra_partida"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_tc_director_operativo'))]"/>
+        <field name="perm_read" eval="False"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+</odoo>

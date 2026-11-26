@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="report_contrato_subcontrato_template">
+            <t t-set="o" t-value="o.with_context(lang='es_MX')"/>
+            <t t-call="web.external_layout">
+                <div class="page" style="font-family: Arial, sans-serif; font-size: 11pt; text-align: justify;">
+                    <t t-set="representante" t-value="o.env['company.legal.representative'].search([('company_id','=',o.company_id.id)], limit=1)"/>
+                    <t t-set="meses" t-value="{'January': 'Enero', 'February': 'Febrero', 'March': 'Marzo', 'April': 'Abril', 'May': 'Mayo', 'June': 'Junio', 'July': 'Julio', 'August': 'Agosto', 'September': 'Septiembre', 'October': 'Octubre', 'November': 'Noviembre', 'December': 'Diciembre'}"/>
+                    <t t-set="mes_ingles" t-value="o.ffirma.strftime('%B') if o.ffirma else ''"/>
+                    <t t-set="mes_espanol" t-value="meses.get(mes_ingles, mes_ingles)"/>
+
+                    <p style="text-align: justify;">
+                        CONTRATO DE SUBCONTRATACIÓN DE OBRA que celebran, por una parte, <t t-esc="o.company_id.name.upper() if o.company_id else ''"/>, representado por <t t-esc="representante.representante_id.name.upper() if representante else ''"/>, a quien en lo sucesivo se le denominará “EL CONTRATISTA”, y por otra parte <t t-esc="o.partner_id.name.upper() if o.partner_id else ''"/>, representado por <t t-esc="o.partner_id.responsable_id.name.upper() if o.partner_id.responsable_id else ''"/>, a quien en lo sucesivo se le denominará “EL SUBCONTRATISTA”, de conformidad con las siguientes declaraciones y cláusulas.
+                        <br/><br/>
+                        DECLARACIONES<br/><br/>
+                        I. Declara EL CONTRATISTA:<br/><br/>
+                        a) Que es una persona <t t-esc="'MORAL' if o.partner_id.is_company else 'FISICA'"/> con capacidad legal para celebrar el presente contrato.<br/><br/>
+                        b) Que tiene a su cargo la ejecución de la obra denominada <t t-esc="o.project_id.name.upper()"/>, ubicada en <t t-esc="o.project_id.street.upper() if o.project_id.street else ''"/> <t t-esc="o.project_id.col.upper() if o.project_id.col else ''"/> C.P. <t t-esc="o.project_id.zip if o.project_id.zip else ''"/>.<br/><br/>
+                        c) Que tiene interés en subcontratar los trabajos descritos en este instrumento.<br/><br/>
+                        II. Declara EL SUBCONTRATISTA:<br/><br/>
+                        a) Que cuenta con la capacidad técnica, experiencia, personal y herramientas necesarias para realizar los trabajos contratados.<br/><br/>
+                        b) Que conoce el alcance, las especificaciones y las condiciones de ejecución de los trabajos.<br/><br/>
+                        c) Que cuenta con los registros, permisos y autorizaciones que legalmente le correspondan para realizar sus actividades.<br/><br/>
+                        III. Declaran ambas partes:<br/><br/>
+                        Que se reconocen mutuamente la personalidad y capacidad legal con la que comparecen y manifiestan su voluntad de sujetarse a las siguientes:<br/><br/>
+                        CLÁUSULAS<br/><br/>
+                        PRIMERA. OBJETO DEL CONTRATO.<br/><br/>
+                        EL CONTRATISTA encomienda a EL SUBCONTRATISTA, quien acepta, la ejecución de los siguientes trabajos: <t t-esc="o.description.upper() if o.description else ''"/>, correspondientes a la obra ubicada en <t t-esc="o.project_id.street.upper() if o.project_id.street else ''"/> <t t-esc="o.project_id.col.upper() if o.project_id.col else ''"/> C.P. <t t-esc="o.project_id.zip if o.project_id.zip else ''"/>, conforme a los planos, especificaciones, catálogo de conceptos y demás documentos que se anexen al presente contrato.<br/><br/>
+                        SEGUNDA. MONTO DEL CONTRATO.<br/><br/>
+                        Las partes acuerdan que el precio por los trabajos será de $<t t-esc="o.monto_contratado"/> ((<t t-esc="o.get_importe_en_letra(o.monto_contratado)"/>)), más el impuesto al valor agregado (IVA), cuando corresponda.<br/><br/>
+                        La modalidad de pago será por <t t-esc="o.project_id.modalidad"/>, de acuerdo con el presupuesto autorizado y los avances efectivamente ejecutados y aceptados.<br/><br/>
+                        TERCERA. FORMA DE PAGO.<br/><br/>
+                        EL CONTRATISTA pagará a EL SUBCONTRATISTA mediante <t t-esc="o.medio"/>, conforme a las estimaciones de obra presentadas y autorizadas.<br/><br/>
+                        Los pagos se efectuarán dentro de los <t t-esc="o.diaspago"/> días naturales o hábiles siguientes a la aprobación de cada estimación y a la recepción de la documentación fiscal correspondiente.<br/><br/>
+                        En su caso, las partes establecerán por escrito el anticipo, las amortizaciones, las retenciones y los requisitos para la liberación del pago final.<br/><br/>
+                        El Contratante retendrá el 5%(cinco por ciento) de cada cantidad reportada en las estimaciones de obra presentada. Este monto se acumulará y será reembolsado al finalizar la obra, previa supervisión y entrega de conformidad, garantizando que el trabajo este en condiciones adecuadas y sin vicios ocultos<br/><br/>
+                        CUARTA. PLAZO DE EJECUCIÓN.<br/><br/>
+                        EL SUBCONTRATISTA se obliga a iniciar los trabajos el día <t t-esc="o.finicio.strftime('%d-%m-%Y')"/> y a concluirlos a más tardar el día <t t-esc="o.ffin.strftime('%d-%m-%Y')"/>, conforme al programa de obra acordado.<br/><br/>
+                        Cualquier modificación al plazo deberá constar por escrito y estar autorizada por ambas partes.<br/><br/>
+                        QUINTA. OBLIGACIONES DEL SUBCONTRATISTA.<br/><br/>
+                        EL SUBCONTRATISTA se obliga a:<br/>
+                        a) Ejecutar los trabajos conforme a los planos, especificaciones, normas aplicables y estándares de calidad acordados.<br/><br/>
+                        b) Proporcionar el personal, herramientas, equipo y materiales que expresamente le correspondan conforme al presupuesto y sus anexos.<br/><br/>
+                        1.- Materiales: El suministro de los materiales necesarios para la obra correrá a cargo de la empresa. En el caso de que el Contratante los suministre, El Contratista es responsable de su correo uso y resguardo.<br/><br/>
+                        2.- Herramienta: El Contratista se obliga a aporta por su cuenta toda la maquinaria, herramienta y equipo necesarios para la ejecución de los trabajos<br/><br/>
+                        a) Cumplir con las disposiciones de seguridad, higiene, protección civil y protección ambiental aplicables.<br/><br/>
+                        b) Corregir, a su costa, los trabajos defectuosos que le sean imputables, dentro del plazo razonable que acuerden las partes.<br/><br/>
+                        c) Presentar estimaciones, reportes de avance y documentación fiscal y administrativa aplicable.<br/><br/>
+                        d) Cumplir las obligaciones laborales, fiscales y de seguridad social que legalmente le correspondan.<br/><br/>
+                        e) Informar oportunamente sobre cualquier circunstancia que pueda afectar el costo, la calidad o el plazo de ejecución.<br/><br/>
+                        SEXTA. OBLIGACIONES DEL CONTRATISTA.<br/><br/>
+                        EL CONTRATISTA se obliga a:<br/><br/>
+                        a) Proporcionar acceso al área de trabajo en las condiciones convenidas.<br/><br/>
+                        b) Entregar la información, planos y especificaciones necesarios para ejecutar los trabajos.<br/><br/>
+                        c) Revisar y, en su caso, autorizar las estimaciones y avances dentro de los plazos acordados.<br/><br/>
+                        d) Realizar los pagos conforme a las condiciones establecidas en este contrato.<br/><br/>
+                        e) Comunicar oportunamente los cambios de alcance, instrucciones y restricciones que afecten los trabajos.<br/><br/>
+                        SÉPTIMA. MATERIALES, EQUIPO Y HERRAMIENTAS.<br/><br/>
+                        Las partes acuerdan que el suministro de materiales estará a cargo de <t t-esc="o.suministro"/>.<br/><br/>
+                        La responsabilidad por la custodia, almacenamiento, uso y conservación de los materiales y equipos será de la parte que los tenga bajo su control, conforme a las condiciones acordadas y la legislación aplicable.<br/><br/>
+                        OCTAVA. SEGURIDAD Y RESPONSABILIDAD POR DAÑOS.<br/><br/>
+                        EL SUBCONTRATISTA deberá adoptar las medidas de seguridad necesarias para la ejecución de los trabajos y responderá por los daños que cause por actos u omisiones que le sean imputables, sin perjuicio de las responsabilidades que legalmente correspondan a cada parte.<br/><br/>
+                        Las partes coordinarán las medidas de seguridad y el acceso a la obra conforme a la normativa aplicable.<br/><br/>
+                        NOVENA. PERSONAL Y OBLIGACIONES LABORALES.<br/><br/>
+                        Cada parte será responsable de las obligaciones laborales, fiscales y de seguridad social que le correspondan respecto de su personal, conforme a la legislación aplicable.<br/><br/>
+                        La denominación de este contrato no modifica la naturaleza real de las relaciones de trabajo ni excluye las responsabilidades legales que pudieran corresponder a cualquiera de las partes.<br/><br/>
+                        Cuando los servicios contratados estén sujetos a requisitos especiales de subcontratación de servicios u obras especializadas, las partes deberán verificar y cumplir las obligaciones de registro, documentación e información que resulten aplicables.<br/><br/>
+                        DÉCIMA. CAMBIOS Y TRABAJOS EXTRAORDINARIOS.<br/><br/>
+                        Ningún trabajo adicional, modificación de alcance o ajuste de precio será exigible sin autorización previa y por escrito de ambas partes, en la que se indiquen el costo, el plazo adicional y las condiciones de ejecución.<br/><br/>
+                        DÉCIMA PRIMERA. GARANTÍA DE LOS TRABAJOS.<br/><br/>
+                        EL SUBCONTRATISTA garantiza la calidad de los trabajos ejecutados durante un periodo de <t t-esc="o.plazo"/>, contado a partir de su recepción por escrito, respecto de defectos atribuibles a su ejecución, sin perjuicio de las garantías y responsabilidades que establezca la legislación aplicable.<br/><br/>
+                        Las condiciones, exclusiones y procedimiento para atender defectos se establecerán en el anexo correspondiente.<br/><br/>
+                        DÉCIMA SEGUNDA. PENAS CONVENCIONALES.<br/><br/>
+                        En caso de retraso imputable a EL SUBCONTRATISTA, las partes acuerdan una pena convencional de <t t-esc="o.penalizacion"/>, conforme a la base de cálculo y los límites establecidos en el anexo correspondiente y siempre que resulte legalmente procedente.<br/>
+                        No se aplicará por retrasos atribuibles a EL CONTRATISTA, causas justificadas aceptadas por escrito o supuestos legalmente excluidos.<br/><br/>
+                        DÉCIMA TERCERA. SUSPENSIÓN Y TERMINACIÓN ANTICIPADA.<br/><br/>
+                        El contrato podrá suspenderse o darse por terminado anticipadamente por acuerdo escrito de las partes o por incumplimiento de las obligaciones contractuales, previa notificación por escrito y otorgando, cuando corresponda, un plazo de <t t-esc="o.dias"/> días para subsanar el incumplimiento.<br/><br/>
+                        En caso de terminación, las partes determinarán los trabajos efectivamente ejecutados, los materiales procedentes, los pagos pendientes y las responsabilidades correspondientes.<br/><br/>
+                        DÉCIMA CUARTA. RESCISIÓN POR INCUMPLIMIENTO.<br/><br/>
+                        Cualquiera de las partes podrá solicitar la rescisión del contrato cuando la otra incurra en un incumplimiento grave de sus obligaciones, de conformidad con el procedimiento pactado y la legislación aplicable.<br/><br/>
+                        DÉCIMA QUINTA. CASO FORTUITO Y FUERZA MAYOR.<br/><br/>
+                        Ninguna de las partes será responsable por el incumplimiento directamente ocasionado por acontecimientos de caso fortuito o fuerza mayor, en la medida en que legalmente proceda, siempre que notifique oportunamente a la otra parte y adopte medidas razonables para mitigar sus efectos.<br/><br/>
+                        DÉCIMA SEXTA. CESIÓN Y SUBCONTRATACIÓN ADICIONAL.<br/><br/>
+                        EL SUBCONTRATISTA no podrá ceder los derechos u obligaciones de este contrato ni encomendar a terceros la ejecución de los trabajos sin autorización previa y por escrito de EL CONTRATISTA, sin perjuicio de las disposiciones legales aplicables.<br/><br/>
+                        DÉCIMA SÉPTIMA. NOTIFICACIONES.<br/><br/>
+                        Para todos los efectos relacionados con este contrato, las partes señalan como domicilios los siguientes:<br/><br/>
+                        EL CONTRATISTA: <t t-esc="o.company_id.street.upper() if o.company_id.street else ''"/> <t t-esc="o.company_id.col.upper() if o.company_id.col else ''"/> C.P. <t t-esc="o.company_id.zip if o.company_id.zip else ''"/> <t t-esc="o.company_id.email"/>.<br/><br/>
+                        EL SUBCONTRATISTA: <t t-esc="o.partner_id.street.upper() if o.partner_id.street else ''"/> <t t-esc="o.partner_id.col.upper() if o.partner_id.col else ''"/> C.P. <t t-esc="o.partner_id.zip if o.partner_id.zip else ''"/> <t t-esc="o.partner_id.email"/>.<br/><br/>
+                        Cualquier cambio deberá notificarse por escrito.<br/><br/>
+                        DÉCIMA OCTAVA. LEGISLACIÓN Y JURISDICCIÓN.<br/><br/>
+                        Para la interpretación y cumplimiento del presente contrato, las partes se sujetarán a la legislación mexicana que resulte aplicable y a los tribunales competentes de <t t-esc="lfirma"/>, respetando las normas de competencia y jurisdicción que sean obligatorias.<br/><br/>
+                        DÉCIMA NOVENA. INTEGRIDAD DEL CONTRATO.<br/><br/>
+                        El presente instrumento y sus anexos constituyen el acuerdo entre las partes respecto de su objeto. Cualquier modificación deberá formalizarse por escrito y estar firmada por ambas partes.<br/><br/>
+                        Leído que fue el presente contrato y enteradas las partes de su contenido y alcance legal, lo firman por duplicado en <t t-esc="lfirma"/>, a los <t t-esc="o.ffirma.strftime('%d') if o.ffirma else ''"/> días del mes de <t t-esc="mes_espanol"/> de <t t-esc="o.ffirma.strftime('%Y') if o.ffirma else ''"/>.<br/><br/>
+                    </p>
+
+                    <table style="width: 100%; border: none; border-collapse: collapse;">
+                        <tr>
+                            <td style="width: 45%; text-align: center; border: none; vertical-align: top; padding: 10px;">
+                                <strong>EL CONTRATISTA</strong><br/><br/><br/>
+                                ____________________________________<br/>
+                                <t t-esc="representante.representante_id.name"/><br/>
+                                <t t-esc="o.company_id.name"/>
+                            </td>
+                            <td style="width: 10%; border: none;"></td>
+                            <td style="width: 45%; text-align: center; border: none; vertical-align: top; padding: 10px;">
+                                <strong>EL SUBCONTRATISTA</strong><br/><br/><br/>
+                                _____________________________________<br/>
+                                <t t-esc="o.partner_id.name.upper() if o.partner_id else ''"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 45%; text-align: center; border: none; vertical-align: top; padding: 10px;">
+                                <strong>TESTIGO</strong><br/><br/><br/>
+                                ____________________________________<br/>
+                                <t t-esc="o.testigo1"/><br/>
+                            </td>
+                            <td style="width: 10%; border: none;"></td>
+                            <td style="width: 45%; text-align: center; border: none; vertical-align: top; padding: 10px;">
+                                <strong>TESTIGO</strong><br/><br/><br/>
+                                _____________________________________<br/>
+                                <t t-esc="o.testigo2"/>
+                            </td>
+                        </tr>
+                    </table>
+                    <br/><br/>
+                    <p style="text-align: center;">ANEXOS</p>
+                    <br/><br/>
+                    <p style="text-align: justify;">
+                        1. Presupuesto y catálogo de conceptos.<br/>
+                        2. Planos y especificaciones técnicas.<br/>
+                        3. Programa de ejecución.<br/>
+                        4. Calendario de estimaciones y pagos.<br/>
+                        5. Relación de materiales, equipo y responsabilidades.<br/>
+                        6. Garantías, fianzas y pólizas, cuando correspondan.<br/>
+                        7. Documentación legal, fiscal y de seguridad social aplicable.<br/>
+                    </p>
+                    <br/>
+                    <br/><br/>
+                    <p style="text-align: center;">DOCUMENTACION A PRESENTAR POR PARTE DEL CONTRATISTA</p>
+                    <table style="width: 100%; border: none; border-collapse: none;">
+                        <t t-foreach="o.partner_id.expediente_digital" t-as="exp">
+                            <tr>
+                                <td style="border: none; padding: 5px; text-align: justify;"><t t-esc="exp.docto_id.nombre_archivo"/></td>
+                            </tr>
+                        </t>
+                    </table>
+                    <br/>
+                </div>
+            </t>
+        </template>
+
+        <template id="gestion_obras.report_contrato_subcontrato">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="gestion_obras.report_contrato_subcontrato_template" t-lang="'es_MX'"/>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>
