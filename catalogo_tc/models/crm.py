@@ -90,7 +90,8 @@ class CrmLeadCatalogo(models.Model):
 
     def action_confirmar_sugerencias(self):
         for lead in self:
-            for linea in lead.input_ids.filtered(lambda l: l.conciliacion == 'sugerido'):
+            # las sugerencias de productos sin Clave TC no se confirman en bloque: se clasifican una por una con "Alta de insumo"
+            for linea in lead.input_ids.filtered(lambda l: l.conciliacion == 'sugerido' and l.sugerencia_id.clave_insumo):
                 linea.action_confirmar_sugerencia()
 
 
@@ -140,6 +141,9 @@ class CrmInputLineCatalogo(models.Model):
                 raise UserError(_('El renglón %s no tiene una sugerencia que confirmar.', linea.col1 or ''))
             if linea.conciliacion == 'conflicto' and not self.env.user.has_group('catalogo_tc.group_admin_catalogo'):
                 raise UserError(_('Un conflicto de código solo lo resuelve el Administrador del Catálogo.'))
+            if not linea.sugerencia_id.clave_insumo:
+                # ya existía en Odoo antes del catálogo: primero se clasifica (recibe su Clave TC) y entonces se liga
+                return linea.action_alta_insumo()
             linea._ligar_insumo(linea.sugerencia_id)
 
     def action_rechazar_sugerencia(self):

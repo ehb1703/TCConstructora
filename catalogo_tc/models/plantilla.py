@@ -206,7 +206,8 @@ class CatalogoPlantilla(models.AbstractModel):
             if len(errores) >= MAX_ERRORES:
                 break
 
-        reporte = {'renglones': len(renglones), 'errores': errores, 'creados': 0, 'ya_existian': 0, 'adoptados': 0, 'equivalencias': 0,
+        reporte = {'renglones': len(renglones), 'errores': errores, 'creados': 0, 'ya_existian': 0, 'adoptados': 0, 'adoptados_por_nombre': 0,
+                   'copias_archivadas': 0, 'copias_con_uso': [], 'equivalencias': 0,
                    'combinaciones': 0, 'validado': not errores, 'importado': False, 'detalle': []}
         if errores or solo_validar:
             reporte['sin_errores_listos'] = len(listos)
@@ -231,6 +232,10 @@ class CatalogoPlantilla(models.AbstractModel):
                 for p in Producto.search([('active', '=', True), ('purchase_ok', '=', True), ('clave_insumo', '=', False),
                                           ('default_code', 'in', [r['codigo_obra'] for r in listos if r['codigo_obra']])]):
                     adopciones[p.default_code].append(p)
+            # productos anteriores al catálogo (sin Clave TC) por nombre y unidad: el mismo insumo se adopta aunque el renglón no traiga código de obra
+            sin_clave, copias, ref_anterior = collections.defaultdict(list), {}, {}
+            for p in Producto.search([('active', '=', True), ('purchase_ok', '=', True), ('clave_insumo', '=', False)], order='id'):
+                sin_clave[(motor.normalizar(p.name), motor.unidad_canonica(p.uom_id.name))].append(p)
             for r in listos:
                 existente = por_clave.get(r['clave_num']) if r['clave_num'] else por_nombre.get(r['llave'])
                 if existente:
@@ -241,6 +246,17 @@ class CatalogoPlantilla(models.AbstractModel):
                 if previo and previo not in destino.values():
                     destino[r['fila']] = previo
                     reporte['adoptados'] += 1
+                    continue
+                iguales = [p for p in sin_clave.get((motor.normalizar(r['nombre']), motor.unidad_canonica(r['uom_rec'].name)), [])
+                           if p not in destino.values()]
+                if iguales:
+                    # el más antiguo recibe la clave; los demás iguales son copias de cargas anteriores
+                    destino[r['fila']] = iguales[0]
+                    copias[iguales[0].id] = iguales[1:]
+                    for p in iguales:
+                        ref_anterior[p.id] = p.default_code
+                    reporte['adoptados'] += 1
+                    reporte['adoptados_por_nombre'] += 1
                     continue
                 nuevos.append(r)
             # 2) claves: las que trae el archivo se respetan; las que faltan salen de un bloque consecutivo reservado de una vez
@@ -281,8 +297,26 @@ class CatalogoPlantilla(models.AbstractModel):
                     por_clave[p.clave_insumo] = p
                     por_nombre[r['llave']] = p
                 reporte['creados'] += len(lote)
+            # 4b) copias de cargas anteriores: se archivan si nadie las usa; con movimientos se reportan (decide el Administrador del Catálogo)
+            retiro, cuenta = collections.defaultdict(list), collections.Counter()
+            for r in listos:
+                p = destino.get(r['fila'])
+                for copia in (copias.get(p.id, []) if p else []):
+                    self._retirar(copia, p, retiro, cuenta)
+            reporte['copias_archivadas'] = cuenta['copias_archivadas']
+            reporte['copias_con_uso'] = retiro['copias_con_movimientos']
             # 5) equivalencias de obra por lotes
             eq_vals = []
+            # la referencia anterior de lo adoptado por nombre (p. ej. MA0001) se conserva como equivalencia: buscarla sigue encontrando el insumo
+            for r in listos:
+                p = destino.get(r['fila'])
+                for anterior in ([p] + copias.get(p.id, [])) if p and p.id in copias else []:
+                    ref = ref_anterior.get(anterior.id)
+                    k = ('REFERENCIA ANTERIOR EN ODOO', motor.normalizar(ref))
+                    if ref and k not in eqs:
+                        eqs[k] = True
+                        eq_vals.append({'fuente': 'REFERENCIA ANTERIOR EN ODOO', 'codigo_externo': ref, 'descripcion_externa': anterior.name,
+                                        'unidad_externa': anterior.uom_id.name, 'product_tmpl_id': p.id})
             for r in listos:
                 if r['codigo_obra'] and r['obra']:
                     k = (motor.normalizar(r['obra']), motor.normalizar(r['codigo_obra']))

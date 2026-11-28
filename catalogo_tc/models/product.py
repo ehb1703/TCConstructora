@@ -90,6 +90,19 @@ class ProductTemplateCatalogo(models.Model):
             dominio.append(('categoria_insumo_id', '=', categoria.id))
         return self.search(dominio).filtered(lambda p: motor.firma(p.name) == firma and motor.parecido(p.name, nombre) >= 0.5)
 
+    @api.model
+    def action_duplicados_por_unificar(self):
+        """Productos de compra activos con el mismo nombre y la misma unidad (cargas anteriores al catálogo y el insumo con Clave TC)."""
+        motor = self.env['catalogo.motor']
+        grupos = {}
+        for p in self.search([('active', '=', True), ('purchase_ok', '=', True)]):
+            grupos.setdefault((motor.normalizar(p.name), motor.unidad_canonica(p.uom_id.name)), []).append(p.id)
+        ids = [i for g in grupos.values() if len(g) > 1 for i in g]
+        return {'type': 'ir.actions.act_window', 'name': _('Duplicados por unificar'), 'res_model': 'product.template', 'view_mode': 'list,form',
+                'views': [(self.env.ref('catalogo_tc.view_product_template_catalogo_list').id, 'list'), (False, 'form')],
+                'domain': [('id', 'in', ids)], 'context': {'group_by': ['name']},
+                'help': _('<p>No hay insumos duplicados.</p><p>Seleccione los productos que son el mismo insumo y use Acción &gt; Unificar duplicados.</p>')}
+
     def action_ver_equivalencias(self):
         self.ensure_one()
         return {'type': 'ir.actions.act_window', 'name': _('Equivalencias'), 'res_model': 'catalogo.equivalencia', 'view_mode': 'list,form',

@@ -13,9 +13,12 @@ class CatalogoAltaWizard(models.TransientModel):
     linea_id = fields.Many2one('crm.input.line', string='Renglón de la licitación')
     codigo_externo = fields.Char(related='linea_id.col1', string='Código de la obra')
     descripcion_externa = fields.Char(related='linea_id.col2', string='Descripción de la obra')
-    accion = fields.Selection([('nuevo', 'Dar de alta un insumo nuevo'), ('existente', 'Es un insumo que ya existe')], string='Acción', default='nuevo', required=True)
+    accion = fields.Selection([('nuevo', 'Dar de alta un insumo nuevo'), ('existente', 'Es un insumo que ya existe'),
+                               ('clasificar', 'Ya existe en Odoo sin Clave TC: clasificarlo')], string='Acción', default='nuevo', required=True)
     clave_proxima = fields.Char(string='Clave que recibirá', compute='_compute_clave_proxima')
     existente_id = fields.Many2one('product.template', string='Insumo existente', domain="[('clave_insumo', '!=', False)]")
+    sin_clave_id = fields.Many2one('product.template', string='Producto existente sin Clave TC', domain="[('clave_insumo', '=', False), ('purchase_ok', '=', True)]",
+        help='Producto que ya existía en Odoo antes del catálogo. Recibe su clasificación y su Clave TC; conserva su nombre, unidad e historial.')
     nombre = fields.Char(string='Nombre estandarizado')
     uom_id = fields.Many2one('uom.uom', string='Unidad')
     tipo_id = fields.Many2one('product.tipo.insumo', string='Tipo')
@@ -36,8 +39,10 @@ class CatalogoAltaWizard(models.TransientModel):
                 res['uom_id'] = uom.id
             categoria, familia = self._sugerir_clasificacion(res['nombre'])
             res.update({'categoria_id': categoria.id, 'familia_id': familia.id})
-            if linea.sugerencia_id:
+            if linea.sugerencia_id.clave_insumo:
                 res['existente_id'] = linea.sugerencia_id.id
+            elif linea.sugerencia_id:
+                res.update({'accion': 'clasificar', 'sin_clave_id': linea.sugerencia_id.id})
         return res
 
     @api.model
@@ -74,6 +79,19 @@ class CatalogoAltaWizard(models.TransientModel):
             if not self.existente_id:
                 raise UserError(_('Elija el insumo existente.'))
             producto = self.existente_id
+        elif self.accion == 'clasificar':
+            if not self.env.user.has_group(GRUPO_ADMIN):
+                raise UserError(_('Solo el Administrador del Catálogo puede clasificar insumos.'))
+            if not all([self.sin_clave_id, self.tipo_id, self.categoria_id, self.familia_id]):
+                raise UserError(_('Elija el producto existente y capture tipo, categoría y familia.'))
+            producto = self.sin_clave_id
+            if producto.clave_insumo:
+                raise UserError(_('%s ya tiene Clave TC.') % producto.display_name)
+            vals = {'tipo_insumo_id': self.tipo_id.id, 'categoria_insumo_id': self.categoria_id.id, 'familia_insumo_id': self.familia_id.id,
+                    'clave_insumo': self.env['product.template'].siguiente_clave()}
+            if self.tipo_id.cuenta_gasto_id and not producto.property_account_expense_id:
+                vals['property_account_expense_id'] = self.tipo_id.cuenta_gasto_id.id
+            producto.write(vals)   # conserva nombre, unidad, referencia e historial del producto
         else:
             if not self.env.user.has_group(GRUPO_ADMIN):
                 raise UserError(_('Solo el Administrador del Catálogo puede dar de alta insumos.'))

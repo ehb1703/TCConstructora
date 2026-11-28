@@ -13,9 +13,10 @@
                 <group>
                     <field name="accion" widget="radio"/>
                     <field name="existente_id" invisible="accion != 'existente'" required="accion == 'existente'" options="{'no_create': True}"/>
+                    <field name="sin_clave_id" invisible="accion != 'clasificar'" required="accion == 'clasificar'" options="{'no_create': True}"/>
                 </group>
-                <group invisible="accion != 'nuevo'">
-                    <group>
+                <group invisible="accion not in ('nuevo', 'clasificar')">
+                    <group invisible="accion != 'nuevo'">
                         <field name="nombre"/>
                         <field name="uom_id" options="{'no_create': True}"/>
                     </group>
@@ -23,7 +24,7 @@
                         <field name="clave_proxima"/>
                         <field name="tipo_id" options="{'no_create': True}"/>
                         <field name="categoria_id" options="{'no_create': True}"/>
-                        <field name="familia_id" options="{'no_create': True}"/>
+                        <field name="familia_id" options="{'no_create': True}" required="accion == 'clasificar'"/>
                     </group>
                 </group>
                 <div class="alert alert-warning" role="alert" invisible="not duplicado_ids or accion != 'nuevo'">

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Catálogo Único de Insumos TC',
-    'version': '18.0.1.3.0',
+    'version': '18.0.1.4.0',
     'summary': 'Catálogo único de insumos con memoria de equivalencias y conciliación de licitaciones',
     'sequence': 166,
     'description': """
@@ -23,6 +23,7 @@ Catálogo Único de Insumos TC
         'views/catalogo_views.xml',
         'views/crm_views.xml',
         'wizard/alta_wizard_views.xml',
+        'wizard/unificar_wizard_views.xml',
     ],
     'post_init_hook': 'post_init_hook',
     'license': 'LGPL-3',

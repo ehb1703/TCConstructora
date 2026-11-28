@@ -49,8 +49,14 @@ class CatalogoImportarWizard(models.TransientModel):
                 '<div class="alert alert-success">Importación terminada (%s renglones).</div><ul>'
                 '<li>Insumos nuevos con clave: <b>%s</b></li><li>Ya existían en el catálogo (se actualizó su clasificación): <b>%s</b></li>'
                 '<li>Productos anteriores adoptados (recibieron su clave): <b>%s</b></li><li>Equivalencias de obra registradas: <b>%s</b></li>'
-                '<li>Combinaciones categoría-familia autorizadas: <b>%s</b></li></ul>')
-                % (rep['renglones'], rep['creados'], rep['ya_existian'], rep['adoptados'], rep['equivalencias'], rep['combinaciones'])})
+                '<li>Combinaciones categoría-familia autorizadas: <b>%s</b></li>'
+                '<li>De los adoptados, encontrados por nombre idéntico y misma unidad: <b>%s</b></li>'
+                '<li>Copias de cargas anteriores archivadas: <b>%s</b></li></ul>%s')
+                % (rep['renglones'], rep['creados'], rep['ya_existian'], rep['adoptados'], rep['equivalencias'], rep['combinaciones'],
+                   rep.get('adoptados_por_nombre', 0), rep.get('copias_archivadas', 0),
+                   Markup('<div class="alert alert-warning">Copias con movimientos (no se archivaron; unifíquelas desde Insumos &gt; '
+                          'Duplicados por unificar):<ul>%s</ul></div>') % Markup('').join(Markup('<li>%s</li>') % c for c in rep['copias_con_uso'])
+                   if rep.get('copias_con_uso') else '')})
         return self._reabrir()
 
     def action_validar(self):

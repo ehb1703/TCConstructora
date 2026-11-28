@@ -56,6 +56,10 @@ class CatalogoImportador(models.AbstractModel):
         reporte = collections.defaultdict(list)
         cuenta = collections.Counter()
         iva = env['account.tax'].search([('type_tax_use', '=', 'purchase'), ('amount', '=', 16), ('company_id', '=', env.company.id)], limit=1)
+        # Productos que ya existían en Odoo antes del catálogo (sin Clave TC), por nombre: se adoptan en vez de crear otro igual
+        sin_clave = collections.defaultdict(list)
+        for p in Producto.search([('active', '=', True), ('purchase_ok', '=', True), ('clave_insumo', '=', False)], order='id'):
+            sin_clave[motor.normalizar(p.name)].append(p)
         grupos = collections.OrderedDict()
         for f in sorted(filas, key=lambda x: x['tc']):
             llave = (motor.normalizar(f['grupo']), f['tc'][3:6], f['tc'][7:10], motor.normalizar(f['prod']), motor.normalizar(f['unidad']))
@@ -91,6 +95,19 @@ class CatalogoImportador(models.AbstractModel):
                 producto = candidatos.filtered(lambda c: self._mismo_insumo(c.name, prod))[:1]
                 for otro in candidatos - producto:
                     reporte['codigo_con_otro_insumo'].append('%s [%s] no se adopta como %s (%s): otro insumo con el mismo código' % (otro.name, otro.default_code, prod, clave))
+            copias_nombre = Producto.browse()
+            if not producto:
+                # Sin código de obra que lo confirme: mismo nombre y misma unidad que un producto anterior sin Clave TC = el mismo insumo.
+                # Si hay varios iguales (cargas repetidas), se adopta el más antiguo y los demás pasan por el retiro de copias.
+                mismos = [p for p in sin_clave.get(prod, []) if p.active and not p.clave_insumo]
+                iguales = [p for p in mismos if motor.unidad_canonica(p.uom_id.name) == motor.unidad_canonica(uni)]
+                if iguales:
+                    producto = iguales[0]
+                    copias_nombre = Producto.browse([p.id for p in iguales[1:]])
+                    reporte['adoptado_por_nombre'].append('%s [%s] recibe la clave %s' % (producto.name, producto.default_code or '-', clave))
+                elif mismos:
+                    reporte['mismo_nombre_otra_unidad'].append('%s: en Odoo existe con unidad %s y la base dice %s; se crea aparte, revíselo' % (
+                        prod, ', '.join(sorted({p.uom_id.name for p in mismos})), uni))
             uom = self.unidad(uni)
             if not uom and not producto:
                 reporte['sin_unidad'].append('%s (%s, %s)' % (prod, uni, ', '.join(claves)))
@@ -109,6 +126,8 @@ class CatalogoImportador(models.AbstractModel):
                 producto = Producto.create(vals)
                 cuenta['creados'] += 1
             self._retirar_copias(producto, ['%05d' % int(c[-4:]) for c in claves[1:]], codigos_obra, reporte, cuenta)
+            for copia in copias_nombre:
+                self._retirar(copia, producto, reporte, cuenta)
             for x in fs:
                 cod = motor.normalizar(x.get('codigo'))
                 desc = x.get('desc') or x['prod']
@@ -156,14 +175,21 @@ class CatalogoImportador(models.AbstractModel):
         for copia in Producto.search(dominio):
             if not (copia.clave_insumo in claves_unidas or self._mismo_insumo(copia.name, producto.name)):
                 continue   # mismo código de obra pero otro insumo (MO05 en otra obra): no es una copia
-            usos = self._referencias(copia)
-            if usos:
-                reporte['copias_con_movimientos'].append('%s [%s] copia de %s: %s' % (copia.name, copia.default_code, producto.clave_insumo_tc, ', '.join(usos)))
-                reporte['copias_con_movimientos_ids'].append(copia.id)
-                continue
-            copia.write({'active': False})
-            cuenta['copias_archivadas'] += 1
-            reporte['copias_archivadas'].append('%s [%s] se archiva: el insumo es %s' % (copia.name, copia.default_code, producto.clave_insumo_tc))
+            self._retirar(copia, producto, reporte, cuenta)
+
+    @api.model
+    def _retirar(self, copia, producto, reporte, cuenta):
+        # Archiva la copia si nadie la usa; si ya tiene movimientos se reporta para que el Administrador del Catálogo decida.
+        if not copia.active:
+            return
+        usos = self._referencias(copia)
+        if usos:
+            reporte['copias_con_movimientos'].append('%s [%s] copia de %s: %s' % (copia.name, copia.default_code, producto.clave_insumo_tc, ', '.join(usos)))
+            reporte['copias_con_movimientos_ids'].append(copia.id)
+            return
+        copia.write({'active': False})
+        cuenta['copias_archivadas'] += 1
+        reporte['copias_archivadas'].append('%s [%s] se archiva: el insumo es %s' % (copia.name, copia.default_code, producto.clave_insumo_tc))
 
     @api.model
     def _ajustar_secuencia(self):
