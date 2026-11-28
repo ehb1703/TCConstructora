@@ -37,7 +37,8 @@ class CatalogoUnificarWizard(models.TransientModel):
                 Markup('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>') % (
                     p.display_name, p.uom_id.name or '', _('Se conserva') if p == wiz.conservar_id else _('Se archiva'),
                     ', '.join(importador._referencias(p)) or '-')
-                for p in wiz.producto_ids.sorted('id'))
+                # en pantalla los registros llegan sin guardar (NewId): se ordena por el id real
+                for p in wiz.producto_ids.sorted(lambda r: r._origin.id or 0))
             wiz.resumen = Markup('<table class="table table-sm"><thead><tr><th>%s</th><th>%s</th><th>%s</th><th>%s</th></tr></thead>'
                                  '<tbody>%s</tbody></table>') % (_('Producto'), _('Unidad'), _('Resultado'), _('Dónde se usa'), filas)
 
