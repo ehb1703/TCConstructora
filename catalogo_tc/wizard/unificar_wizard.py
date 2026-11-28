@@ -65,5 +65,6 @@ class CatalogoUnificarWizard(models.TransientModel):
                            'unidad_externa': otro.uom_id.name, 'product_tmpl_id': conservar.id})
             otro.sudo().write({'active': False})
             lineas.append(Markup('<li>%s%s</li>') % (otro.display_name, (' — ' + _('su historial queda en el producto archivado: ') + ', '.join(usos)) if usos else ''))
-        conservar.message_post(body=Markup('<p>%s</p><ul>%s</ul>') % (_('Se unificaron en este insumo (archivados):'), Markup('').join(lineas)))
+        # nota interna (no envía correos: no exige que el administrador tenga correo configurado)
+        conservar._message_log(body=Markup('<p>%s</p><ul>%s</ul>') % (_('Se unificaron en este insumo (archivados):'), Markup('').join(lineas)))
         return {'type': 'ir.actions.act_window', 'res_model': 'product.template', 'res_id': conservar.id, 'view_mode': 'form', 'target': 'current'}
