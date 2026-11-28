@@ -91,7 +91,14 @@ class CatalogoAltaWizard(models.TransientModel):
                     'clave_insumo': self.env['product.template'].siguiente_clave()}
             if self.tipo_id.cuenta_gasto_id and not producto.property_account_expense_id:
                 vals['property_account_expense_id'] = self.tipo_id.cuenta_gasto_id.id
-            producto.write(vals)   # conserva nombre, unidad, referencia e historial del producto
+            anterior = producto.default_code
+            producto.write(vals)   # conserva nombre, unidad e historial; la referencia pasa a ser la Clave TC
+            # la referencia anterior (p. ej. MA0001) queda como equivalencia: buscarla sigue encontrando el insumo (igual que en la importación)
+            Eq, motor = self.env['catalogo.equivalencia'].sudo(), self.env['catalogo.motor']
+            if anterior and anterior != producto.default_code and not Eq.search_count([
+                    ('fuente_norm', '=', motor.normalizar('REFERENCIA ANTERIOR EN ODOO')), ('codigo_norm', '=', motor.normalizar(anterior))]):
+                Eq.create({'fuente': 'REFERENCIA ANTERIOR EN ODOO', 'codigo_externo': anterior, 'descripcion_externa': producto.name,
+                           'unidad_externa': producto.uom_id.name, 'product_tmpl_id': producto.id})
         else:
             if not self.env.user.has_group(GRUPO_ADMIN):
                 raise UserError(_('Solo el Administrador del Catálogo puede dar de alta insumos.'))
