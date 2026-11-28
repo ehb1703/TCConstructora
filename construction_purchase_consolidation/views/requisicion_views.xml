@@ -29,6 +29,9 @@
                 <field name="x_orden_cambio_id" invisible="x_tipo_requerimiento != 'extraordinario'" readonly="state == 'sent_purchase'"
                        groups="requisition_residents.group_costos,gestion_obras.group_tc_budget_control" options="{'no_create': True}"/>
             </xpath>
+            <xpath expr="//field[@name='line_ids']" position="attributes">
+                <attribute name="readonly">state != 'draft'</attribute>
+            </xpath>
             <xpath expr="//field[@name='line_ids']/list/field[@name='product_qty']" position="after">
                 <field name="x_frente_id" required="1" readonly="parent.state != 'draft'" options="{'no_create': True}"/>
                 <field name="x_tipo_requerimiento" readonly="parent.state != 'draft'"/>

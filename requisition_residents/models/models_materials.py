@@ -183,11 +183,14 @@ class purchaseOrderInherit(models.Model):
     @api.depends('lead_id', 'lead_id.empresa_concursante_id', 'materials_id',
         'materials_id.project_id.lead_id.empresa_concursante_id', 'materials_id.company_id')
     def _compute_empresa_solicitante(self):
+        # Se calcula con permisos de sistema: la empresa concursante es de otra compañía que el comprador no tiene permitida y,
+        # sin esto, la orden no se puede abrir (AccessError en res.company).
         for order in self:
+            orden = order.sudo()
             empresa = False
-            if order.lead_id and order.lead_id.empresa_concursante_id:
-                empresa = order.lead_id.empresa_concursante_id
-            elif order.materials_id:
+            if orden.lead_id and orden.lead_id.empresa_concursante_id:
+                empresa = orden.lead_id.empresa_concursante_id
+            elif orden.materials_id:
                 # Empresa concursante del CRM de la obra; respaldo a la empresa de la requisición si la obra no tiene lead
-                empresa = order.materials_id.project_id.lead_id.empresa_concursante_id or order.materials_id.company_id
-            order.empresa_solicitante = empresa.partner_id if empresa else False
+                empresa = orden.materials_id.project_id.lead_id.empresa_concursante_id or orden.materials_id.company_id
+            order.empresa_solicitante = empresa.partner_id.id if empresa else False

@@ -144,12 +144,30 @@ class RequisitionMaterialsLine(models.Model):
             vals['x_motivo_extraordinario'] = dict(MOTIVOS)[vals['x_motivo_tipo']]
         return vals
 
+    # Lo que captura el residente: una vez enviada la requisición ya no cambia (lo autorizado por Costos es lo que se consolida y compra).
+    CAMPOS_CAPTURA = {'product_id', 'product_qty', 'product_uom_id', 'x_frente_id', 'x_tipo_requerimiento', 'x_motivo_tipo', 'x_motivo_extraordinario'}
+
+    def _validar_captura_abierta(self, requisiciones):
+        if self.env.su:
+            return
+        cerradas = requisiciones.filtered(lambda r: r.state != 'draft')
+        if cerradas:
+            raise UserError(_('La requisición %s ya fue enviada: sus insumos no se pueden agregar, quitar ni modificar. '
+                              'Si hay que corregirla, debe regresarse a Borrador.') % ', '.join(cerradas.mapped('name')))
+
     @api.model_create_multi
     def create(self, vals_list):
+        self._validar_captura_abierta(self.env['requisition.materials'].browse([v['req_id'] for v in vals_list if v.get('req_id')]))
         return super().create([self._motivo_desde_lista(dict(v)) for v in vals_list])
 
     def write(self, vals):
+        if self.CAMPOS_CAPTURA & set(vals):
+            self._validar_captura_abierta(self.mapped('req_id'))
         return super().write(self._motivo_desde_lista(dict(vals)))
+
+    def unlink(self):
+        self._validar_captura_abierta(self.mapped('req_id'))
+        return super().unlink()
 
     def action_crear_rfq(self):
         return {'type': 'ir.actions.act_window', 'name': _('Crear Solicitud de Cotización (RFQ)'), 'res_model': 'crear.rfq.consolidada.wizard',
