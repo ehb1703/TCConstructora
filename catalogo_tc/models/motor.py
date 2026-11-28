@@ -15,21 +15,34 @@ ALIAS_UNIDAD = {'PZA': 'PZA', 'PZAS': 'PZA', 'PZ': 'PZA', 'PIEZA': 'PZA', 'PIEZA
                 'JOR': 'JOR', 'JORNADA': 'JOR', 'DIA': 'DIA', 'DIAS': 'DIA', 'R/DIA': 'DIA', 'JGO': 'JGO', 'JUEGO': 'JGO', 'SAL': 'SALIDA', 'SALIDA': 'SALIDA'}
 
 
+def normalizar_texto(texto):
+    # Mayúsculas, sin acentos (conserva la Ñ), comillas rectas y espacios normalizados. Sin ORM: también la usa la creación de columnas.
+    salida = []
+    for ch in str(texto or '').upper():
+        if ch == 'Ñ':
+            salida.append(ch)
+            continue
+        salida.append(''.join(c for c in unicodedata.normalize('NFD', ch) if unicodedata.category(c) != 'Mn'))
+    texto = ''.join(salida).replace('”', '"').replace('“', '"').replace("''", '"').replace('´', "'").replace('’', "'")
+    return ' '.join(texto.split())
+
+
+def unidad_canonica_texto(texto):
+    u = normalizar_texto(texto).replace('³', '3').replace('²', '2').replace('.', '').replace(' ', '')
+    return ALIAS_UNIDAD.get(u, u)
+
+
+def llave_duplicado(nombre, unidad):
+    return '%s [%s]' % (normalizar_texto(nombre), unidad_canonica_texto(unidad)) if nombre else False
+
+
 class CatalogoMotor(models.AbstractModel):
     _name = 'catalogo.motor'
     _description = 'Motor de emparejamiento del catálogo de insumos'
 
     @api.model
     def normalizar(self, texto):
-        # Mayúsculas, sin acentos (conserva la Ñ), comillas rectas y espacios normalizados.
-        salida = []
-        for ch in str(texto or '').upper():
-            if ch == 'Ñ':
-                salida.append(ch)
-                continue
-            salida.append(''.join(c for c in unicodedata.normalize('NFD', ch) if unicodedata.category(c) != 'Mn'))
-        texto = ''.join(salida).replace('”', '"').replace('“', '"').replace("''", '"').replace('´', "'").replace('’', "'")
-        return ' '.join(texto.split())
+        return normalizar_texto(texto)
 
 
     @api.model
@@ -67,8 +80,7 @@ class CatalogoMotor(models.AbstractModel):
 
     @api.model
     def unidad_canonica(self, texto):
-        u = self.normalizar(texto).replace('³', '3').replace('²', '2').replace('.', '').replace(' ', '')
-        return ALIAS_UNIDAD.get(u, u)
+        return unidad_canonica_texto(texto)
 
     @api.model
     def memoria(self):

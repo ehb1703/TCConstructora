@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
+from odoo.tools.sql import column_exists, create_column
 from odoo.osv import expression
+from .motor import llave_duplicado
 from odoo.exceptions import UserError, ValidationError
 
 GRUPO_ADMIN = 'catalogo_tc.group_admin_catalogo'
@@ -95,9 +97,21 @@ class ProductTemplateCatalogo(models.Model):
 
     @api.depends('name', 'uom_id', 'uom_id.name')
     def _compute_catalogo_llave_duplicado(self):
-        motor = self.env['catalogo.motor']
         for p in self:
-            p.catalogo_llave_duplicado = '%s [%s]' % (motor.normalizar(p.name), motor.unidad_canonica(p.uom_id.name)) if p.name else False
+            p.catalogo_llave_duplicado = llave_duplicado(p.name, p.uom_id.name)
+
+    def _auto_init(self):
+        # La columna se crea y se llena aquí con SQL: si la calculara el ORM, al instalar o actualizar el módulo reescribiría
+        # 'última modificación' (write_date/write_uid) de TODOS los productos.
+        cr = self.env.cr
+        if not column_exists(cr, 'product_template', 'catalogo_llave_duplicado'):
+            create_column(cr, 'product_template', 'catalogo_llave_duplicado', 'varchar')
+            cr.execute("""SELECT pt.id, COALESCE(pt.name->>'es_MX', pt.name->>'en_US'), COALESCE(u.name->>'es_MX', u.name->>'en_US')
+                          FROM product_template pt LEFT JOIN uom_uom u ON u.id = pt.uom_id""")
+            filas = [(llave_duplicado(nombre, unidad), pid) for pid, nombre, unidad in cr.fetchall()]
+            for k in range(0, len(filas), 1000):
+                cr.executemany('UPDATE product_template SET catalogo_llave_duplicado = %s WHERE id = %s', filas[k:k + 1000])
+        return super()._auto_init()
 
     @api.model
     def action_duplicados_por_unificar(self):
